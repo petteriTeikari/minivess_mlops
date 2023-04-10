@@ -1,3 +1,3 @@
 # minivess_mlops
 
-Test commit for correct user
+* Python: 3.8 >= (Monai mostly written in 3.8)

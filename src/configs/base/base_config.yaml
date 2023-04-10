@@ -1,0 +1,94 @@
+# Base config: Update relevant keys from this with your "task config"
+# Base exapmple (VISSL) see e.g. https://github.com/facebookresearch/vissl/blob/main/vissl/config/defaults.yaml
+defaults:
+  - _self_
+  # you must specify the base config you want to run
+  - config: ??? # check later Hydra part
+
+VERSION: 0.01alpha
+NAME: 'base_config'
+
+config:
+  # ----------------------------------------------------------------------------------- #
+  # GLOBAL DEFAULTS
+  # ----------------------------------------------------------------------------------- #
+  VERBOSE: False
+
+  # ----------------------------------------------------------------------------------- #
+  # DATA
+  # ----------------------------------------------------------------------------------- #
+  DATA:
+    # Where to get the data files
+    DATA_SOURCE:
+      DATASET_NAME: 'minivess'
+      DATA_INFO_URL: 'https://doi.org/10.25493/HPBE-YHK'
+      DATA_DOWNLOAD_URL: 'https://data.kg.ebrains.eu/zip?container=https://data-proxy.ebrains.eu/api/v1/buckets/d-bf268b89-1420-476b-b428-b85a913eb523'
+    SPLITS:
+      NAME: 'RANDOM'
+      RANDOM:
+        SEED: 42
+        TEST_VAL_RATIO: 0.1
+        TRAIN_RATIO: 0.8
+      # More reproducible way would be to write the splits to disk, and then the end-user/researcher could
+      # decide to use the predefined list, or re-shuffle the split. Or keep the test set always the same
+      # and reshuffle train/val?
+      TXT_FILE:
+        PLACEHOLDER: 0
+    # Dataset object
+    DATASET:
+      NAME: 'MONAI_CACHEDATASET'
+      # See https://docs.monai.io/en/stable/data.html#cachedataset
+      MONAI_CACHEDATASET:
+        CACHE_RATE: 1.0
+        NUM_WORKERS: 0
+      # If you want to use the vanilla PyTorch dataloader, here are the basic params
+      # e.g. easier to re-use 3rd party repos that you have downloded for quick testing
+      PYTORCH:
+        PLACEHOLDER: 1
+      TRANSFORMS:
+        TRAIN:
+          - name: 'BasicAug'
+            param1: 'placeholder'
+        VAL:
+          - name: 'NoAug'
+            param1: 'placeholder'
+        TEST:
+          - name: 'NoAug'
+            param1: 'placeholder'
+    # Dataloader object
+    DATALOADER:
+      PLACEHOLDER: 1
+
+  # ----------------------------------------------------------------------------------- #
+  # MACHINE (cpu, gpu)
+  # ----------------------------------------------------------------------------------- #
+  MACHINE:
+    DEVICE: "gpu"
+
+  # ----------------------------------------------------------------------------------- #
+  # MODEL
+  # ----------------------------------------------------------------------------------- #
+  MODEL:
+    # default model. User can define their own model and use that instead.
+    BASE_MODEL_NAME: 'placeholder'
+
+  # ----------------------------------------------------------------------------------- #
+  #
+  # ----------------------------------------------------------------------------------- #
+
+    TRAIN:
+      PLACEHOLDER: 0
+    VAL:
+      PLACEHOLDER: 0
+    TEST:
+
+
+  # ----------------------------------------------------------------------------------- #
+  # TRAINING and TRANSFORMS
+  # ----------------------------------------------------------------------------------- #
+  TRAINING:
+    TRAIN:
+      PLACEHOLDER: 0
+    VAL:
+      PLACEHOLDER: 0
+    TEST:
