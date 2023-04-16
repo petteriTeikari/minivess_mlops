@@ -20,49 +20,67 @@ config:
   DATA:
     # Where to get the data files
     DATA_SOURCE:
-      DATASET_NAME: 'minivess'
-      DATA_INFO_URL: 'https://doi.org/10.25493/HPBE-YHK'
-      DATA_DOWNLOAD_URL: 'https://data.kg.ebrains.eu/zip?container=https://data-proxy.ebrains.eu/api/v1/buckets/d-bf268b89-1420-476b-b428-b85a913eb523'
-    SPLITS:
-      NAME: 'RANDOM'
-      RANDOM:
-        SEED: 42
-        TEST_VAL_RATIO: 0.1
-        TRAIN_RATIO: 0.8
-      # More reproducible way would be to write the splits to disk, and then the end-user/researcher could
-      # decide to use the predefined list, or re-shuffle the split. Or keep the test set always the same
-      # and reshuffle train/val?
-      TXT_FILE:
-        PLACEHOLDER: 0
-    # Dataset object
-    DATASET:
-      NAME: 'MONAI_CACHEDATASET'
-      # See https://docs.monai.io/en/stable/data.html#cachedataset
-      MONAI_CACHEDATASET:
-        CACHE_RATE: 1.0
-        NUM_WORKERS: 0
-      # If you want to use the vanilla PyTorch dataloader, here are the basic params
-      # e.g. easier to re-use 3rd party repos that you have downloded for quick testing
-      PYTORCH:
-        PLACEHOLDER: 1
-      TRANSFORMS:
-        TRAIN:
-          - name: 'BasicAug'
-            param1: 'placeholder'
-        VAL:
-          - name: 'NoAug'
-            param1: 'placeholder'
-        TEST:
-          - name: 'NoAug'
-            param1: 'placeholder'
+      # To think about here how to define multiple datasets,
+      # TOADD, i.e. how to create multiple val, and test subdictionaries
+      DATASET_NAME:
+        - 'MINIVESS'
+      MINIVESS:
+        DATA_INFO_URL: 'https://doi.org/10.25493/HPBE-YHK'
+        DATA_DOWNLOAD_URL: 'https://data.kg.ebrains.eu/zip?container=https://data-proxy.ebrains.eu/api/v1/buckets/d-bf268b89-1420-476b-b428-b85a913eb523'
+        SPLITS:
+          NAME: 'RANDOM'
+          RANDOM:
+            SEED: 42
+            TEST_VAL_RATIO: 0.1
+            TRAIN_RATIO: 0.8
+          # More reproducible way would be to write the splits to disk, and then the end-user/researcher could
+          # decide to use the predefined list, or re-shuffle the split. Or keep the test set always the same
+          # and reshuffle train/val?
+          TXT_FILE:
+            PLACEHOLDER: 0
+        # Dataset object, see e.g. "2. Cache intermediate outcomes into persistent storage"
+        # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
+        DATASET:
+          NAME: 'MONAI_CACHEDATASET'
+          # See https://docs.monai.io/en/stable/data.html#cachedataset
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 1.0
+            NUM_WORKERS: 0
+          # See below for explanations, think of using some hierarchical .yamls if this
+          # gets very heavy and you start having a lot of different augmentation schemes
+          # see Hydra and "Configuring Experiments"
+          # https://hydra.cc/docs/patterns/configuring_experiments/
+        TRANSFORMS:
+          # Not sure how to implement the best, if you would like to use specific parameters,
+          # i.e. just specific for Minivess that would be different from standard "BASIC_AUG"
+          # e.g. different blur, rotation, spatial transformation strengths
+          TRAIN: 'BASIC_AUG'
+          VAL: 'NO_AUG'
+          TEST: 'NO_AUG'
     # Dataloader object
     DATALOADER:
-      PLACEHOLDER: 1
+      NAME: 'DATALOADER_BASIC'
+      # See e.g. "ThreadDataLoader vs. DataLoader"
+      # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
+      DATALOADER_BASIC:
+        PLACEHOLDER: 1
+      THREAD_DATALOADER:
+        PLACEHOLDER: 1
+      TRAIN:
+        BATCH_SZ: 4
+        NUM_WORKERS: 1
+      VAL:
+        BATCH_SZ: 2
+        NUM_WORKERS: 1
+      TEST:
+        BATCH_SZ: 2
+        NUM_WORKERS: 1
 
   # ----------------------------------------------------------------------------------- #
   # MACHINE (cpu, gpu)
   # ----------------------------------------------------------------------------------- #
   MACHINE:
+    DISTRIBUTED: False
     DEVICE: "gpu"
 
   # ----------------------------------------------------------------------------------- #
@@ -70,25 +88,90 @@ config:
   # ----------------------------------------------------------------------------------- #
   MODEL:
     # default model. User can define their own model and use that instead.
-    BASE_MODEL_NAME: 'placeholder'
+    MODEL_NAME: 'Unet'
+    Unet:
+      spatial_dims: 3
+      in_channels: 1
+      out_channels: 1
+      channels:
+        - 16
+        - 32
+        - 64
+        - 128
+        - 256
+      strides:
+        - 2
+        - 2
+        - 2
+        - 2
+      num_res_units: 2
+
 
   # ----------------------------------------------------------------------------------- #
-  #
+  # TRANSFORM SCHEMES
+  # i.e. "BASIC_AUG" does a bunch of transformations (augmentations)
   # ----------------------------------------------------------------------------------- #
-
-    TRAIN:
-      PLACEHOLDER: 0
-    VAL:
-      PLACEHOLDER: 0
-    TEST:
+  TRANSFORMS:
+    BASIC_AUG:
+      param1: 'placeholder'
+    NO_AUG:
+      param1: 'placeholder'
 
 
   # ----------------------------------------------------------------------------------- #
-  # TRAINING and TRANSFORMS
+  # TRAINING
   # ----------------------------------------------------------------------------------- #
   TRAINING:
-    TRAIN:
-      PLACEHOLDER: 0
-    VAL:
-      PLACEHOLDER: 0
-    TEST:
+    AMP: True
+    NUM_EPOCHS: 5
+    LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
+    LOSS:
+      NAME: 'DiceFocalLoss'
+    OPTIMIZER:
+      NAME: 'Novograd'
+    SCHEDULER:
+      NAME: 'CosineAnnealingLR'
+    METRICS:
+      NAMES:
+        - 'DiceMetric'
+        - 'compute_hausdorff_distance'
+
+  # ----------------------------------------------------------------------------------- #
+  # DATASETS
+  # ----------------------------------------------------------------------------------- #
+  # If you want to use the vanilla PyTorch dataloader, here are the basic params
+  # e.g. easier to re-use 3rd party repos that you have downloded for quick testing
+  DATASETS:
+    PYTORCH:
+      PLACEHOLDER: 1
+
+  # ----------------------------------------------------------------------------------- #
+  # DATALOADERS
+  # ----------------------------------------------------------------------------------- #
+
+  # ----------------------------------------------------------------------------------- #
+  # LOSS FUNCTIONS
+  # ----------------------------------------------------------------------------------- #
+  LOSS_FUNCTIONS:
+    # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
+    DiceFocalLoss:
+      smooth_nr: 0.00001 # 1e-5 FIXME! Parse scientifc notations from .yaml correctly
+      smooth_dr: 0.00001 # 1e-5 FIXME! Parse scientifc notations from .yaml correctly
+      squared_pred: True
+      to_onehot_y: False
+      sigmoid: True
+      batch: True
+
+  # ----------------------------------------------------------------------------------- #
+  # OPTIMIZERS
+  # ----------------------------------------------------------------------------------- #
+  OPTIMIZERS:
+    Novograd:
+      PLACEHOLDER: 1
+
+  # ----------------------------------------------------------------------------------- #
+  # SCHEDULERS
+  # ----------------------------------------------------------------------------------- #
+  SCHEDULERS:
+    CosineAnnealingLR:
+      PLACEHOLDER: 1

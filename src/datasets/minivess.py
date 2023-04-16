@@ -1,7 +1,7 @@
 import glob
 import os
 
-from monai.data import CacheDataset
+from monai.data import CacheDataset, Dataset
 from loguru import logger
 from tqdm import tqdm
 import requests
@@ -106,31 +106,40 @@ def get_random_splits_for_minivess(data_dicts: list, data_split_cfg: dict):
     return files_dict
 
 
-def define_minivess_dataset(dataset_config: dict, dataset_dir: str, split_file_dicts: dict, transforms: dict):
+def define_minivess_dataset(dataset_config: dict, split_file_dicts: dict, transforms: dict):
 
     datasets = {}
     for i, split in enumerate(transforms.keys()):
-        datasets[split] = create_dataset_per_split(dataset_cfg=dataset_config, split=split,
+        datasets[split] = create_dataset_per_split(dataset_config=dataset_config,
+                                                   split=split,
                                                    split_file_dict=split_file_dicts[split],
                                                    transforms_per_split=transforms[split])
 
     return datasets
 
 
-def create_dataset_per_split(dataset_cfg: dict, split: str, split_file_dict: dict, transforms_per_split: dict):
+def create_dataset_per_split(dataset_config: dict, split: str, split_file_dict: dict, transforms_per_split: dict):
 
     n_files = len(split_file_dict)
+    ds_config = dataset_config['DATASET']
+    pytorch_dataset_type = ds_config['NAME']
 
-    # TO-OPTIMIZE you could try to directly parse from the string the function
-    if dataset_cfg['NAME'] == 'MONAI_CACHEDATASET':
+    if pytorch_dataset_type == 'MONAI_CACHEDATASET':
+
         ds = CacheDataset(data=split_file_dict,
                          transform=transforms_per_split,
-                         cache_rate=dataset_cfg[dataset_cfg['NAME']]['CACHE_RATE'],
-                         num_workers=dataset_cfg[dataset_cfg['NAME']]['NUM_WORKERS'])
-        logger.info('Created MONAI CacheDataset, split = "{}" (n={}, '
+                         cache_rate=ds_config[pytorch_dataset_type]['CACHE_RATE'],
+                         num_workers=ds_config[pytorch_dataset_type]['NUM_WORKERS'])
+        logger.info('Created MONAI CacheDataset, split = "{}" (n = {}, '
+                    'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
+
+    elif pytorch_dataset_type == 'MONAI_DATASET':
+        ds = Dataset(data=split_file_dict)
+        logger.info('Created MONAI (uncached) Dataset, split = "{}" (n={}, '
                     'keys in dict = {})', split, n_files, list(split_file_dict[0].keys))
+
     else:
-        raise NotImplementedError('Not implemented yet other datasets than Monai CacheDataset, '
-                                  'not = "{}"'.format(dataset_cfg['NAME'] == 'MONAI_CACHEDATASET'))
+        raise NotImplementedError('Not implemented yet other dataset than Monai CacheDataset and Dataset, '
+                                  'not = "{}"'.format(pytorch_dataset_type))
 
     return ds
