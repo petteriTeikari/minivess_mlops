@@ -6,7 +6,8 @@ from monai.inferers import sliding_window_inference
 from tqdm import tqdm
 
 from src.eval import evaluate_datasets_per_epoch
-from src.log_ML.logging_main import log_epoch_results, save_models_if_improved
+from src.log_ML.logging_main import log_epoch_results, save_models_if_improved, init_best_dict_with_criteria, \
+    log_n_epochs_results
 from src.utils.model_utils import import_segmentation_model
 from src.utils.train_utils import init_epoch_dict, collect_epoch_results, init_training, set_model_training_params
 
@@ -33,10 +34,14 @@ def train_model(dataloaders,
         set_model_training_params(model, device, scaler, training_config, config)
 
     # Train script
-    train_n_epochs_script(model, dataloaders,
-                          device, scaler,
-                          loss_function, optimizer, lr_scheduler,
-                          training_config, config)
+    train_results, eval_results, best_dict = \
+        train_n_epochs_script(model, dataloaders,
+                              device, scaler,
+                              loss_function, optimizer, lr_scheduler,
+                              training_config, config)
+
+    # When training is done, you con for example log the repeat/experiment/n_epochs level results
+    log_n_epochs_results(train_results, eval_results, best_dict)
 
 
 def train_n_epochs_script(model, dataloaders,
@@ -50,8 +55,10 @@ def train_n_epochs_script(model, dataloaders,
 
     train_results = {}
     eval_results = {}
+    best_dict = init_best_dict_with_criteria()
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L285
+    print(' ')
     for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']), desc = 'Training the network'):
 
         eval_epoch_results = {}
@@ -74,13 +81,16 @@ def train_n_epochs_script(model, dataloaders,
 
         # Collect results to a dictionary and avoid having multiple lists for each metric
         train_results, eval_results = collect_epoch_results(train_epoch_results, eval_epoch_results,
-                                                            train_results, eval_results)
+                                                            train_results, eval_results, epoch)
 
         # Log epoch-level result
-        log_epoch_results()
+        log_epoch_results(train_epoch_results, eval_epoch_results, epoch)
 
         # Save model(s) if model has improved
-        save_models_if_improved()
+        save_models_if_improved(best_dict, train_epoch_results, eval_epoch_results)
+
+
+    return train_results, eval_results, best_dict
 
 
 def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, scaler, training_config,

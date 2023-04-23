@@ -1,3 +1,7 @@
+import warnings
+from copy import deepcopy
+
+import numpy as np
 import torch
 import torch.distributed as dist
 
@@ -108,6 +112,84 @@ def init_epoch_dict(epoch: int, loaders, split_name: str, subsplit_name: str = '
     return results_out
 
 
-def collect_epoch_results(train_epoch_results, eval_epoch_results, train_results, eval_results):
+def collect_epoch_results(train_epoch_results: dict, eval_epoch_results: dict,
+                          train_results: dict, eval_results: dict,
+                          epoch: int):
 
-    a = 1
+    eval_results = combine_epoch_and_experiment_dicts(epoch_results=deepcopy(eval_epoch_results),
+                                                      experiment_results=deepcopy(eval_results),
+                                                      loop_type='eval',
+                                                      epoch=epoch)
+
+    train_results = combine_epoch_and_experiment_dicts(epoch_results=deepcopy({'TRAIN': train_epoch_results}),
+                                                       experiment_results=deepcopy(train_results),
+                                                       loop_type='train',
+                                                       epoch=epoch)
+
+    return train_results, eval_results
+
+def combine_epoch_and_experiment_dicts(epoch_results: dict, experiment_results: dict,
+                                       loop_type: str, epoch: int) -> dict:
+
+    if len(experiment_results) == 0:
+        # i.e. the first epoch
+        experiment_results = epoch_results
+    else:
+        for split_name in epoch_results.keys():
+            for dataset_name in epoch_results[split_name].keys():
+                epoch_res = epoch_results[split_name][dataset_name]
+                experim_res = experiment_results[split_name][dataset_name]
+                experiment_results[split_name][dataset_name] = \
+                    add_epoch_results_to_experiment_results(experim_res, epoch_res, split_name, dataset_name, epoch)
+
+    return experiment_results
+
+
+def add_epoch_results_to_experiment_results(experim_res: dict, epoch_res: dict,
+                                            split_name: str, dataset_name: str, epoch: int):
+
+    for results_type in epoch_res.keys():
+        # print(results_type)
+        if results_type == 'scalars':
+            experim_res[results_type] =\
+                combine_epoch_and_experiment_scalars(epoch_scalars=deepcopy(epoch_res[results_type]),
+                                                     experim_scalars=deepcopy(experim_res[results_type]))
+        elif results_type == 'arrays':
+            experim_res[results_type] = \
+                combine_epoch_and_experiment_arrays(epoch_arrays=deepcopy(epoch_res[results_type]),
+                                                    experim_arrays=deepcopy(experim_res[results_type]))
+        else:
+            if epoch == 1:
+                warnings.warn('Note if you have anything stored at results_type = "{}", '
+                              'they do not get autocollected over epochs at the moment,\n'
+                              'only the keys in "arrays" and "scalars" subdictionaries are correctly implemented'.
+                              format(results_type))
+            to_be = 'implemented the other types if you get them'
+
+    return experim_res
+
+
+def combine_epoch_and_experiment_scalars(epoch_scalars, experim_scalars):
+
+    for scalar_key in epoch_scalars.keys():
+        epoch_scalar_per_key = np.array(epoch_scalars[scalar_key]).copy()
+        if isinstance(experim_scalars[scalar_key], float):
+            # on the 2nd epoch, we convert the float into a numpy array
+            # so "scalars" will become an array if this is confusing, but "arrays" would contain variables
+            # that would have multiple values at epoch level, e.g. like a 1D histogram you could collect to
+            # experiment-level 2D array with 1D histogram per each epoch
+            experim_scalars[scalar_key] = np.array(experim_scalars[scalar_key])
+
+        experim_scalars[scalar_key] = np.hstack([experim_scalars[scalar_key], epoch_scalar_per_key])
+
+    return experim_scalars
+
+
+def combine_epoch_and_experiment_arrays(epoch_arrays, experim_arrays):
+
+    for scalar_key in epoch_arrays.keys():
+        epoch_array_per_key = np.array(epoch_arrays[scalar_key]).copy()
+        if len(epoch_array_per_key.shape) == 1:
+            experim_arrays[scalar_key] = np.concatenate((experim_arrays[scalar_key], epoch_array_per_key))
+
+    return experim_arrays
