@@ -1,9 +1,17 @@
 import argparse
+
+import torch
 from loguru import logger
 
 from src.train import train_model
 from src.utils.config_utils import import_config
 from src.utils.data_utils import define_dataset_and_dataloader, import_datasets
+
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
+# __init__.py:127: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage
+# will be the only storage class. This should only matter to you if you are using storages directly.
+# To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
 
 
 def parse_args_to_dict():
@@ -25,8 +33,9 @@ if __name__ == '__main__':
 
     args = parse_args_to_dict()
     config = import_config(args, task_config_file = args['task_config_file'])
+    device = torch.device(f"cuda:{0}") # FIXME set up the hardware environment here already
     dataset_dirs = import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'])
-    datasets, dataloaders = define_dataset_and_dataloader(config, dataset_dirs = dataset_dirs)
+    datasets, dataloaders = define_dataset_and_dataloader(config, dataset_dirs=dataset_dirs, device=device)
     logger.info('Done with the training preparation\n')
 
     train_model(dataloaders=dataloaders,

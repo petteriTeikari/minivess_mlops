@@ -67,7 +67,7 @@ config:
       THREAD_DATALOADER:
         PLACEHOLDER: 1
       TRAIN:
-        BATCH_SZ: 4
+        BATCH_SZ: 2
         NUM_WORKERS: 1
       VAL:
         BATCH_SZ: 2
@@ -88,7 +88,7 @@ config:
   # ----------------------------------------------------------------------------------- #
   MODEL:
     # default model. User can define their own model and use that instead.
-    MODEL_NAME: 'Unet'
+    MODEL_NAME: 'SegResNet'
     Unet:
       spatial_dims: 3
       in_channels: 1
@@ -105,6 +105,12 @@ config:
         - 2
         - 2
       num_res_units: 2
+    SegResNet:
+      spatial_dims: 3
+      # Strictly speaking these depend on the dataset more than your model, so derive these from
+      # the dataset, rather than here (even though these are input arguments to the model)
+      in_channels: 1
+      out_channels: 1
 
 
   # ----------------------------------------------------------------------------------- #

@@ -8,6 +8,8 @@ import requests
 import zipfile
 import random
 
+from ml_tests.check_files import check_file_listing
+
 
 def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
                                           dataset_name: str = 'minivess'):
@@ -40,7 +42,22 @@ def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
     return zip_out
 
 
-def define_minivess_splits(dataset_dir: str, data_splits_config: dict, include_metadata: bool = True):
+def quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fname_in: str = 'mv39'):
+    logger.info('Reject "{}.nii.gz" as it is only 512x512x5 voxels'.format(fname_in))
+    n_in = len(images)
+    image_path = [s for s in images if fname_in in s][0]
+    label_path = [s for s in labels if fname_in in s][0]
+    metadata_path = [s for s in metadata if fname_in in s][0]
+    images.remove(image_path)
+    labels.remove(label_path)
+    metadata.remove(metadata_path)
+    n_out = len(images)
+
+    return images, labels, metadata
+
+
+def define_minivess_splits(dataset_dir: str, data_splits_config: dict, include_metadata: bool = True,
+                           use_quick_and_dirty_rejection: bool = True):
 
     images = glob.glob(os.path.join(dataset_dir, 'raw', '*.nii.gz'))
     labels = glob.glob(os.path.join(dataset_dir, 'seg', '*.nii.gz'))
@@ -51,9 +68,18 @@ def define_minivess_splits(dataset_dir: str, data_splits_config: dict, include_m
     assert len(metadata) == len(labels), 'number of images ({}) and ' \
                                          'labels ({}) should match!'.format(len(metadata), len(labels))
 
+    if use_quick_and_dirty_rejection:
+        images, labels, metadata = \
+            quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fname_in = 'mv39')
+
     images = sorted(images)
     labels = sorted(labels)
     metadata = sorted(metadata)
+
+    # FIXME! Propagate this forward, e.g. you would like to have the size_stats available for the
+    #  transforms so that you are not trying to crop too large chunks
+    size_stats, info_of_files, read_problem_of_files = \
+        check_file_listing(list_of_files = images, import_library = 'nibabel')
 
     if include_metadata:
         logger.info('Include the metadata .json file to the input data dictionary for dataset creation')
@@ -82,8 +108,10 @@ def get_random_splits_for_minivess(data_dicts: list, data_split_cfg: dict):
 
     # Split data for training and testing.
     random.Random(data_split_cfg['SEED']).shuffle(data_dicts)
-    split_train = int(len(data_dicts) * .8)
-    split_val_test = int(len(data_dicts) * .1)
+    # FIXME! Put something more intelligent here later instead of hard-coded n for val and test
+    split_val_test = 7 # int(len(data_dicts) * .1)
+    split_train = len(data_dicts) - 2*split_val_test # int(len(data_dicts) * .8)
+
     assert (split_train + split_val_test * 2 == len(data_dicts)), \
         'you lost some images during splitting, due to the int() operation most likely?\n' \
         'n_train = {} + n_val = {} + n_test = {} should be {}, ' \

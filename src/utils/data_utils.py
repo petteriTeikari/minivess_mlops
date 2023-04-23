@@ -7,10 +7,10 @@ from src.utils.transforms import define_transforms
 
 from monai.data import DataLoader, list_data_collate
 
-def define_dataset_and_dataloader(config: dict, dataset_dirs: dict):
+def define_dataset_and_dataloader(config: dict, dataset_dirs: dict, device):
 
     no_of_dataset_dirs = len(dataset_dirs)
-    datasets = define_datasets(config, dataset_dirs)
+    datasets = define_datasets(config, dataset_dirs, device)
     dataloaders = define_dataloaders(datasets, config,
                                      dataloader_config = config['config']['DATA']['DATALOADER'])
     datasets, dataloaders = quick_and_dirty_training_dataloader_creation(datasets, dataloaders)
@@ -57,7 +57,7 @@ def define_dataloaders(datasets: dict, config: dict, dataloader_config: dict):
     return dataloaders
 
 
-def define_datasets(config: dict, dataset_dirs: dict):
+def define_datasets(config: dict, dataset_dirs: dict, device):
     """
     :param config: dict
         as imported form the task .yaml
@@ -83,7 +83,8 @@ def define_datasets(config: dict, dataset_dirs: dict):
         dataset_config = config['config']['DATA']['DATA_SOURCE'][dataset_name]
         transforms = define_transforms(dataset_config=dataset_config,
                                        transform_config_per_dataset=dataset_config['TRANSFORMS'],
-                                       transform_config=config['config']['TRANSFORMS'])
+                                       transform_config=config['config']['TRANSFORMS'],
+                                       device=device)
         split_file_dicts = define_minivess_splits(dataset_dir=dataset_dir,
                                                   data_splits_config=dataset_config['SPLITS'])
 
