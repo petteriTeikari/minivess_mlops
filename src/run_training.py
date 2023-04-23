@@ -1,10 +1,8 @@
 import argparse
-
-import torch
 from loguru import logger
 
-from src.train import train_model
-from src.utils.config_utils import import_config
+from src.train import training_script
+from src.utils.config_utils import import_config, set_up_environment
 from src.utils.data_utils import define_dataset_and_dataloader, import_datasets
 
 import warnings
@@ -21,7 +19,12 @@ def parse_args_to_dict():
     parser.add_argument('-dbg', '--debug_mode', action="store_const", const=False,
                         help="Sets debug flag on. Quick way for example to train for less epochs or something else,"
                              "when you are not actually training but mostly developing the code")
-    parser.add_argument('-data', '--data_dir', type=str, required=True, default='/home/petteri/minivess_data',
+    parser.add_argument('-data', '--data_dir', type=str, required=True,
+                        default='/home/petteri/PycharmProjects/mlops/minivess_data',
+                        help="Where the data is downloaded, or what dir needs to be mounted when you run this"
+                             "on Docker")
+    parser.add_argument('-output', '--output_dir', type=str, required=True,
+                        default='/home/petteri/PycharmProjects/mlops/minivess_output',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
@@ -31,17 +34,30 @@ def parse_args_to_dict():
 
 if __name__ == '__main__':
 
-    args = parse_args_to_dict()
-    config = import_config(args, task_config_file = args['task_config_file'])
-    device = torch.device(f"cuda:{0}") # FIXME set up the hardware environment here already
-    dataset_dirs = import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'])
-    datasets, dataloaders = define_dataset_and_dataloader(config, dataset_dirs=dataset_dirs, device=device)
-    logger.info('Done with the training preparation\n')
+    # TOADD! Actual hyperparameter config that defines the experiment to run
+    hyperparam_runs = {'hparam_placeholder'}
+    hparam_run_results = {}
+    for hyperparam_idx, hyperparam_name in enumerate(hyperparam_runs):
 
-    train_model(dataloaders=dataloaders,
-                config=config,
-                training_config=config['config']['TRAINING'],
-                model_config=config['config']['MODEL'],
-                machine_config=config['config']['MACHINE'],
-                local_rank=args['local_rank'])
+        # Import the config
+        args = parse_args_to_dict()
+        config = import_config(args, task_config_file = args['task_config_file'])
+
+        # Collect the data and define splits
+        fold_split_file_dicts, config['config']['DATA'] = \
+            import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'])
+
+        # Create and validate datasets and dataloaders
+        experim_datasets, experim_dataloaders = \
+            define_dataset_and_dataloader(config, fold_split_file_dicts=fold_split_file_dicts)
+
+        # Train for n folds, n repeats, n epochs (single model)
+        hparam_run_results[hyperparam_name] = \
+            training_script(experim_dataloaders=experim_dataloaders,
+                            config=config,
+                            training_config=config['config']['TRAINING'],
+                            model_config=config['config']['MODEL'],
+                            machine_config=config['config']['MACHINE'])
+
+        a = 1
 

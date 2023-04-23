@@ -1,7 +1,11 @@
 import os
+
+import torch
 import yaml
 from loguru import logger
 import collections.abc
+import torch.distributed as dist
+
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
@@ -25,6 +29,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     # Add the input arguments as an extra subdict to the config
     # config['config']['ARGS'] = args
     config['ARGS'] = args
+
+    # Setup the computing environment
+    config['config']['MACHINE'] = set_up_environment(machine_config=config['config']['MACHINE'],
+                                                     local_rank=config['ARGS']['local_rank'])
 
     return config
 
@@ -85,3 +93,25 @@ def import_yaml_file(yaml_path: str):
                       '\t\tMaybe wrong use of "’" as the closing quote?')
 
     return cfg
+
+
+def set_up_environment(machine_config: dict, local_rank: int = 0):
+
+    if machine_config['DISTRIBUTED']:
+        # initialize the distributed training process, every GPU runs in a process
+        # see e.g.
+        # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
+        # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
+        dist.init_process_group(backend="nccl", init_method="env://")
+
+    device = torch.device(f"cuda:{local_rank}")  # FIXME! allow CPU-training for devel/debugging purposes as well
+    torch.cuda.set_device(device)
+    torch.backends.cudnn.benchmark = True
+
+    # see if this is actually the best way to do things, as "parsed" things start to be added to a static config dict
+    machine_config['IN_USE'] = {'device': device,
+                                'local_rank': local_rank}
+
+    return machine_config
+
+

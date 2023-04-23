@@ -1,9 +1,8 @@
 import time
-
 import numpy as np
 import torch
-from monai.inferers import sliding_window_inference
 from tqdm import tqdm
+from loguru import logger
 
 from src.eval import evaluate_datasets_per_epoch
 from src.log_ML.logging_main import log_epoch_results, save_models_if_improved, init_best_dict_with_criteria, \
@@ -12,19 +11,62 @@ from src.utils.model_utils import import_segmentation_model
 from src.utils.train_utils import init_epoch_dict, collect_epoch_results, init_training, set_model_training_params
 
 
-def train_model(dataloaders,
-                config: dict,
-                training_config: dict,
-                model_config: dict,
-                machine_config: dict,
-                local_rank: int = 0):
+def training_script(experim_dataloaders: dict,
+                    config: dict,
+                    training_config: dict,
+                    model_config: dict,
+                    machine_config: dict):
 
-    # Do the init stuff
-    device, scaler,  = \
-        init_training(machine_config=machine_config,
-                      training_config=training_config,
-                      config=config,
-                      local_rank=local_rank)
+    # Cross-validation loop (if used), i.e. when train/val splits change for each execution
+    fold_results = {}
+    for f, fold_name in enumerate(list(experim_dataloaders.keys())):
+        logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
+        fold_results[fold_name] = \
+            train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
+                                        config=config,
+                                        training_config=training_config,
+                                        model_config=model_config,
+                                        machine_config=machine_config)
+
+    return fold_results
+
+
+def train_model_for_single_fold(fold_dataloaders: dict,
+                                config: dict,
+                                training_config: dict,
+                                model_config: dict,
+                                machine_config: dict):
+
+    # Repeat n times the same data fold (i.e. you get n submodels for an ensemble)
+    no_repeats = training_config['NO_REPEATS']
+    repeat_results = {}
+    for repeat_idx in range(no_repeats):
+        logger.info('Training repeat #{}/{}'.format(repeat_idx + 1, no_repeats))
+        repeat_results['repeat_{}'.format(str(repeat_idx+1).zfill(2))] = \
+            train_single_model(dataloaders=fold_dataloaders,
+                               config=config,
+                               training_config=training_config,
+                               model_config=model_config,
+                               machine_config=machine_config,
+                               repeat_idx=repeat_idx,
+                               device=machine_config['IN_USE']['device'])
+
+    return repeat_results
+
+
+def train_single_model(dataloaders: dict,
+                       config: dict,
+                       training_config: dict,
+                       model_config: dict,
+                       machine_config: dict,
+                       repeat_idx: int,
+                       device):
+
+
+    if training_config['AMP']:
+        scaler = torch.cuda.amp.GradScaler()
+    else:
+        raise NotImplementedError('Check the train loop also for non-AMP operation')
 
     # Define the model to be used
     model = import_segmentation_model(model_config, device)
@@ -41,7 +83,15 @@ def train_model(dataloaders,
                               training_config, config)
 
     # When training is done, you con for example log the repeat/experiment/n_epochs level results
-    log_n_epochs_results(train_results, eval_results, best_dict)
+    log_n_epochs_results(train_results, eval_results, best_dict, config)
+
+    results_out = {
+                   'train_results': train_results,
+                   'eval_results': eval_results,
+                   'best_dict': best_dict,
+                   }
+
+    return results_out
 
 
 def train_n_epochs_script(model, dataloaders,
@@ -84,10 +134,10 @@ def train_n_epochs_script(model, dataloaders,
                                                             train_results, eval_results, epoch)
 
         # Log epoch-level result
-        log_epoch_results(train_epoch_results, eval_epoch_results, epoch)
+        log_epoch_results(train_epoch_results, eval_epoch_results, epoch, config)
 
         # Save model(s) if model has improved
-        save_models_if_improved(best_dict, train_epoch_results, eval_epoch_results)
+        save_models_if_improved(best_dict, train_epoch_results, eval_epoch_results, config)
 
 
     return train_results, eval_results, best_dict

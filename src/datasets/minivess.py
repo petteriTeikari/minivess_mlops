@@ -56,8 +56,9 @@ def quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fn
     return images, labels, metadata
 
 
-def define_minivess_splits(dataset_dir: str, data_splits_config: dict, include_metadata: bool = True,
-                           use_quick_and_dirty_rejection: bool = True):
+def get_minivess_filelisting(dataset_dir: str,
+                             use_quick_and_dirty_rejection: bool = True,
+                             import_library = 'nibabel'):
 
     images = glob.glob(os.path.join(dataset_dir, 'raw', '*.nii.gz'))
     labels = glob.glob(os.path.join(dataset_dir, 'seg', '*.nii.gz'))
@@ -70,38 +71,57 @@ def define_minivess_splits(dataset_dir: str, data_splits_config: dict, include_m
 
     if use_quick_and_dirty_rejection:
         images, labels, metadata = \
-            quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fname_in = 'mv39')
+            quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fname_in='mv39')
 
     images = sorted(images)
     labels = sorted(labels)
     metadata = sorted(metadata)
 
-    # FIXME! Propagate this forward, e.g. you would like to have the size_stats available for the
-    #  transforms so that you are not trying to crop too large chunks
-    size_stats, info_of_files, read_problem_of_files = \
-        check_file_listing(list_of_files = images, import_library = 'nibabel')
+    # Run test for data integrity, i.e. there are no corrupted files, and return the headers back too
+    size_stats, info_of_files, problematic_files = \
+        check_file_listing(list_of_files=images, import_library='nibabel')
 
+    filelisting = {'images': images,
+                   'labels': labels,
+                   'metadata': metadata}
+
+    # Note! info_of_files contains NifTI headers, and we would like to be able to dump this dict as .yaml
+    #       for reproducability issues. If you want something specific from the header, add it here
+    #       in .yaml friendly format
+    dataset_stats = {'size_stats': size_stats,
+                     'problematic_files': problematic_files}
+
+    return filelisting, dataset_stats
+
+
+def define_minivess_splits(filelisting, data_splits_config: dict, include_metadata: bool = True):
+
+    # Create data_dicts for MONAI, implement something else here if you don't want to use MONAI
     if include_metadata:
         logger.info('Include the metadata .json file to the input data dictionary for dataset creation')
         data_dicts = [
             {'image': image_name, 'label': label_name, 'metadata': metadata_name}
-            for image_name, label_name, metadata_name in zip(images, labels, metadata)
+            for image_name, label_name, metadata_name in zip(filelisting['images'], filelisting['labels'],
+                                                             filelisting['metadata'])
         ]
     else:
         logger.info('Not including the metadata .json file to the input data dictionary for dataset creation')
         data_dicts = [
             {'image': image_name, 'label': label_name}
-            for image_name, label_name in zip(images, labels)
+            for image_name, label_name in zip(filelisting['images'], filelisting['labels'])
         ]
 
     split_method = data_splits_config['NAME']
     if split_method == 'RANDOM':
         files_dict = get_random_splits_for_minivess(data_dicts, data_split_cfg=data_splits_config[split_method])
+        # FIXME! quick and dirty placeholder for allowing cross-validation if needed, or you could bootstrap
+        #  an ensemble model with different data on each fold
+        folds_splits = {'fold0': files_dict}
     else:
         raise NotImplementedError('Only implemented random splits at this point, '
                                   'not "{}"'.format(data_splits_config['NAME']))
 
-    return files_dict
+    return folds_splits
 
 
 def get_random_splits_for_minivess(data_dicts: list, data_split_cfg: dict):

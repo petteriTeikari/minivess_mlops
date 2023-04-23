@@ -22,10 +22,15 @@ def check_file_listing(list_of_files: list,
             read_problem_of_files.append(read_problem)
         else:
             raise NotImplementedError('Unknown file import library = "{}"'.format(import_library))
+            # FIXME at some point it would be nice to import directly microscopy stacks, support for OME-TIFF?
 
     size_stats = nibabel_summary_of_all_files(info_of_files, read_problem_of_files)
 
-    return size_stats, info_of_files, read_problem_of_files
+    # return only the files that had issues, len(read_problem_of_files) = 0, when things are good
+    idx_for_filenames_with_problems = ~np.isnan(read_problem_of_files)
+    problematic_files = [i for i,j in zip(read_problem_of_files,list(idx_for_filenames_with_problems)) if j]
+
+    return size_stats, info_of_files, problematic_files
 
 
 def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: list):

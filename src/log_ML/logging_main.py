@@ -1,4 +1,4 @@
-def save_models_if_improved(best_dict, train_epoch_results, eval_epoch_results):
+def save_models_if_improved(best_dict, train_epoch_results, eval_epoch_results, config):
 
     a = 1
 
@@ -13,10 +13,10 @@ def init_best_dict_with_criteria():
     return best_dict
 
 
-def log_epoch_results(train_epoch_results, eval_epoch_results, epoch):
+def log_epoch_results(train_epoch_results, eval_epoch_results, epoch, config):
     a = 1
 
-def log_n_epochs_results(train_results, eval_results, best_dict):
+def log_n_epochs_results(train_results, eval_results, best_dict, config):
     a = 1
 
 def log_ensemble_results():

@@ -65,23 +65,14 @@ def choose_lr_scheduler(optimizer, training_config: dict, scheduler_config: dict
 
 
 def init_training(machine_config: dict, training_config: dict, config: dict, local_rank: int = 0):
-    if machine_config['DISTRIBUTED']:
-        # initialize the distributed training process, every GPU runs in a process
-        # see e.g.
-        # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
-        # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
-        dist.init_process_group(backend="nccl", init_method="env://")
 
-    device = torch.device(f"cuda:{local_rank}")  # FIXME! allow CPU-training for devel/debugging purposes as well
-    torch.cuda.set_device(device)
-    if training_config['AMP']:
-        scaler = torch.cuda.amp.GradScaler()
-    torch.backends.cudnn.benchmark = True
 
-    return device, scaler
+
+    return scaler
 
 
 def set_model_training_params(model, device, scaler, training_config: dict, config: dict):
+
     loss_function = choose_loss_function(training_config=training_config,
                                          loss_config=config['config']['LOSS_FUNCTIONS'])
 
