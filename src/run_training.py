@@ -1,5 +1,6 @@
 import argparse
-from loguru import logger
+import os
+import sys
 
 from src.train import training_script
 from src.utils.config_utils import import_config, set_up_environment
@@ -10,6 +11,17 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # __init__.py:127: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage
 # will be the only storage class. This should only matter to you if you are using storages directly.
 # To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+
+# Control logger level here, make it nicer later
+# https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574
+from loguru import logger
+min_level = "INFO"
+
+def my_filter(record):
+    return record["level"].no >= logger.level(min_level).no
+logger.remove()
+logger.add(sys.stderr, filter=my_filter)
+min_level = "DEBUG"
 
 
 def parse_args_to_dict():
@@ -35,7 +47,7 @@ def parse_args_to_dict():
 if __name__ == '__main__':
 
     # TOADD! Actual hyperparameter config that defines the experiment to run
-    hyperparam_runs = {'hparam_placeholder'}
+    hyperparam_runs = {'hparam_tag'}
     hparam_run_results = {}
     for hyperparam_idx, hyperparam_name in enumerate(hyperparam_runs):
 
@@ -57,7 +69,8 @@ if __name__ == '__main__':
                             config=config,
                             training_config=config['config']['TRAINING'],
                             model_config=config['config']['MODEL'],
-                            machine_config=config['config']['MACHINE'])
+                            machine_config=config['config']['MACHINE'],
+                            output_dir=os.path.join(config['ARGS']['output_dir'], hyperparam_name))
 
         a = 1
 

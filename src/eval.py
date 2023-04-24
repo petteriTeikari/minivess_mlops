@@ -1,3 +1,6 @@
+import time
+
+import numpy as np
 import torch
 from monai.data import ThreadDataLoader, partition_dataset, decollate_batch
 from monai.inferers import sliding_window_inference
@@ -8,7 +11,7 @@ from monai.transforms import (
     Compose
 )
 
-from src.utils.train_utils import init_epoch_dict
+from src.utils.train_utils import init_epoch_dict, get_timings_per_epoch
 
 
 def evaluate_datasets_per_epoch(model, device, epoch, dataloaders,
@@ -32,9 +35,10 @@ def evaluate_1_epoch(dataloader, model, split_name, dataset_name,
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L341
     model.eval()
+    batch_szs = []
+    epoch_start = time.time()
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
-
             if training_config['AMP']:
                 with torch.cuda.amp.autocast():
                     val_outputs = sliding_window_inference(inputs=batch_data["image"].to(device), **metric_dict)
@@ -44,10 +48,16 @@ def evaluate_1_epoch(dataloader, model, split_name, dataset_name,
 
             dice_metric(y_pred=val_outputs, y=batch_data["label"].to(device))
             dice_metric_batch(y_pred=val_outputs, y=batch_data["label"].to(device))
+            batch_szs.append(batch_data['image'].shape[0])
 
         epoch_metrics_per_dataset['scalars']['dice'] = dice_metric.aggregate().item()
         epoch_metrics_per_dataset['scalars']['dice_batch'] = float(dice_metric_batch.aggregate().detach().cpu())
         dice_metric.reset()
         dice_metric_batch.reset()
+
+        epoch_metrics_per_dataset = get_timings_per_epoch(metadata_dict=epoch_metrics_per_dataset,
+                                                          epoch_start=epoch_start,
+                                                          no_batches=batch_idx + 1,
+                                                          mean_batch_sz=float(np.mean(batch_szs)))
 
     return epoch_metrics_per_dataset

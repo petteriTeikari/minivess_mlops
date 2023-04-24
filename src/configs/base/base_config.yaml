@@ -144,6 +144,29 @@ config:
         - 'compute_hausdorff_distance'
 
   # ----------------------------------------------------------------------------------- #
+  # VALIDATION
+  # ----------------------------------------------------------------------------------- #
+  VALIDATION:
+    # i.e. how many "best models" you want to save, if you feel like you want to track the best
+    # model based on Dice, on Hausdorff distance, metric X, you would have three models per dataset
+    # and if you have Minivess and DatasetB on your VAL split, you would be saving and tracking 3 x 2 "best models"
+    METRICS_TO_TRACK:
+      - 'dice'
+      - 'dice_batch'
+    # maybe there is a better way, but when saving the models, we need to know if larger or smaller value
+    # is considered better, so as many entries as above, DICE score better when higher, distances then would be
+    # better as smaller, as would a loss be
+    METRICS_TO_TRACK_OPERATORS:
+      - 'max'
+      - 'max'
+    # Do not track change for these n epochs at all if your first epochs have noisy metrics
+    NO_WARMUP_EPOCHS: 0
+    # You could smooth the metric curve if again you get noisy / spurious metrics, and get those
+    # best metrics in practive only from the end of the training when optimization has converged
+    EMA_SMOOTH: False
+    SAVE_FULL_MODEL: True
+
+  # ----------------------------------------------------------------------------------- #
   # DATASETS
   # ----------------------------------------------------------------------------------- #
   # If you want to use the vanilla PyTorch dataloader, here are the basic params

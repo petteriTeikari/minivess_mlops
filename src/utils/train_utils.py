@@ -1,3 +1,4 @@
+import time
 import warnings
 from copy import deepcopy
 
@@ -64,13 +65,6 @@ def choose_lr_scheduler(optimizer, training_config: dict, scheduler_config: dict
     return lr_scheduler
 
 
-def init_training(machine_config: dict, training_config: dict, config: dict, local_rank: int = 0):
-
-
-
-    return scaler
-
-
 def set_model_training_params(model, device, scaler, training_config: dict, config: dict):
 
     loss_function = choose_loss_function(training_config=training_config,
@@ -92,11 +86,11 @@ def init_epoch_dict(epoch: int, loaders, split_name: str, subsplit_name: str = '
     results_out = {}
     for loader_key in loaders:
         epoch_dict = {
-                      'scalars': {},
-                      'arrays': {},
-                      'metadata': {},
-                      'figures': {},
-                      'dataframes': {},
+                      'scalars': {}, # e.g. Dice per epoch (this could have "metric_" prefix?)
+                      'arrays': {}, # e.g. batch-wise losses per epoch
+                      'metadata_scalars': {}, # e.g. learning rate, timing info, metadata for the training itself
+                      #'figures': {}, # e.g. .png files on disk or figure handle
+                      #'dataframes': {}, # e.g. Polars dataframes
                      }
         results_out[loader_key] = epoch_dict
 
@@ -141,7 +135,7 @@ def add_epoch_results_to_experiment_results(experim_res: dict, epoch_res: dict,
 
     for results_type in epoch_res.keys():
         # print(results_type)
-        if results_type == 'scalars':
+        if results_type == 'scalars' or 'metadata_scalars':
             experim_res[results_type] =\
                 combine_epoch_and_experiment_scalars(epoch_scalars=deepcopy(epoch_res[results_type]),
                                                      experim_scalars=deepcopy(experim_res[results_type]))
@@ -184,3 +178,15 @@ def combine_epoch_and_experiment_arrays(epoch_arrays, experim_arrays):
             experim_arrays[scalar_key] = np.concatenate((experim_arrays[scalar_key], epoch_array_per_key))
 
     return experim_arrays
+
+
+def get_timings_per_epoch(metadata_dict: dict, epoch_start: float,
+                          no_batches: int, mean_batch_sz: float) -> dict:
+
+    metadata_dict['metadata_scalars']['time_epoch'] = time.time() - epoch_start
+    metadata_dict['metadata_scalars']['time_batch'] = metadata_dict['metadata_scalars']['time_epoch'] / no_batches
+    # i.e you have 6 batches with 8, 8, 8, 8, 8 and 4 samples per batch (with the last one being smaller)
+    metadata_dict['metadata_scalars']['time_sample_ms'] = \
+        (metadata_dict['metadata_scalars']['time_batch']/mean_batch_sz) * 1000
+
+    return metadata_dict

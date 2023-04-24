@@ -1,3 +1,5 @@
 /.idea/*
 *.pyc
 /tmp_files/*
+/minivess_data/*
+/minivess_output/*
