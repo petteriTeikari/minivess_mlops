@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import torch
 import yaml
@@ -104,9 +105,16 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
         # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
         dist.init_process_group(backend="nccl", init_method="env://")
 
-    device = torch.device(f"cuda:{local_rank}")  # FIXME! allow CPU-training for devel/debugging purposes as well
-    torch.cuda.set_device(device)
-    torch.backends.cudnn.benchmark = True
+    num_of_gpus = torch.cuda.device_count()
+    available_gpus = [torch.cuda.device(i) for i in range(torch.cuda.device_count())]
+
+    if len(available_gpus) > 0:
+        device = torch.device(f"cuda:{local_rank}")
+        torch.cuda.set_device(device)
+        torch.backends.cudnn.benchmark = True
+    else:
+        device = 'cpu'
+        warnings.warn('No Nvidia CUDA GPU found, training on CPU instead!')
 
     # see if this is actually the best way to do things, as "parsed" things start to be added to a static config dict
     machine_config['IN_USE'] = {'device': device,

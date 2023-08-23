@@ -14,17 +14,28 @@ from ml_tests.check_files import check_file_listing
 def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
                                           dataset_name: str = 'minivess'):
 
+    def extract_minivess_zip(local_zip_path: str, local_data_dir: str):
+        with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
+            zip_ref.extractall(local_data_dir)
+
     input_filename = input_url.split('/')[-1]
     input_extension = '.zip'
-    local_path = os.path.join(data_dir, input_filename + input_extension)
+    local_data_dir = os.path.join(data_dir, input_filename)
+    local_zip_path = local_data_dir + input_extension
 
     zip_out = os.path.join(data_dir, input_filename)
     os.makedirs(zip_out, exist_ok=True)
 
-    if os.path.exists(local_path):
+    if os.path.exists(local_data_dir):
         # if the zipping failed, and only the folder was created, this obviously thinks that the
         # download and extraction went well. #TO-OPTIMIZE
         logger.info('Dataset "{}" has already been downloaded and extracted to "{}"', dataset_name, zip_out)
+
+    elif os.path.exists(local_data_dir):
+        # you have manually pasted the zip here and this would autoextract the files to the three folders:
+        logger.info('Dataset .zip "{}" has already been downloaded, and extracting this file "{}"', dataset_name, zip_out)
+        extract_minivess_zip(local_zip_path, local_data_dir)
+
     else:
         raise NotImplementedError('Implement the download!')
         response = requests.get(input_url)  # making requests to server

@@ -26,17 +26,18 @@ min_level = "DEBUG"
 
 def parse_args_to_dict():
     parser = argparse.ArgumentParser(description='Segmentation pipeline for Minivess dataset')
-    parser.add_argument('-c', '--task_config-file', type=str, required=True, default='base_config.yaml',
+    parser.add_argument('-c', '--task_config-file', type=str, required=True,
+                        default='task_config.yaml',
                         help="Name of your task-specific .yaml file, e.g. 'config_test'")
     parser.add_argument('-dbg', '--debug_mode', action="store_const", const=False,
                         help="Sets debug flag on. Quick way for example to train for less epochs or something else,"
                              "when you are not actually training but mostly developing the code")
-    parser.add_argument('-data', '--data_dir', type=str, required=True,
-                        default='/home/petteri/PycharmProjects/mlops/minivess_data',
+    parser.add_argument('-data', '--data_dir', type=str, required=False,
+                        default='/mnt/minivess_mlops_artifacts/data',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
-    parser.add_argument('-output', '--output_dir', type=str, required=True,
-                        default='/home/petteri/PycharmProjects/mlops/minivess_output',
+    parser.add_argument('-output', '--output_dir', type=str, required=False,
+                        default='/mnt/minivess_mlops_artifacts/output',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
