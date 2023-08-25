@@ -6,7 +6,8 @@ from tqdm import tqdm
 from loguru import logger
 
 from src.eval import evaluate_datasets_per_epoch
-from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results
+from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, log_ensemble_results, \
+    log_crossvalidation_results
 from src.log_ML.model_saving import save_models_if_improved
 from src.utils.model_utils import import_segmentation_model
 from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_model_training_params, \
@@ -33,6 +34,10 @@ def training_script(experim_dataloaders: dict,
                                         machine_config=machine_config,
                                         output_dir=os.path.join(output_dir, fold_name))
 
+    log_crossvalidation_results(fold_results=fold_results,
+                                config=config,
+                                output_dir=output_dir)
+
     return fold_results
 
 
@@ -58,6 +63,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                repeat_idx=repeat_idx,
                                device=machine_config['IN_USE']['device'],
                                output_dir=os.path.join(output_dir, repeat_name))
+
+    log_ensemble_results()
 
     return repeat_results
 
@@ -115,9 +122,8 @@ def train_n_epochs_script(model, dataloaders,
 
     train_results = {}
     eval_results = {}
+    output_artifacts = {'output_dir': output_dir}
     best_dicts = None
-    tb_log_dir = os.path.join(output_dir, 'tensorboard')
-    os.makedirs(tb_log_dir, exist_ok=True)
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L285
     print(' ')
@@ -146,23 +152,18 @@ def train_n_epochs_script(model, dataloaders,
                                                             train_results, eval_results, epoch)
 
         # Log epoch-level result
-        log_epoch_results(train_epoch_results, eval_epoch_results, epoch, config, tb_log_dir)
+        output_artifacts = log_epoch_results(train_epoch_results, eval_epoch_results,
+                                             epoch, config, output_dir, output_artifacts)
 
         # Save model(s) if model has improved
-        model_dir = os.path.join(output_dir, 'models')
+        output_artifacts['model_dir'] = os.path.join(output_dir, 'models')
         best_dicts = save_models_if_improved(best_dicts, epoch,
                                              model, optimizer, lr_scheduler,
                                              train_epoch_results, train_results,
                                              eval_epoch_results, eval_results,
                                              validation_config=config['config']['VALIDATION'],
-                                             config=config, model_dir=model_dir)
-
-
-
-    output_artifacts = {
-                        'model_dir': model_dir,
-                        'tb_log_dir': tb_log_dir
-                       }
+                                             config=config,
+                                             model_dir=output_artifacts['model_dir'])
 
     return train_results, eval_results, best_dicts, output_artifacts
 
@@ -197,7 +198,7 @@ def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, 
     epoch_trn_res[dataset_dummy_key]['arrays']['batch_loss'] = np.array(batch_losses)
 
     # You could dump metadata here about the actual training process (that is not autocaptured bu WandB for example)
-    epoch_trn_res[dataset_dummy_key]['metadata_scalars']['lr'] = lr_scheduler.get_last_lr()
+    epoch_trn_res[dataset_dummy_key]['metadata_scalars']['lr'] = lr_scheduler.get_last_lr()[0]
     epoch_trn_res[dataset_dummy_key] = get_timings_per_epoch(metadata_dict=epoch_trn_res[dataset_dummy_key],
                                                              epoch_start=epoch_start,
                                                              no_batches=batch_idx+1,

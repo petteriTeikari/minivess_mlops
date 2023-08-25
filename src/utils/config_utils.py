@@ -105,7 +105,6 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
         # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
         dist.init_process_group(backend="nccl", init_method="env://")
 
-    num_of_gpus = torch.cuda.device_count()
     available_gpus = [torch.cuda.device(i) for i in range(torch.cuda.device_count())]
 
     if len(available_gpus) > 0:
