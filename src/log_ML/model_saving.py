@@ -19,44 +19,44 @@ def save_models_if_improved(best_dicts, epoch,
     if epoch >= validation_config['NO_WARMUP_EPOCHS']:
         for dataset in eval_epoch_results['VAL'].keys():
             best_dicts_out[dataset] = {}
-            for m_idx, metric_to_track in enumerate(validation_config['METRICS_TO_TRACK']):
-                best_dicts_out[dataset][metric_to_track] = {}
+            for m_idx, metric in enumerate(validation_config['METRICS_TO_TRACK']):
+                best_dicts_out[dataset][metric] = {}
 
                 # i.e. the first epoch that we are tracking so obviously the model is now considered having
                 if best_dicts is None:
 
-                    best_dicts_out[dataset][metric_to_track] = \
+                    best_dicts_out[dataset][metric] = \
                         get_best_dict_from_current_epoch_results(eval_epoch_results, train_epoch_results)
 
                     current_value = get_current_metric_value(eval_epoch_results, eval_results,
-                                                             validation_config, dataset, metric_to_track, epoch,
+                                                             validation_config, dataset, metric, epoch,
                                                              split_key=split_key, results_type=results_type)
 
                     # Run the model saving script (and any other stuff that you might want to do)
-                    model_improved_script(best_dict=best_dicts_out[dataset][metric_to_track],
+                    model_improved_script(best_dict=best_dicts_out[dataset][metric],
                                           current_value=current_value,
                                           best_value_so_far=np.nan,
                                           model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
                                           epoch=epoch, model_dir=model_dir,
-                                          dataset=dataset, metric_to_track=metric_to_track,
+                                          dataset=dataset, metric=metric,
                                           validation_config=validation_config)
 
                 # After 1st epoch, when you have something on your best dict
                 else:
 
-                    best_dict = best_dicts[dataset][metric_to_track]
+                    best_dict = best_dicts[dataset][metric]
                     model_improved, current_value, best_value_so_far = \
                         check_if_value_improved(eval_epoch_results, eval_results,
                                                 best_dict = best_dict,
                                                 validation_config=validation_config, dataset=dataset,
-                                                metric_to_track=metric_to_track, epoch=epoch,
+                                                metric=metric, epoch=epoch,
                                                 split_key=split_key, results_type=results_type,
                                                 best_op=validation_config['METRICS_TO_TRACK_OPERATORS'][m_idx])
 
                     if model_improved:
 
                         # Update the best dict from the current epoch
-                        best_dicts_out[dataset][metric_to_track] = \
+                        best_dicts_out[dataset][metric] = \
                             get_best_dict_from_current_epoch_results(eval_epoch_results, train_epoch_results)
 
                         # Run the model saving script (and any other stuff that you might want to do)
@@ -64,12 +64,12 @@ def save_models_if_improved(best_dicts, epoch,
                                               current_value=current_value, best_value_so_far=best_value_so_far,
                                               model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
                                               epoch=epoch, model_dir=model_dir,
-                                              dataset=dataset, metric_to_track=metric_to_track,
+                                              dataset=dataset, metric=metric,
                                               validation_config=validation_config)
 
                     else:
 
-                        best_dicts_out[dataset][metric_to_track] = deepcopy(best_dicts[dataset][metric_to_track])
+                        best_dicts_out[dataset][metric] = deepcopy(best_dicts[dataset][metric])
 
     else:
         logger.debug('epoch {} not past warmup epochs ({}) '
@@ -80,7 +80,7 @@ def save_models_if_improved(best_dicts, epoch,
 
 
 def check_if_value_improved(eval_epoch_results: dict, eval_results: dict, best_dict: dict,
-                             validation_config: dict, dataset: str, metric_to_track: str, epoch: int,
+                             validation_config: dict, dataset: str, metric: str, epoch: int,
                              split_key = 'VAL', results_type = 'scalars', best_op:str = 'max'):
 
     assert len(validation_config['METRICS_TO_TRACK']) == len(validation_config['METRICS_TO_TRACK_OPERATORS']), \
@@ -89,10 +89,10 @@ def check_if_value_improved(eval_epoch_results: dict, eval_results: dict, best_d
         'See contents of "validation_config":\n{}'.format(validation_config)
 
     current_value = get_current_metric_value(eval_epoch_results, eval_results,
-                                             validation_config, dataset, metric_to_track, epoch,
+                                             validation_config, dataset, metric, epoch,
                                              split_key=split_key, results_type=results_type)
 
-    best_value_so_far = best_dict['eval_epoch_results'][split_key][dataset][results_type][metric_to_track]
+    best_value_so_far = best_dict['eval_epoch_results'][split_key][dataset][results_type][metric]
 
     model_improved = False
     if best_op == 'max':
@@ -107,7 +107,7 @@ def check_if_value_improved(eval_epoch_results: dict, eval_results: dict, best_d
 
 
 def get_current_metric_value(eval_epoch_results: dict, eval_results: dict,
-                             validation_config: dict, dataset: str, metric_to_track: str, epoch: int,
+                             validation_config: dict, dataset: str, metric: str, epoch: int,
                              split_key = 'VAL', results_type = 'scalars') -> float:
 
     if validation_config['EMA_SMOOTH']:
@@ -115,7 +115,7 @@ def get_current_metric_value(eval_epoch_results: dict, eval_results: dict,
         raise NotImplementedError('Implement Exponential Moving Average')
 
     else:
-        value = eval_epoch_results[split_key][dataset][results_type][metric_to_track]
+        value = eval_epoch_results[split_key][dataset][results_type][metric]
 
     return value
 
@@ -124,7 +124,7 @@ def model_improved_script(best_dict: dict,
                           current_value: float, best_value_so_far: float,
                           model, optimizer, lr_scheduler,
                           epoch: int, model_dir: str,
-                          dataset: str, metric_to_track: str, validation_config: dict) -> None:
+                          dataset: str, metric: str, validation_config: dict) -> None:
     """
     Instead of "Github demo repos" in which you only want to save the weights, we also want to save all possible
     values (that you track in the results) associated with the best model. Like what was some other metric when
@@ -140,12 +140,12 @@ def model_improved_script(best_dict: dict,
     :param epoch:
     :param output_dir:
     :param dataset:
-    :param metric_to_track:
+    :param metric:
     :param validation_config:
     :return:
     """
 
-    model_fname_base = "bestModel__{}__{}".format(dataset, metric_to_track)
+    model_fname_base = "bestModel__{}__{}".format(dataset, metric)
     if validation_config['SAVE_FULL_MODEL']:
         checkpoint = dict(
             epoch=epoch+1,
@@ -176,7 +176,7 @@ def model_improved_script(best_dict: dict,
 
     logger.debug('"{}" improved from {:.4f} to {:.4f} (dataset = {}) '
                  '-> saving this to disk (model size = {:.1f} MB)'.
-                 format(metric_to_track, best_value_so_far, current_value, dataset,filesize))
+                 format(metric, best_value_so_far, current_value, dataset,filesize))
 
 
 def get_best_dict_from_current_epoch_results(eval_epoch_results: dict, train_epoch_results: dict):

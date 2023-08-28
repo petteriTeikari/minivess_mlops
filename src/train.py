@@ -64,7 +64,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                device=machine_config['IN_USE']['device'],
                                output_dir=os.path.join(output_dir, repeat_name))
 
-    log_ensemble_results()
+    log_ensemble_results(repeat_results)
 
     return repeat_results
 
@@ -164,6 +164,8 @@ def train_n_epochs_script(model, dataloaders,
                                              validation_config=config['config']['VALIDATION'],
                                              config=config,
                                              model_dir=output_artifacts['model_dir'])
+
+        a = 1
 
     return train_results, eval_results, best_dicts, output_artifacts
 

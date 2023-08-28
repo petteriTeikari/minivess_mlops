@@ -1,5 +1,6 @@
 from loguru import logger
 
+from src.log_ML.log_crossval import get_crossvalidation_results, reorder_crossvalidation_results, compute_crossval_stats
 from src.log_ML.log_epochs import log_epoch_for_tensorboard
 
 
@@ -28,4 +29,8 @@ def log_crossvalidation_results(fold_results: str,
                                 config: dict,
                                 output_dir: str):
 
-    a = 1
+    # Reorder CV results and compute the stats, i.e. mean of 5 folds and 5 repeats per fold (n = 25)
+    # by default, computes for all the splits, but you most likely are the most interested in the TEST
+    fold_results_reordered = reorder_crossvalidation_results(fold_results)
+    cv_results = compute_crossval_stats(fold_results_reordered)
+
