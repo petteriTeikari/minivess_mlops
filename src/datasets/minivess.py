@@ -126,7 +126,7 @@ def define_minivess_splits(filelisting, data_splits_config: dict, include_metada
     if split_method == 'RANDOM':
         files_dict = get_random_splits_for_minivess(data_dicts, data_split_cfg=data_splits_config[split_method])
         # FIXME! quick and dirty placeholder for allowing cross-validation if needed, or you could bootstrap
-        #  an ensemble model with different data on each fold
+        #  an inference model with different data on each fold
         folds_splits = {'fold0': files_dict}
     else:
         raise NotImplementedError('Only implemented random splits at this point, '

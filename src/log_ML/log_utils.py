@@ -16,3 +16,15 @@ def convert_value_to_numpy_array(value_in):
         warnings.warn('Unknown value type = {}'.format(type(value_in)))
 
     return value_in
+
+
+def compute_numpy_stats(value_array_in: np.ndarray):
+
+    stats_dict = {}
+    no_of_folds, no_of_repeats = value_array_in.shape
+
+    stats_dict['mean'] = np.mean(value_array_in)
+    stats_dict['stdev'] = np.std(value_array_in)
+    stats_dict['n'] = value_array_in.size
+
+    return stats_dict

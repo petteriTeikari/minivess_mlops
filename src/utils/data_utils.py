@@ -90,7 +90,7 @@ def define_datasets(config: dict, fold_split_file_dicts: dict):
             logger.info('Creating (MONAI/PyTorch) Datasets for dataset source = "{}"', dataset_name)
             dataset_config = config['config']['DATA']['DATA_SOURCE'][dataset_name]
 
-            # FIXME! What if you want to do some diverse ensemble with a different set of augmentation
+            # FIXME! What if you want to do some diverse inference with a different set of augmentation
             #  per each fold or for each repeat? See e.g. https://arxiv.org/abs/2007.04206
             #  You do not necessarily need to save these to a dict, but you would to define it here
             #  based on repeat or/and fold-wise

@@ -10,7 +10,7 @@ from src.log_ML.log_metrics_lowlevel import log_scalars
 def log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
                               epoch, config, output_dir, output_artifacts):
 
-    # Create the tensorboard subdirectory for this repeat (submodel of ensemble)
+    # Create the tensorboard subdirectory for this repeat (submodel of inference)
     output_artifacts['epoch_level']['tb_dir'] = os.path.join(output_dir, 'tensorboard')
     try:
         os.makedirs(output_artifacts['epoch_level']['tb_dir'], exist_ok=True)

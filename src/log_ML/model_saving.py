@@ -33,13 +33,14 @@ def save_models_if_improved(best_dicts, epoch,
                                                              split_key=split_key, results_type=results_type)
 
                     # Run the model saving script (and any other stuff that you might want to do)
-                    model_improved_script(best_dict=best_dicts_out[dataset][metric],
-                                          current_value=current_value,
-                                          best_value_so_far=np.nan,
-                                          model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
-                                          epoch=epoch, model_dir=model_dir,
-                                          dataset=dataset, metric=metric,
-                                          validation_config=validation_config)
+                    best_dicts_out[dataset][metric]['model'] = (
+                        model_improved_script(best_dict=best_dicts_out[dataset][metric],
+                                              current_value=current_value,
+                                              best_value_so_far=np.nan,
+                                              model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
+                                              epoch=epoch, model_dir=model_dir,
+                                              dataset=dataset, metric=metric,
+                                              validation_config=validation_config))
 
                 # After 1st epoch, when you have something on your best dict
                 else:
@@ -60,12 +61,13 @@ def save_models_if_improved(best_dicts, epoch,
                             get_best_dict_from_current_epoch_results(eval_epoch_results, train_epoch_results)
 
                         # Run the model saving script (and any other stuff that you might want to do)
-                        model_improved_script(best_dict=best_dict,
-                                              current_value=current_value, best_value_so_far=best_value_so_far,
-                                              model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
-                                              epoch=epoch, model_dir=model_dir,
-                                              dataset=dataset, metric=metric,
-                                              validation_config=validation_config)
+                        best_dicts_out[dataset][metric]['model'] = (
+                            model_improved_script(best_dict=best_dict,
+                                                  current_value=current_value, best_value_so_far=best_value_so_far,
+                                                  model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
+                                                  epoch=epoch, model_dir=model_dir,
+                                                  dataset=dataset, metric=metric,
+                                                  validation_config=validation_config))
 
                     else:
 
@@ -177,6 +179,8 @@ def model_improved_script(best_dict: dict,
     logger.debug('"{}" improved from {:.4f} to {:.4f} (dataset = {}) '
                  '-> saving this to disk (model size = {:.1f} MB)'.
                  format(metric, best_value_so_far, current_value, dataset,filesize))
+
+    return {'model_path': path_out}
 
 
 def get_best_dict_from_current_epoch_results(eval_epoch_results: dict, train_epoch_results: dict):

@@ -5,9 +5,11 @@ import torch
 from tqdm import tqdm
 from loguru import logger
 
+from src.inference.ensemble_main import ensemble_the_repeats
 from src.eval import evaluate_datasets_per_epoch
-from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, log_ensemble_results, \
-    log_crossvalidation_results
+from src.log_ML.log_ensemble import log_ensemble_results
+from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, \
+    log_crossvalidation_results, log_averaged_repeats
 from src.log_ML.model_saving import save_models_if_improved
 from src.utils.model_utils import import_segmentation_model
 from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_model_training_params, \
@@ -23,10 +25,10 @@ def training_script(experim_dataloaders: dict,
 
     # Cross-validation loop (if used), i.e. when train/val splits change for each execution
     os.makedirs(output_dir, exist_ok=True)
-    fold_results = {}
+    fold_results, ensembled_results = {}, {}
     for f, fold_name in enumerate(list(experim_dataloaders.keys())):
         logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
-        fold_results[fold_name] = \
+        fold_results[fold_name], ensembled_results[fold_name] = \
             train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
                                         config=config,
                                         training_config=training_config,
@@ -35,6 +37,7 @@ def training_script(experim_dataloaders: dict,
                                         output_dir=os.path.join(output_dir, fold_name))
 
     log_crossvalidation_results(fold_results=fold_results,
+                                ensembled_results=ensembled_results,
                                 config=config,
                                 output_dir=output_dir)
 
@@ -48,7 +51,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                 machine_config: dict,
                                 output_dir: str) -> dict:
 
-    # Repeat n times the same data fold (i.e. you get n submodels for an ensemble)
+    # Repeat n times the same data fold (i.e. you get n submodels for an inference)
     os.makedirs(output_dir, exist_ok=True)
     repeat_results = {}
     for repeat_idx in range(training_config['NO_REPEATS']):
@@ -64,9 +67,19 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                device=machine_config['IN_USE']['device'],
                                output_dir=os.path.join(output_dir, repeat_name))
 
-    log_ensemble_results(repeat_results)
+    # Log repeat averages
+    log_averaged_repeats(repeat_results)
 
-    return repeat_results
+    # Ensemble the repeats (submodels)
+    ensemble_results = ensemble_the_repeats(repeat_results=repeat_results,
+                                            dataloaders=fold_dataloaders,
+                                            config=config,
+                                            device=machine_config['IN_USE']['device'])
+
+    # Log inference
+    ensembled_results = log_ensemble_results(ensemble_results)
+
+    return repeat_results, ensembled_results
 
 
 def train_single_model(dataloaders: dict,
