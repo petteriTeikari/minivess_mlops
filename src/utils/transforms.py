@@ -80,28 +80,45 @@ def basic_aug(device):
     return transforms
 
 
-def no_aug(device):
-
-    transforms = Compose(
-        [
-            LoadImaged(keys=["image", "label"]),
-            # ToDeviced(keys=["image", "label"], device=device),
-            EnsureChannelFirstd(keys=["image", "label"]),
-            ScaleIntensityd(keys=['image', 'label'], minv=0.0, maxv=1.0),
-            # problem that not all volumes have the same shape
-            # CenterSpatialCropd(keys=["image", "label"], roi_size=[-1, -1, -1]),
-            RandCropByPosNegLabeld(
-                keys=["image", "label"],
-                label_key="label",
-                spatial_size=(128, 128, 8),
-                pos=3,
-                neg=1,
-                num_samples=4,
-                image_key="image",
-                image_threshold=0,
-            ),
-            EnsureTyped(keys=["image", "label"], data_type='tensor'),
-        ]
-    )
+def no_aug(device: str,
+           for_inference: bool = False):
+    """
+    This is mainly used for inference / evaluation
+    :param device:
+    :return:
+    """
+    if for_inference:
+        # no random cropping, doing inference for the original shape with a batch size of 1
+        transforms = Compose(
+            [
+                LoadImaged(keys=["image", "label"]),
+                # ToDeviced(keys=["image", "label"], device=device),
+                EnsureChannelFirstd(keys=["image", "label"]),
+                ScaleIntensityd(keys=['image', 'label'], minv=0.0, maxv=1.0),
+                EnsureTyped(keys=["image", "label"], data_type='tensor')
+            ]
+        )
+    else:
+        transforms = Compose(
+            [
+                LoadImaged(keys=["image", "label"]),
+                # ToDeviced(keys=["image", "label"], device=device),
+                EnsureChannelFirstd(keys=["image", "label"]),
+                ScaleIntensityd(keys=['image', 'label'], minv=0.0, maxv=1.0),
+                # problem that not all volumes have the same shape
+                # CenterSpatialCropd(keys=["image", "label"], roi_size=[-1, -1, -1]),
+                RandCropByPosNegLabeld(
+                    keys=["image", "label"],
+                    label_key="label",
+                    spatial_size=(128, 128, 8),
+                    pos=3,
+                    neg=1,
+                    num_samples=4,
+                    image_key="image",
+                    image_threshold=0,
+                ),
+                EnsureTyped(keys=["image", "label"], data_type='tensor'),
+            ]
+        )
 
     return transforms

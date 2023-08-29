@@ -4,9 +4,9 @@ from loguru import logger
 from src.datasets.minivess import download_and_extract_minivess_dataset, define_minivess_dataset, \
     define_minivess_splits, get_minivess_filelisting
 from src.utils.general_utils import check_if_key_in_dict
-from src.utils.transforms import define_transforms
+from src.utils.transforms import define_transforms, no_aug
 
-from monai.data import DataLoader, list_data_collate
+from monai.data import DataLoader, list_data_collate, Dataset
 
 def define_dataset_and_dataloader(config: dict, fold_split_file_dicts: dict):
 
@@ -110,6 +110,40 @@ def define_datasets(config: dict, fold_split_file_dicts: dict):
                                           'not = "{}"'.format(config['config']['DATA']['DATASET_NAME']))
 
     return datasets
+
+def redefine_dataloader_for_inference(dataloader_batched,
+                                      config: dict,
+                                      dataset_name: str = 'MINIVESS',
+                                      split: str = 'VAL',
+                                      device: str = 'cpu'):
+
+    def redefine_dataset_for_inference(dataloader_batched, dataset_name: str, device: str):
+
+        dataset_object = dataloader_batched.dataset
+        split_file_dict = dataset_object.data
+        transforms = no_aug(device, for_inference=True)
+
+        if dataset_name == 'MINIVESS':
+            dataset = Dataset(data=split_file_dict,
+                         transform=transforms)
+        else:
+            raise NotImplementedError('Only implemented minivess dataset now!, '
+                                      'not = "{}"'.format(config['config']['DATA']['DATASET_NAME']))
+
+        return dataset
+
+    dataset = redefine_dataset_for_inference(dataloader_batched, dataset_name, device)
+
+    dataloader_config = config['config']['DATA']['DATALOADER']
+    dataloader = DataLoader(dataset,
+                            batch_size=1,
+                            num_workers=dataloader_config[split]['NUM_WORKERS'],
+                            collate_fn=list_data_collate)
+
+    logger.info('Redefining MONAI dataset/dataloader for inference (batch size = 1, original resolution), '
+                'no_samples = {}'.format(len(dataloader)))
+
+    return dataloader
 
 
 def import_datasets(data_config: dict, data_dir: str):

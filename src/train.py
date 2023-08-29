@@ -140,15 +140,15 @@ def train_n_epochs_script(model, dataloaders,
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L285
     print(' ')
-    for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']), desc = 'Training the network'):
+    for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']), desc='Training the network'):
 
         eval_epoch_results = {}
 
         # Train
         train_epoch_results, eval_epoch_results['TRAIN'] = \
             train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, scaler, training_config,
-                          train_loader = dataloaders['TRAIN'], metric_dict = metric_dict,
-                          dataset_dummy_key = 'MINIVESS')
+                          train_loader=dataloaders['TRAIN'], metric_dict=metric_dict,
+                          dataset_dummy_key='MINIVESS')
 
         # Validate (as in decide whether the model improved or not)
         split_name = 'VAL'

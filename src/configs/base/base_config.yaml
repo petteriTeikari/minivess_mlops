@@ -130,7 +130,7 @@ config:
   TRAINING:
     AMP: True
     NO_REPEATS: 2
-    NUM_EPOCHS: 5
+    NUM_EPOCHS: 2
     LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
     LOSS:
       NAME: 'DiceFocalLoss'

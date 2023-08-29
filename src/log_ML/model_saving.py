@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from loguru import logger
 
+
 def save_models_if_improved(best_dicts, epoch,
                             model, optimizer, lr_scheduler,
                             train_epoch_results, train_results,
@@ -183,6 +184,29 @@ def model_improved_script(best_dict: dict,
     return {'model_path': path_out}
 
 
+def import_model_from_path(model_path: str,
+                           validation_config: dict):
+
+    if os.path.exists(model_path):
+        if validation_config['SAVE_FULL_MODEL']:
+            model_dict = torch.load(model_path)
+            model = model_dict['model']
+            model.load_state_dict(model_dict['state_dict'])
+            # optimizer, lr_scheduler also saved if you want to use this function later for resuming/finetuning
+            optimizer = model_dict['optimizer']
+            lr_scheduler = model_dict['lr_scheduler']
+            best_dict = model_dict['best_dict']
+        else:
+            raise NotImplementedError('Inference implemented only now for full model saving,\n'
+                                      'not for "just weights" saving')
+
+    else:
+        raise IOError('The model file does not exist on disk? (path = {})\n'
+                      'This should not really happen as we managed to save these during training'.format(model_path))
+
+    return model, best_dict, optimizer, lr_scheduler
+
+
 def get_best_dict_from_current_epoch_results(eval_epoch_results: dict, train_epoch_results: dict):
 
     # TOCHECK not totally sure if the deepcopy() is needed, but previously had this mystery glitch
@@ -193,3 +217,5 @@ def get_best_dict_from_current_epoch_results(eval_epoch_results: dict, train_epo
                     }
 
     return result_dicts
+
+
