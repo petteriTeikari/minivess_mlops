@@ -34,7 +34,8 @@ def training_script(experim_dataloaders: dict,
                                         training_config=training_config,
                                         model_config=model_config,
                                         machine_config=machine_config,
-                                        output_dir=os.path.join(output_dir, fold_name))
+                                        output_dir=os.path.join(output_dir, fold_name),
+                                        fold_name=fold_name)
 
     log_crossvalidation_results(fold_results=fold_results,
                                 ensembled_results=ensembled_results,
@@ -49,7 +50,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                 training_config: dict,
                                 model_config: dict,
                                 machine_config: dict,
-                                output_dir: str) -> dict:
+                                output_dir: str,
+                                fold_name: str) -> dict:
 
     # Repeat n times the same data fold (i.e. you get n submodels for an inference)
     os.makedirs(output_dir, exist_ok=True)
@@ -65,7 +67,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                machine_config=machine_config,
                                repeat_idx=repeat_idx,
                                device=machine_config['IN_USE']['device'],
-                               output_dir=os.path.join(output_dir, repeat_name))
+                               output_dir=os.path.join(output_dir, repeat_name),
+                               fold_name=fold_name)
 
     # Log repeat averages
     log_averaged_repeats(repeat_results)
@@ -88,6 +91,7 @@ def train_single_model(dataloaders: dict,
                        model_config: dict,
                        machine_config: dict,
                        repeat_idx: int,
+                       fold_name: str,
                        device,
                        output_dir: str) -> dict:
 
@@ -109,7 +113,8 @@ def train_single_model(dataloaders: dict,
         train_n_epochs_script(model, dataloaders,
                               device, scaler,
                               loss_function, optimizer, lr_scheduler,
-                              training_config, config, output_dir=output_dir)
+                              training_config, config, output_dir=output_dir,
+                              repeat_idx=repeat_idx, fold_name=fold_name)
 
     # When training is done, you con for example log the repeat/experiment/n_epochs level results
     log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config)
@@ -128,7 +133,8 @@ def train_n_epochs_script(model, dataloaders,
                           device, scaler,
                           loss_function, optimizer, lr_scheduler,
                           training_config: dict, config: dict,
-                          start_epoch: int = 0, output_dir: str = None):
+                          start_epoch: int = 0, output_dir: str = None,
+                          repeat_idx: int = None, fold_name: str = None):
 
     # FIXME: get this from config
     metric_dict = {'roi_size': (64, 64, 8), 'sw_batch_size': 4, 'predictor': model, 'overlap': 0.6}
@@ -140,7 +146,9 @@ def train_n_epochs_script(model, dataloaders,
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L285
     print(' ')
-    for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']), desc='Training the network'):
+    for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']),
+                      desc='Training the network, {}, repeat {}, epoch#'.format(fold_name, repeat_idx+1),
+                      position=0):
 
         eval_epoch_results = {}
 
@@ -178,8 +186,6 @@ def train_n_epochs_script(model, dataloaders,
                                              config=config,
                                              model_dir=output_artifacts['model_dir'])
 
-        a = 1
-
     return train_results, eval_results, best_dicts, output_artifacts
 
 
@@ -194,6 +200,7 @@ def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, 
     batch_szs = []
 
     epoch_start = time.time()
+    # tqdm(x, position=1, leave=False)  # this would be an inner loop inside the outer loop of epoch tqdm
     for batch_idx, batch_data in enumerate(train_loader):
         optimizer.zero_grad()
         loss = train_1_batch(model, device, batch_data, loss_function,
