@@ -89,8 +89,16 @@ def compute_split_metric_stats(split_metrics_tmp: dict,
             for var in split_metrics_tmp[var_type]:
                 split_stats[var_type][var] = {}
                 input_data = split_metrics_tmp[var_type][var]
-                split_stats[var_type][var]['n'] = input_data.shape[0]
-                split_stats[var_type][var]['mean'] = np.mean(input_data)
-                split_stats[var_type][var]['var'] = np.var(input_data)
+                split_stats[var_type][var] = compute_stats_of_array_in_dict(input_data)
 
     return split_stats
+
+
+def compute_stats_of_array_in_dict(input_data: np.ndarray) -> dict:
+
+    stats_out = {}
+    stats_out['n'] = input_data.shape[0]
+    stats_out['mean'] = np.mean(input_data)
+    stats_out['var'] = np.var(input_data)
+
+    return stats_out

@@ -7,20 +7,22 @@ from monai.utils import convert_to_tensor
 from monai.networks.utils import one_hot
 
 def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.ndarray,
-                                     include_background: bool = False):
+                                     include_background: bool = False,
+                                     debug_mode: bool = True):
 
     # Do the wrangling and checks
     x, y, y_pred, y_onehot, y_pred_onehot, sample_metrics = prepare_for_metrics(y=y, y_pred=y_pred, x=x)
 
     # Hausdorff, takes a lot longer than Dice but if only evaluated once after all the repeats per sample,
     # this does not get some computationally heavy
-    t0 = time.time()
-    metric = 'hausdorff'
-    sample_metrics['metrics'][metric] = (compute_hausdorff_distance(y_pred=y_pred_onehot, y=y_onehot,
-                                                                        include_background=include_background).
-                                              detach().squeeze().numpy())
-    sample_metrics['metrics'][metric] = np.expand_dims(sample_metrics['metrics'][metric], axis=0)
-    sample_metrics['timing'][metric] = np.array([time.time() - t0])
+    if not debug_mode:
+        t0 = time.time()
+        metric = 'hausdorff'
+        sample_metrics['metrics'][metric] = (compute_hausdorff_distance(y_pred=y_pred_onehot, y=y_onehot,
+                                                                            include_background=include_background).
+                                                  detach().squeeze().numpy())
+        sample_metrics['metrics'][metric] = np.expand_dims(sample_metrics['metrics'][metric], axis=0)
+        sample_metrics['timing'][metric] = np.array([time.time() - t0])
 
     # (Generalized) Dice
     t0 = time.time()
@@ -29,8 +31,6 @@ def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.nd
                                                                       include_background=include_background).
                                          detach().numpy())
     sample_metrics['timing'][metric] = np.array([time.time() - t0])
-
-    # Get some uncertainty quantification scalars here from the
 
     return sample_metrics
 

@@ -51,7 +51,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                 model_config: dict,
                                 machine_config: dict,
                                 output_dir: str,
-                                fold_name: str) -> dict:
+                                fold_name: str):
 
     # Repeat n times the same data fold (i.e. you get n submodels for an inference)
     os.makedirs(output_dir, exist_ok=True)
@@ -80,9 +80,9 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                             device=machine_config['IN_USE']['device'])
 
     # Log inference
-    ensembled_results = log_ensemble_results(ensemble_results)
+    log_ensemble_results(ensemble_results)
 
-    return repeat_results, ensembled_results
+    return repeat_results, ensemble_results
 
 
 def train_single_model(dataloaders: dict,

@@ -1,4 +1,6 @@
+import json
 import warnings
+from functools import singledispatch
 
 import numpy as np
 

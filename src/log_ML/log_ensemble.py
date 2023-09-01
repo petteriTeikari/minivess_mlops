@@ -1,6 +1,9 @@
+from loguru import logger
+
+
 def log_ensemble_results(ensemble_results):
 
-    a = 'placeholder'
+    logger.debug('Placeholder for ensemble metrics')
 
 
 

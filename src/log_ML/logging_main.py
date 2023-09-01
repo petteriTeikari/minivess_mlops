@@ -1,7 +1,9 @@
 from loguru import logger
 
+from src.log_ML.log_crossval import log_cv_results
 from src.log_ML.log_epochs import log_epoch_for_tensorboard
-from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats
+from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats, \
+    reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble
 
 
 def log_epoch_results(train_epoch_results, eval_epoch_results,
@@ -27,7 +29,7 @@ def log_averaged_repeats(repeat_results: dict):
     averaged_results = average_repeat_results(repeat_results)
 
     # ADD the actual logging of the dict here, can be the same as for CV results
-    placeholder = 'placeholder'
+    logger.debug('Placeholder for averaged repeats')
 
 
 def log_crossvalidation_results(fold_results: dict,
@@ -40,3 +42,11 @@ def log_crossvalidation_results(fold_results: dict,
     fold_results_reordered = reorder_crossvalidation_results(fold_results)
     cv_results = compute_crossval_stats(fold_results_reordered)
 
+    ensembled_results_reordered = reorder_ensemble_crossvalidation_results(ensembled_results)
+    cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
+    sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
+
+    log_cv_results(cv_results=cv_results,
+                   cv_ensemble_results=cv_ensemble_results,
+                   config=config,
+                   output_dir=output_dir)

@@ -7,6 +7,9 @@ from src.utils.config_utils import import_config, set_up_environment
 from src.utils.data_utils import define_dataset_and_dataloader, import_datasets
 
 import warnings
+
+from src.utils.metadata_utils import get_run_metadata
+
 warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 # __init__.py:127: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage
 # will be the only storage class. This should only matter to you if you are using storages directly.
@@ -42,6 +45,12 @@ def parse_args_to_dict():
                              "on Docker")
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
                         help="node rank for distributed training")
+    parser.add_argument('-p', '--project_name', type=str, required=False,
+                        default='MINIVESS_segmentation',
+                        help="Name of the project in WANDB/MLOps. Keep the same name for all the segmentation"
+                             "experiments so that you can compare how tweaks affect segmentation performance."
+                             "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
+                             "you cannot meaningfully compare e.g. DICE score from dataset 1 to dataset 2")
     return vars(parser.parse_args())
 
 
@@ -55,6 +64,9 @@ if __name__ == '__main__':
         # Import the config
         args = parse_args_to_dict()
         config = import_config(args, task_config_file = args['task_config_file'])
+
+        # Add run/environment-dependent metadata (e.g. library versions, etc.)
+        config['metadata'] = get_run_metadata()
 
         # Collect the data and define splits
         fold_split_file_dicts, config['config']['DATA'] = \

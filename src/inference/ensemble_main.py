@@ -18,19 +18,38 @@ from src.utils.data_utils import redefine_dataloader_for_inference
 def ensemble_the_repeats(repeat_results: dict,
                          dataloaders,
                          config: dict,
-                         device: str):
+                         device: str,
+                         debug_mode: bool = False):
 
     ensemble_results = {}
     for split in dataloaders:
 
-        logger.info('Ensemble inference for split "{}"'.format(split))
-        if isinstance(dataloaders[split], dict):
-            # i.e. this is either VAL or TEST. You could validate (save best model) based on multiple datasets if
-            # desired at some point, and similarly you could have n external datasets that you would like to evaluate
-            # and see how well you generalize for 3rd party data (out-of-distribution data, OOD)
-            for dataset_name in dataloaders[split]:
-                logger.info('Dataset "{}"'.format(dataset_name))
-                dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloaders[split][dataset_name],
+        if split == 'TEST':
+            # add this check to some debug mode to speed up development, and not having to compute all the splits
+
+            logger.info('Ensemble inference for split "{}"'.format(split))
+            if isinstance(dataloaders[split], dict):
+                # i.e. this is either VAL or TEST. You could validate (save best model) based on multiple datasets if
+                # desired at some point, and similarly you could have n external datasets that you would like to evaluate
+                # and see how well you generalize for 3rd party data (out-of-distribution data, OOD)
+                for dataset_name in dataloaders[split]:
+                    logger.info('Dataset "{}"'.format(dataset_name))
+                    dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloaders[split][dataset_name],
+                                                                   dataset_name=dataset_name,
+                                                                   split=split,
+                                                                   device=device,
+                                                                   config=config)
+                    ensemble_results[split] = inference_ensemble_dataloader(dataloader=dataloader,
+                                                                            split=split,
+                                                                            repeat_results=repeat_results,
+                                                                            config=config,
+                                                                            device=device)
+
+            else:
+                # TRAIN had no possibility to use multiple datasets (you could train for sure for multiple datasets,
+                # but in the end this dataloader has to contain the samples from all those different datasets)
+                dataset_name = 'MINIVESS'  # placeholder now as the train split comes with no dataset key, FIX later?
+                dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloaders[split],
                                                                dataset_name=dataset_name,
                                                                split=split,
                                                                device=device,
@@ -40,21 +59,6 @@ def ensemble_the_repeats(repeat_results: dict,
                                                                         repeat_results=repeat_results,
                                                                         config=config,
                                                                         device=device)
-
-        else:
-            # TRAIN had no possibility to use multiple datasets (you could train for sure for multiple datasets,
-            # but in the end this dataloader has to contain the samples from all those different datasets)
-            dataset_name = 'MINIVESS'  # placeholder now as the train split comes with no dataset key, FIX later?
-            dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloaders[split],
-                                                           dataset_name=dataset_name,
-                                                           split=split,
-                                                           device=device,
-                                                           config=config)
-            ensemble_results[split] = inference_ensemble_dataloader(dataloader=dataloader,
-                                                                    split=split,
-                                                                    repeat_results=repeat_results,
-                                                                    config=config,
-                                                                    device=device)
 
     return ensemble_results
 
@@ -95,7 +99,7 @@ def inference_ensemble_dataloader(dataloader,
 
             with (torch.no_grad()):
                 for batch_idx, batch_data in enumerate(
-                    tqdm(dataloader, desc='Inference on dataloader samples, split "{}"'.format(split),
+                    tqdm(dataloader, desc='ENSEMBLE: Inference on dataloader samples, split "{}"'.format(split),
                          position=0)):
                     inference_results = {}
 

@@ -4,3 +4,4 @@
 /minivess_data/*
 /minivess_output/*
 /src/runs/*
+/src/wandb/*

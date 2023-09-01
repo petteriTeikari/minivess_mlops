@@ -1,5 +1,6 @@
 import numpy as np
 
+from src.inference.ensemble_utils import compute_stats_of_array_in_dict
 from src.log_ML.log_utils import convert_value_to_numpy_array, compute_numpy_stats
 
 
@@ -97,3 +98,91 @@ def compute_crossval_stats(fold_results_reordered: dict):
                                 compute_numpy_stats(value_array_in))
 
     return res_out
+
+
+def compute_crossval_ensemble_stats(ensembled_results_reordered: dict):
+
+    stats_out = {}
+    for s, split in enumerate(ensembled_results_reordered):
+        stats_out[split] = {}
+        for d, dataset in enumerate(ensembled_results_reordered[split]):
+            stats_out[split][dataset] = {}
+            for m, tracked_metric in enumerate(ensembled_results_reordered[split][dataset]):
+                stats_out[split][dataset][tracked_metric] = {}
+                for m_e, metric in enumerate(ensembled_results_reordered[split][dataset][tracked_metric]):
+                    stats_out[split][dataset][tracked_metric][metric] = {}
+                    for s, stat in enumerate(ensembled_results_reordered[split][dataset][tracked_metric][metric]):
+                        # the results might be confusing at first, as easiest just to loop with the same operations
+                        # you get mean of n for example that might be quite useless. And mean of mean with dice just
+                        # means that "1st mean" came from all the samples in the dataloader, and the "2nd mean" is
+                        # the mean of all the folds
+                        values = ensembled_results_reordered[split][dataset][tracked_metric][metric][stat]
+                        stats_dict = compute_stats_of_array_in_dict(values)
+                        stats_out[split][dataset][tracked_metric][metric][stat] = stats_dict
+
+    return stats_out
+
+
+def reorder_ensemble_crossvalidation_results(ensembled_results,
+                                             ensemble_stats_key: str = 'stats'):
+
+    # ensembled_results['fold1'] = ensembled_results['fold0']  # debug extra fold
+    no_of_folds = len(ensembled_results)
+    stats_out = {}
+
+    for f, fold_key in enumerate(ensembled_results):
+        for s, split_name in enumerate(ensembled_results[fold_key]):
+            if split_name not in stats_out:
+                stats_out[split_name] = {}
+            stats_per_fold = ensembled_results[fold_key][split_name][ensemble_stats_key]
+
+            for d, ds_name in enumerate(stats_per_fold):
+                if ds_name not in stats_out[split_name]:
+                    stats_out[split_name][ds_name] = {}
+                for m, tracked_metric in enumerate(stats_per_fold[ds_name]):
+                    if tracked_metric not in stats_out[split_name][ds_name]:
+                        stats_out[split_name][ds_name][tracked_metric] = {}
+                    metrics_per_tracked_metric = stats_per_fold[ds_name][tracked_metric]['metrics']
+
+                    for m_e, metric in enumerate(metrics_per_tracked_metric):
+                        if metric not in stats_out[split_name][ds_name][tracked_metric]:
+                            stats_out[split_name][ds_name][tracked_metric][metric] = {}
+                        for s, stat_key in enumerate(metrics_per_tracked_metric[metric]):
+                            stat_value = metrics_per_tracked_metric[metric][stat_key]
+                            stat_array = np.expand_dims(np.array(stat_value), axis=0)
+                            if stat_key not in stats_out[split_name][ds_name][tracked_metric][metric]:
+                                stats_out[split_name][ds_name][tracked_metric][metric][stat_key] = stat_array
+                            else:
+                                stats_out[split_name][ds_name][tracked_metric][metric][stat_key] = (
+                                    np.concatenate((stats_out[split_name][ds_name][tracked_metric][metric][stat_key], 
+                                                   stat_array), axis=0))
+
+    return stats_out
+
+
+def get_cv_sample_stats_from_ensemble(ensembled_results,
+                                      sample_key: str = 'samples',
+                                      split_key: str = 'TEST'):
+    """
+    We have here sample-level performance per fold.
+    If you want to see how specific sample in "TEST" split performs across the folds (you could later do for VAL/TRAIN,
+    but these would require more code as you don't have the same data then on these splits across the folds)
+
+    :param ensembled_results:
+    :param sample_key:
+    :param split_key:
+    :return:
+    """
+
+    no_of_folds = len(ensembled_results)
+    stats_out = {}
+
+    for f, fold_key in enumerate(ensembled_results):
+        if split_key in ensembled_results[fold_key]:
+            if split_key not in stats_out:
+                stats_out[split_key] = {}
+            sample_stats_per_fold = ensembled_results[fold_key][split_key][sample_key]
+            # TO BE CONTINUED FROM HERE
+
+    stats_out = 'not_implemented_yet'
+    return stats_out
