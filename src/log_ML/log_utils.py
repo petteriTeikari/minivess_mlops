@@ -30,3 +30,31 @@ def compute_numpy_stats(value_array_in: np.ndarray):
     stats_dict['n'] = value_array_in.size
 
     return stats_dict
+
+
+def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 'train_results'):
+
+    try:
+        res = results[result_type]
+        for split in res:
+            for dataset in res[split]:
+
+                if result_type == 'train_results':
+                    sub_res = res[split][dataset]['arrays']
+                elif result_type == 'eval_results':
+                    sub_res = res[split][dataset]['scalars']
+                else:
+                    raise IOError('Unknown result_type = {}'.format(result_type))
+
+                if len(sub_res) > 0:
+                    first_array_as_ex = sub_res[list(sub_res.keys())[0]]
+                    no_steps = len(first_array_as_ex)
+                else:
+                    # if you have no metrics saved to "arrays", cannot get the metric
+                    no_steps = np.nan
+
+    except Exception as e:
+        warnings.warn('Problem getting number of steps ("{}"), e = {}'.format(result_type, e))
+        no_steps = np.nan
+
+    return no_steps

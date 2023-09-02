@@ -18,13 +18,13 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # Control logger level here, make it nicer later
 # https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574
 from loguru import logger
-min_level = "INFO"
+LOG_MIN_LEVEL = "INFO"
 
 def my_filter(record):
-    return record["level"].no >= logger.level(min_level).no
+    return record["level"].no >= logger.level(LOG_MIN_LEVEL).no
 logger.remove()
 logger.add(sys.stderr, filter=my_filter)
-min_level = "DEBUG"
+LOG_MIN_LEVEL = "DEBUG"
 
 
 def parse_args_to_dict():
@@ -46,7 +46,7 @@ def parse_args_to_dict():
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
                         help="node rank for distributed training")
     parser.add_argument('-p', '--project_name', type=str, required=False,
-                        default='MINIVESS_segmentation',
+                        default='MINIVESS_segmentation_Debug',
                         help="Name of the project in WANDB/MLOps. Keep the same name for all the segmentation"
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
@@ -63,7 +63,8 @@ if __name__ == '__main__':
 
         # Import the config
         args = parse_args_to_dict()
-        config = import_config(args, task_config_file = args['task_config_file'])
+        config = import_config(args, task_config_file = args['task_config_file'],
+                               hyperparam_name=hyperparam_name, log_level=LOG_MIN_LEVEL)
 
         # Add run/environment-dependent metadata (e.g. library versions, etc.)
         config['metadata'] = get_run_metadata()
@@ -83,7 +84,6 @@ if __name__ == '__main__':
                             training_config=config['config']['TRAINING'],
                             model_config=config['config']['MODEL'],
                             machine_config=config['config']['MACHINE'],
-                            output_dir=os.path.join(config['ARGS']['output_dir'], hyperparam_name))
+                            output_dir=config['run']['output_artifacts_dir'])
 
-        a = 1
 

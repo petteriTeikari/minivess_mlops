@@ -5,6 +5,8 @@ import numpy as np
 from tqdm import tqdm
 import nibabel as nib
 
+from loguru import logger
+
 
 def check_file_listing(list_of_files: list,
                        import_library: str = 'nibabel',
@@ -13,7 +15,7 @@ def check_file_listing(list_of_files: list,
     info_of_files = []
     read_problem_of_files = []
 
-    print('Inspecting NIfTI files on disk')
+    logger.info('Inspecting NIfTI files on disk')
     for (i, filepath) in enumerate(list_of_files):
 
         if import_library == 'nibabel':
@@ -55,7 +57,7 @@ def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: lis
                 'z': get_size_stats_per_coord(z)}
 
     def print_size_stats(size_stats) -> None:
-        print('Stats of the spatial dimensions of the dataset:')
+        logger.info('Stats of the spatial dimensions of the dataset:')
         for key_in in size_stats.keys():
             print_string = ' {}: '.format(key_in)
             for stat_key in size_stats[key_in].keys():
@@ -64,10 +66,10 @@ def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: lis
                     print_string += '{}={:.2f} '.format(stat_key, value_in)
                 else:
                     print_string += '{}={} '.format(stat_key, value_in)
-            print(print_string)
+            logger.info(print_string)
             if key_in == 'z':
-                print(' Note! When you are applying crops, your minimum z size is = {} voxels, '
-                      'and thus your crops must be smaller than this in z-dimension'.format(size_stats[key_in]['min']))
+                logger.info(' Note! When you are applying crops, your minimum z size is = {} voxels, '
+                            'and thus your crops must be smaller than this in z-dimension'.format(size_stats[key_in]['min']))
 
     size_stats = get_spatial_size_range(info_of_files)
     print_size_stats(size_stats)

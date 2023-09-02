@@ -4,6 +4,7 @@ from src.log_ML.log_crossval import log_cv_results
 from src.log_ML.log_epochs import log_epoch_for_tensorboard
 from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats, \
     reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble
+from src.log_ML.wandb_log import log_wandb_repeat_results, log_ensemble_results
 
 
 def log_epoch_results(train_epoch_results, eval_epoch_results,
@@ -22,7 +23,7 @@ def log_n_epochs_results(train_results, eval_results, best_dict, output_artifact
     logger.debug('Placeholder for n epochs logging (i.e. submodel or single repeat training)')
 
 
-def log_averaged_repeats(repeat_results: dict):
+def log_averaged_repeats(repeat_results: dict, config: dict):
 
     # Average the repeat results (not ensembling per se yet, as we are averaging the metrics here, and not averaging
     # the predictions and then computing the metrics from the averaged predictions)
@@ -46,7 +47,20 @@ def log_crossvalidation_results(fold_results: dict,
     cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
     sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
 
-    log_cv_results(cv_results=cv_results,
-                   cv_ensemble_results=cv_ensemble_results,
-                   config=config,
-                   output_dir=output_dir)
+    log_wandb_repeat_results(fold_results=fold_results,
+                             output_dir=output_dir,
+                             config=config)
+
+    log_ensemble_results(ensembled_results=ensembled_results,
+                         output_dir=output_dir,
+                         config=config)
+
+    logged_model_paths = log_cv_results(cv_results=cv_results,
+                                        cv_ensemble_results=cv_ensemble_results,
+                                        fold_results=fold_results,
+                                        config=config,
+                                        output_dir=output_dir,
+                                        cv_averaged_output_dir=config['run']['cross_validation_averaged'],
+                                        cv_ensembled_output_dir=config['run']['cross_validation_ensembled'])
+
+    return logged_model_paths

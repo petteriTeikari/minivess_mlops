@@ -26,23 +26,35 @@ def training_script(experim_dataloaders: dict,
     # Cross-validation loop (if used), i.e. when train/val splits change for each execution
     os.makedirs(output_dir, exist_ok=True)
     fold_results, ensembled_results = {}, {}
+    config['run']['repeat_artifacts'] = {}
+    config['run']['ensemble_artifacts'] = {}
+    config['run']['fold_dir'] = {}
+
     for f, fold_name in enumerate(list(experim_dataloaders.keys())):
         logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
+        config['run']['fold_dir'][fold_name] = os.path.join(output_dir, fold_name)
+        config['run']['repeat_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'repeats')
+        config['run']['ensemble_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'ensemble')
+
         fold_results[fold_name], ensembled_results[fold_name] = \
             train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
                                         config=config,
                                         training_config=training_config,
                                         model_config=model_config,
                                         machine_config=machine_config,
-                                        output_dir=os.path.join(output_dir, fold_name),
+                                        output_dir=config['run']['fold_dir'][fold_name],
                                         fold_name=fold_name)
 
-    log_crossvalidation_results(fold_results=fold_results,
-                                ensembled_results=ensembled_results,
-                                config=config,
-                                output_dir=output_dir)
+    config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
+    config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
+    config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
+    config['run']['logged_model_paths'] = (
+        log_crossvalidation_results(fold_results=fold_results,
+                                    ensembled_results=ensembled_results,
+                                    config=config,
+                                    output_dir=output_dir))
 
-    return fold_results
+    return {'fold_results':fold_results, 'ensembled_results': ensembled_results, 'config': config}
 
 
 def train_model_for_single_fold(fold_dataloaders: dict,
@@ -55,10 +67,11 @@ def train_model_for_single_fold(fold_dataloaders: dict,
 
     # Repeat n times the same data fold (i.e. you get n submodels for an inference)
     os.makedirs(output_dir, exist_ok=True)
+
     repeat_results = {}
     for repeat_idx in range(training_config['NO_REPEATS']):
         logger.info('Training repeat #{}/{}'.format(repeat_idx + 1, training_config['NO_REPEATS']))
-        repeat_name = 'repeat_{}'.format(str(repeat_idx+1).zfill(2))
+        repeat_name = 'repeat{}'.format(str(repeat_idx+1).zfill(2))
         repeat_results[repeat_name] = \
             train_single_model(dataloaders=fold_dataloaders,
                                config=config,
@@ -66,21 +79,23 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                model_config=model_config,
                                machine_config=machine_config,
                                repeat_idx=repeat_idx,
+                               repeat_name=repeat_name,
                                device=machine_config['IN_USE']['device'],
-                               output_dir=os.path.join(output_dir, repeat_name),
+                               output_dir=os.path.join(config['run']['repeat_artifacts'][fold_name], repeat_name),
                                fold_name=fold_name)
 
     # Log repeat averages
-    log_averaged_repeats(repeat_results)
+    log_averaged_repeats(repeat_results, config=config)
 
     # Ensemble the repeats (submodels)
     ensemble_results = ensemble_the_repeats(repeat_results=repeat_results,
                                             dataloaders=fold_dataloaders,
+                                            artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
                                             config=config,
                                             device=machine_config['IN_USE']['device'])
 
     # Log inference
-    log_ensemble_results(ensemble_results)
+    log_ensemble_results(ensemble_results, config=config)
 
     return repeat_results, ensemble_results
 
@@ -91,6 +106,7 @@ def train_single_model(dataloaders: dict,
                        model_config: dict,
                        machine_config: dict,
                        repeat_idx: int,
+                       repeat_name: str,
                        fold_name: str,
                        device,
                        output_dir: str) -> dict:
@@ -114,7 +130,7 @@ def train_single_model(dataloaders: dict,
                               device, scaler,
                               loss_function, optimizer, lr_scheduler,
                               training_config, config, output_dir=output_dir,
-                              repeat_idx=repeat_idx, fold_name=fold_name)
+                              repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
 
     # When training is done, you con for example log the repeat/experiment/n_epochs level results
     log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config)
@@ -134,7 +150,7 @@ def train_n_epochs_script(model, dataloaders,
                           loss_function, optimizer, lr_scheduler,
                           training_config: dict, config: dict,
                           start_epoch: int = 0, output_dir: str = None,
-                          repeat_idx: int = None, fold_name: str = None):
+                          repeat_idx: int = None, fold_name: str = None, repeat_name: str = None):
 
     # FIXME: get this from config
     metric_dict = {'roi_size': (64, 64, 8), 'sw_batch_size': 4, 'predictor': model, 'overlap': 0.6}
@@ -184,7 +200,8 @@ def train_n_epochs_script(model, dataloaders,
                                              eval_epoch_results, eval_results,
                                              validation_config=config['config']['VALIDATION'],
                                              config=config,
-                                             model_dir=output_artifacts['model_dir'])
+                                             model_dir=output_artifacts['model_dir'],
+                                             fold_name=fold_name, repeat_name=repeat_name)
 
     return train_results, eval_results, best_dicts, output_artifacts
 

@@ -16,11 +16,32 @@ def get_run_metadata():
     metadata = get_library_versions()
     sysinfo = get_system_information()
     metadata = {**metadata, **sysinfo}
+    ids = get_commit_id()
+    metadata = {**metadata, **ids}
 
     return metadata
 
 
-def get_library_versions():
+def get_commit_id() -> dict:
+
+    def get_git_revision_hash() -> str:
+        return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+
+    def get_git_revision_short_hash() -> str:
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+
+    # Get the current git commit id
+    try:
+        git_hash_short = get_git_revision_short_hash()
+        git_hash = get_git_revision_hash()
+    except Exception as e:
+        warnings.warn('Failed to get the git hash, e = {}'.format(e))
+        git_hash_short, git_hash = np.nan, np.nan
+
+    return {'git_hash_short': git_hash_short, 'git_hash': git_hash}
+
+
+def get_library_versions() -> dict:
 
     metadata = {}
     try:
@@ -51,7 +72,7 @@ def get_library_versions():
     return metadata
 
 
-def get_system_information():
+def get_system_information() -> dict:
 
     metadata = {}
     try:

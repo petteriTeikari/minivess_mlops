@@ -12,7 +12,8 @@ def save_models_if_improved(best_dicts, epoch,
                             eval_epoch_results, eval_results,
                             validation_config, config, model_dir,
                             split_key: str = 'VAL',
-                            results_type: str = 'scalars'):
+                            results_type: str = 'scalars',
+                            fold_name: str = None, repeat_name: str = None):
 
     os.makedirs(model_dir, exist_ok=True)
     best_dicts_out = {}
@@ -41,7 +42,8 @@ def save_models_if_improved(best_dicts, epoch,
                                               model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
                                               epoch=epoch, model_dir=model_dir,
                                               dataset=dataset, metric=metric,
-                                              validation_config=validation_config))
+                                              validation_config=validation_config,
+                                              fold_name=fold_name, repeat_name=repeat_name))
 
                 # After 1st epoch, when you have something on your best dict
                 else:
@@ -68,7 +70,8 @@ def save_models_if_improved(best_dicts, epoch,
                                                   model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
                                                   epoch=epoch, model_dir=model_dir,
                                                   dataset=dataset, metric=metric,
-                                                  validation_config=validation_config))
+                                                  validation_config=validation_config,
+                                                  fold_name=fold_name, repeat_name=repeat_name))
 
                     else:
 
@@ -127,7 +130,8 @@ def model_improved_script(best_dict: dict,
                           current_value: float, best_value_so_far: float,
                           model, optimizer, lr_scheduler,
                           epoch: int, model_dir: str,
-                          dataset: str, metric: str, validation_config: dict) -> None:
+                          dataset: str, metric: str, validation_config: dict,
+                          fold_name: str, repeat_name: str) -> dict:
     """
     Instead of "Github demo repos" in which you only want to save the weights, we also want to save all possible
     values (that you track in the results) associated with the best model. Like what was some other metric when
@@ -148,7 +152,7 @@ def model_improved_script(best_dict: dict,
     :return:
     """
 
-    model_fname_base = "bestModel__{}__{}".format(dataset, metric)
+    model_fname_base = "bestModel__{}__{}__{}__{}".format(dataset, metric, fold_name, repeat_name)
     if validation_config['SAVE_FULL_MODEL']:
         checkpoint = dict(
             epoch=epoch+1,
@@ -177,9 +181,9 @@ def model_improved_script(best_dict: dict,
         logger.warning('Problem getting model file size from disk to display, e = {}'.format(e))
         filesize = np.nan
 
-    logger.debug('"{}" improved from {:.4f} to {:.4f} (dataset = {}) '
+    logger.debug('epoch #{} | "{}" improved from {:.4f} to {:.4f} (dataset = {}) '
                  '-> saving this to disk (model size = {:.1f} MB)'.
-                 format(metric, best_value_so_far, current_value, dataset,filesize))
+                 format(epoch+1, metric, best_value_so_far, current_value, dataset,filesize))
 
     return {'model_path': path_out}
 

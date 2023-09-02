@@ -1,3 +1,4 @@
+import os
 import warnings
 from copy import deepcopy
 
@@ -16,11 +17,13 @@ from src.utils.data_utils import redefine_dataloader_for_inference
 
 
 def ensemble_the_repeats(repeat_results: dict,
-                         dataloaders,
+                         dataloaders: dict,
+                         artifacts_output_dir: str,
                          config: dict,
                          device: str,
                          debug_mode: bool = False):
 
+    os.makedirs(artifacts_output_dir, exist_ok=True)
     ensemble_results = {}
     for split in dataloaders:
 
@@ -59,6 +62,8 @@ def ensemble_the_repeats(repeat_results: dict,
                                                                         repeat_results=repeat_results,
                                                                         config=config,
                                                                         device=device)
+
+
 
     return ensemble_results
 

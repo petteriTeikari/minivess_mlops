@@ -1,12 +1,17 @@
 import os
 import warnings
 
+from typing import Dict, Any
+import hashlib
+import json
+
 import torch
 import yaml
 from loguru import logger
 import collections.abc
 import torch.distributed as dist
 
+from src.log_ML.json_log import to_serializable
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
@@ -16,7 +21,8 @@ if not os.path.exists(BASE_CONFIG_DIR):
     raise IOError('Cannot find the directory for (base) .yaml config files from "{}"'.format(BASE_CONFIG_DIR))
 
 
-def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml'):
+def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
+                  hyperparam_name: str = None, log_level: str = "INFO"):
 
     # TO-OPTIMIZE: Switch to Hydra here?
     base_config = import_config_from_yaml(config_file = base_config_file,
@@ -34,6 +40,18 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     # Setup the computing environment
     config['config']['MACHINE'] = set_up_environment(machine_config=config['config']['MACHINE'],
                                                      local_rank=config['ARGS']['local_rank'])
+
+    config['run'] = {
+        'hyperparam_name': hyperparam_name,
+        'output_artifacts_dir': os.path.join(config['ARGS']['output_dir'], hyperparam_name),
+        # 'config_hash': dict_hash(config['config'])
+    }
+
+    log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
+                  "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
+    logger.add(os.path.join(config['run']['output_artifacts_dir'], 'log_{}.txt'.format(hyperparam_name)),
+               level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
+    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_artifacts_dir']))
 
     return config
 
@@ -122,3 +140,23 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
     return machine_config
 
 
+def hash_config_dictionary(dict_in: dict):
+    """
+    To check whether dictionary has changed
+    https://www.doc.ic.ac.uk/~nuric/coding/how-to-hash-a-dictionary-in-python.html
+    :param dict_in:
+    :return:
+    """
+
+def dict_hash(dictionary: Dict[str, Any]) -> str:
+    """
+    MD5 hash of a dictionary.
+    https://www.doc.ic.ac.uk/~nuric/coding/how-to-hash-a-dictionary-in-python.html
+    """
+    dhash = hashlib.md5()
+    # We need to sort arguments so {'a': 1, 'b': 2} is
+    # the same as {'b': 2, 'a': 1}
+    # Fix this with the "to_serializable" TypeError: Object of type int64 is not JSON serializable
+    encoded = json.dumps(dictionary, sort_keys=True, default=to_serializable).encode()
+    dhash.update(encoded)
+    return dhash.hexdigest()
