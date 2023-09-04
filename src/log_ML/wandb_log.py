@@ -12,6 +12,7 @@ def log_wandb_repeat_results(fold_results: dict,
                              config: dict,
                              log_models_with_repeat: bool = False):
 
+    logger.info('Logging repeat-wise results to WANDB')
     for f, fold_name in enumerate(fold_results):
         for r, repeat_name in enumerate(fold_results[fold_name]):
 
@@ -66,8 +67,8 @@ def wandb_init_wrapper(project: str = None,
                        tags = None) -> wandb.sdk.wandb_run.Run:
 
     # https://docs.wandb.ai/ref/python/init
-    logger.info('Initialize Weights and Biases logging, \n'
-                'project = "{}"'.format(project))
+    # logger.info('Initialize Weights and Biases logging, \n'
+    #             'project = "{}"'.format(project))
     wandb_run = wandb.init(project = project,
                            job_type = job_type,
                            group = group,
@@ -85,6 +86,7 @@ def log_ensemble_results(ensembled_results: dict,
                          output_dir: str,
                          config: dict):
 
+    logger.info('Logging emsemble-wise results to WANDB')
     for f, fold_name in enumerate(ensembled_results):
 
         log_name = fold_name
@@ -120,11 +122,13 @@ def wandb_log_crossval(cv_results: dict,
                        output_dir: str,
                        config: dict):
 
+    logger.info('Logging AVERAGED Cross-Validation results to WANDB')
     wandb_log_cv_results(cv_results=cv_results,
                          cv_dir_out=cv_averaged_output_dir,
                          config=config,
                          output_dir=output_dir)
 
+    logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
     model_paths = wandb_log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
                                                 cv_dir_out=cv_ensembled_output_dir,
                                                 fold_results=fold_results,
@@ -192,6 +196,7 @@ def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
     except Exception as e:
         raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
+    logger.info('ENSEMBLED Cross-Validation results | Metrics')
     for split in cv_ensemble_results:
         for dataset in cv_ensemble_results[split]:
             for tracked_metric in cv_ensemble_results[split][dataset]:
@@ -203,21 +208,27 @@ def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
                             wandb.log({metric_name: value}, step=0)
 
     # Log the artifact dir
+    logger.info('ENSEMBLED Cross-Validation results | Artifacts directory')
     artifact_dir = wandb.Artifact(name=log_name, type='artifacts')
     artifact_dir.add_dir(local_path=cv_dir_out, name='CV-ENSEMBLE_artifacts')
     wandb_run.log_artifact(artifact_dir)
 
     # Log all the models from all the folds and all the repeats to the Artifact Store
     # and these are accessible to Model Registry as well
+    logger.info('ENSEMBLED Cross-Validation results | Models to Model Registry')
     model_paths = wandb_log_models_to_artifact_store_from_fold_results(fold_results=fold_results,
                                                                        log_name=log_name,
                                                                        wandb_run=wandb_run)
 
     # HERE, log the config as .yaml file back to disk
+    logger.info('ENSEMBLED Cross-Validation results | Config as YAML')
     path_out = write_config_as_yaml(config=config, dir_out=output_dir)
     artifact_cfg = wandb.Artifact(name='config', type='config')
     artifact_cfg.add_file(path_out)
     wandb_run.log_artifact(artifact_cfg)
+
+    #
+    logger.info('TODO! ENSEMBLED Cross-Validation results | Loguru log to WANDB')
 
     wandb.finish()
 

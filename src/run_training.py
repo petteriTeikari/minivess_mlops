@@ -46,7 +46,7 @@ def parse_args_to_dict():
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
                         help="node rank for distributed training")
     parser.add_argument('-p', '--project_name', type=str, required=False,
-                        default='MINIVESS_segmentation_Debug2',
+                        default='MINIVESS_segmentation_TEST',
                         help="Name of the project in WANDB/MLOps. Keep the same name for all the segmentation"
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
@@ -78,6 +78,7 @@ if __name__ == '__main__':
             define_dataset_and_dataloader(config, fold_split_file_dicts=fold_split_file_dicts)
 
         # Train for n folds, n repeats, n epochs (single model)
+        logger.info('Starting training for the hyperparameter config "{}"'.format(hyperparam_name))
         hparam_run_results[hyperparam_name] = \
             training_script(experim_dataloaders=experim_dataloaders,
                             config=config,
@@ -86,4 +87,6 @@ if __name__ == '__main__':
                             machine_config=config['config']['MACHINE'],
                             output_dir=config['run']['output_artifacts_dir'])
 
+        logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
 
+    logger.info('Done with the experiment!')

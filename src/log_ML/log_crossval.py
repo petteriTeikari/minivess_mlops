@@ -18,6 +18,7 @@ def log_cv_results(cv_results: dict,
                    cv_averaged_output_dir: str,
                    cv_ensembled_output_dir: str):
 
+    logger.info('Logging Cross-Validation-wise results to WANDB')
     os.makedirs(cv_averaged_output_dir, exist_ok=True)
     os.makedirs(cv_ensembled_output_dir, exist_ok=True)
 

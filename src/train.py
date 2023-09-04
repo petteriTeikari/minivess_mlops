@@ -29,6 +29,9 @@ def training_script(experim_dataloaders: dict,
     config['run']['repeat_artifacts'] = {}
     config['run']['ensemble_artifacts'] = {}
     config['run']['fold_dir'] = {}
+    config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
+    config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
+    config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
 
     for f, fold_name in enumerate(list(experim_dataloaders.keys())):
         logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
@@ -46,9 +49,7 @@ def training_script(experim_dataloaders: dict,
                                         fold_name=fold_name)
 
     logger.info('Done training all the {} folds'.format(len(experim_dataloaders)))
-    config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
-    config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
-    config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
+
     config['run']['logged_model_paths'] = (
         log_crossvalidation_results(fold_results=fold_results,
                                     ensembled_results=ensembled_results,

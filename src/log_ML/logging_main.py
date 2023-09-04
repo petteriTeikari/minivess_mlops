@@ -63,4 +63,6 @@ def log_crossvalidation_results(fold_results: dict,
                                         cv_averaged_output_dir=config['run']['cross_validation_averaged'],
                                         cv_ensembled_output_dir=config['run']['cross_validation_ensembled'])
 
+    logger.info('Done with the WANDB Logging!')
+
     return logged_model_paths
