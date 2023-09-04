@@ -4,7 +4,7 @@ import glob
 from loguru import logger
 import wandb
 
-from src.log_ML.log_utils import get_number_of_steps_from_repeat_results
+from src.log_ML.log_utils import get_number_of_steps_from_repeat_results, write_config_as_yaml
 
 
 def log_wandb_repeat_results(fold_results: dict,
@@ -63,7 +63,7 @@ def wandb_init_wrapper(project: str = None,
                        job_type: str = 'repeat',
                        param_conf: dict = None,
                        notes: str = None,
-                       tags = None):
+                       tags = None) -> wandb.sdk.wandb_run.Run:
 
     # https://docs.wandb.ai/ref/python/init
     logger.info('Initialize Weights and Biases logging, \n'
@@ -203,9 +203,9 @@ def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
                             wandb.log({metric_name: value}, step=0)
 
     # Log the artifact dir
-    artifact = wandb.Artifact(name=log_name, type='artifacts')
-    artifact.add_dir(local_path=cv_dir_out, name='CV-ENSEMBLE_artifacts')
-    wandb_run.log_artifact(artifact)
+    artifact_dir = wandb.Artifact(name=log_name, type='artifacts')
+    artifact_dir.add_dir(local_path=cv_dir_out, name='CV-ENSEMBLE_artifacts')
+    wandb_run.log_artifact(artifact_dir)
 
     # Log all the models from all the folds and all the repeats to the Artifact Store
     # and these are accessible to Model Registry as well
@@ -214,6 +214,12 @@ def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
                                                                        wandb_run=wandb_run)
 
     # HERE, log the config as .yaml file back to disk
+    path_out = write_config_as_yaml(config=config, dir_out=output_dir)
+    artifact_cfg = wandb.Artifact(name='config', type='config')
+    artifact_cfg.add_file(path_out)
+    wandb_run.log_artifact(artifact_cfg)
+
+    wandb.finish()
 
     return model_paths
 
@@ -225,7 +231,6 @@ def wandb_log_models_to_artifact_store_from_fold_results(fold_results: dict,
     n_models = 0
 
     artifact_type = 'model'  # This is "reserved name", and if you want to use Model Registry, keep this naming
-    artifact = wandb.Artifact(name=log_name, type=artifact_type)
 
     for fold_name in fold_results:
         model_paths[fold_name] = {}
@@ -238,9 +243,13 @@ def wandb_log_models_to_artifact_store_from_fold_results(fold_results: dict,
                     model_path = best_dict[ds][tracked_metric]['model']['model_path']
                     model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
                     n_models += 1
-                    artifact.add_file(model_path)
 
-    wandb_run.log_artifact(artifact)
+                    artifact_name = '{}_{}'.format(fold_name, repeat_name)
+                    artifact_model = wandb.Artifact(name=artifact_name, type=artifact_type)
+                    artifact_model.add_file(model_path)
+                    wandb_run.log_artifact(artifact_model)
+
+
     return model_paths
 
 

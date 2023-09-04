@@ -1,8 +1,12 @@
 import json
+import os
 import warnings
 from functools import singledispatch
 
 import numpy as np
+import wandb.sdk.wandb_run
+import yaml
+
 
 def convert_value_to_numpy_array(value_in):
 
@@ -58,3 +62,12 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
         no_steps = np.nan
 
     return no_steps
+
+
+def write_config_as_yaml(config: dict, dir_out: str):
+
+    path_out = os.path.join(dir_out, 'config.yaml')
+    with open(path_out, 'w') as outfile:
+        yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+
+    return path_out

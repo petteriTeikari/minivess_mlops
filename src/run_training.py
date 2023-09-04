@@ -46,7 +46,7 @@ def parse_args_to_dict():
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
                         help="node rank for distributed training")
     parser.add_argument('-p', '--project_name', type=str, required=False,
-                        default='MINIVESS_segmentation_Debug',
+                        default='MINIVESS_segmentation_Debug2',
                         help="Name of the project in WANDB/MLOps. Keep the same name for all the segmentation"
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"

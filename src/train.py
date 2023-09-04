@@ -45,6 +45,7 @@ def training_script(experim_dataloaders: dict,
                                         output_dir=config['run']['fold_dir'][fold_name],
                                         fold_name=fold_name)
 
+    logger.info('Done training all the {} folds'.format(len(experim_dataloaders)))
     config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
     config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
     config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
@@ -83,6 +84,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                device=machine_config['IN_USE']['device'],
                                output_dir=os.path.join(config['run']['repeat_artifacts'][fold_name], repeat_name),
                                fold_name=fold_name)
+
+    logger.info('Done training all the {} repeats of "{}"'.format(training_config['NO_REPEATS'], fold_name))
 
     # Log repeat averages
     log_averaged_repeats(repeat_results, config=config)
@@ -141,6 +144,8 @@ def train_single_model(dataloaders: dict,
                    'best_dict': best_dict,
                    'output_artifacts': output_artifacts,
                    }
+
+    logger.info('Done training "{}" of "{}"'.format(repeat_name, fold_name))
 
     return results_out
 
