@@ -50,8 +50,9 @@ def evaluate_1_epoch(dataloader, model, split_name, dataset_name,
             dice_metric_batch(y_pred=val_outputs, y=batch_data["label"].to(device))
             batch_szs.append(batch_data['image'].shape[0])
 
+        # FIXME! Actually use the config for these to determine which are tracked
         epoch_metrics_per_dataset['scalars']['dice'] = dice_metric.aggregate().item()
-        epoch_metrics_per_dataset['scalars']['dice_batch'] = float(dice_metric_batch.aggregate().detach().cpu())
+        #epoch_metrics_per_dataset['scalars']['dice_batch'] = float(dice_metric_batch.aggregate().detach().cpu())
         dice_metric.reset()
         dice_metric_batch.reset()
 

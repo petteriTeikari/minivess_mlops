@@ -12,6 +12,7 @@ import collections.abc
 import torch.distributed as dist
 
 from src.log_ML.json_log import to_serializable
+from src.log_ML.mlflow_log import init_mlflow_logging
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
@@ -52,6 +53,12 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     logger.add(os.path.join(config['run']['output_artifacts_dir'], 'log_{}.txt'.format(hyperparam_name)),
                level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
     logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_artifacts_dir']))
+
+    # Initialize ML logging (experiment tracking)
+    config['run']['mlflow'] = init_mlflow_logging(config=config,
+                                                  mlflow_config=config['config']['LOGGING']['MLFLOW'],
+                                                  experiment_name = config['ARGS']['project_name'],
+                                                  run_name = config['run']['hyperparam_name'])
 
     return config
 

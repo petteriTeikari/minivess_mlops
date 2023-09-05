@@ -1,4 +1,5 @@
 import numpy as np
+from loguru import logger
 
 from src.inference.ensemble_utils import compute_stats_of_array_in_dict
 from src.log_ML.log_utils import convert_value_to_numpy_array, compute_numpy_stats
@@ -12,6 +13,74 @@ def average_repeat_results(repeat_results):
     averaged_results = compute_crossval_stats(reordered_dummy_fold_results)
 
     return averaged_results
+
+
+def get_best_repeat_result(repeat_results):
+
+    # exploit the same function written for cv results, and a dummy fold to the repeats
+    dummy_fold_results = {'dummy_fold': repeat_results}
+    reordered_dummy_fold_results = reorder_crossvalidation_results(dummy_fold_results)
+
+    best_repeat_dicts = find_best_repeat(reordered_results=reordered_dummy_fold_results,
+                                         repeat_results=repeat_results)
+
+    return best_repeat_dicts
+
+
+def find_best_repeat(reordered_results: dict,
+                     repeat_results: dict,
+                     var_type_for_best: str = 'scalars'):
+
+    best_repeat_dicts = {}
+    repeat_names = list(repeat_results.keys())
+
+    def pick_best_metric_value(var_name: str, values: float):
+        """
+        This now breaks easily as we should have some LUT for each possible metric, or
+        define these already in the config. i.e. is smaller or larger value better.
+        You could use the "METRICS_TO_TRACK_OPERATORS" in config['VALIDATION']
+        :return:
+        """
+        if 'loss' in var_name:
+            best_direction = 'lower'
+            idx = int(np.argmin(values))
+            best_value = np.min(values)
+        else:
+            best_direction = 'higher'
+            idx = np.argmin(values)
+            best_value = np.min(values)
+
+        return best_direction, idx, best_value
+
+
+    for dataset in reordered_results:  # that it is trained on?
+        best_repeat_dicts[dataset] = {}
+        for tracked_metric in reordered_results[dataset]:
+            best_repeat_dicts[dataset][tracked_metric] = {}
+            for split in reordered_results[dataset][tracked_metric]:
+                best_repeat_dicts[dataset][tracked_metric][split] = {}
+                for dataset2 in reordered_results[dataset][tracked_metric][split]:  # that it is evaluated on?
+                    best_repeat_dicts[dataset][tracked_metric][split][dataset2] = {}
+                    for var_type in reordered_results[dataset][tracked_metric][split][dataset2]:
+                        if var_type_for_best == var_type:
+                            for var_name in reordered_results[dataset][tracked_metric][split][dataset2][var_type]:
+                                values = reordered_results[dataset][tracked_metric][split][dataset2][var_type][var_name]
+                                best_direction, idx, best_value = pick_best_metric_value(var_name, values)
+                                logger.info('{}: Best repeat idx = {} ("{}", value = {:.3f}) | '
+                                            ' ({}, {}, {}, {})'.format(var_name, idx, best_direction, best_value,
+                                                                       dataset, tracked_metric, split, dataset2))
+
+                                result_dict = {
+                                    'best_value': best_value,
+                                    'best_idx': idx,
+                                    'best_name': repeat_names[idx],
+                                    'best_direction': best_direction,
+                                    'repeat_best_dict': repeat_results[repeat_names[idx]]['best_dict']
+                                }
+
+                                best_repeat_dicts[dataset][tracked_metric][split][dataset2][var_name] = result_dict
+
+    return best_repeat_dicts
 
 
 def reorder_crossvalidation_results(fold_results: dict):

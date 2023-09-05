@@ -129,8 +129,8 @@ config:
   # ----------------------------------------------------------------------------------- #
   TRAINING:
     AMP: True
-    NO_REPEATS: 5
-    NUM_EPOCHS: 10
+    NO_REPEATS: 2
+    NUM_EPOCHS: 2
     LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
     LOSS:
       NAME: 'DiceFocalLoss'
@@ -152,13 +152,13 @@ config:
     # and if you have Minivess and DatasetB on your VAL split, you would be saving and tracking 3 x 2 "best models"
     METRICS_TO_TRACK:
       - 'dice'
-      - 'dice_batch'
+      #- 'dice_batch'
     # maybe there is a better way, but when saving the models, we need to know if larger or smaller value
     # is considered better, so as many entries as above, DICE score better when higher, distances then would be
     # better as smaller, as would a loss be
     METRICS_TO_TRACK_OPERATORS:
       - 'max'
-      - 'max'
+      #- 'max'
     # Do not track change for these n epochs at all if your first epochs have noisy metrics
     NO_WARMUP_EPOCHS: 0
     # You could smooth the metric curve if again you get noisy / spurious metrics, and get those
@@ -205,3 +205,16 @@ config:
   SCHEDULERS:
     CosineAnnealingLR:
       PLACEHOLDER: 1
+
+  # ----------------------------------------------------------------------------------- #
+  # LOGGING
+  # ----------------------------------------------------------------------------------- #
+  LOGGING:
+    TENSORBOARD:
+      placeholder: 1
+    MLFLOW:
+      s3: null
+      Tracking: True
+    WANDB:
+      placeholder: 1
+      s3: null

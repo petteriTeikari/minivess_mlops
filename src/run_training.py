@@ -18,13 +18,13 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # Control logger level here, make it nicer later
 # https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574
 from loguru import logger
-LOG_MIN_LEVEL = "INFO"
+LOG_MIN_LEVEL = "DEBUG"
 
 def my_filter(record):
     return record["level"].no >= logger.level(LOG_MIN_LEVEL).no
 logger.remove()
 logger.add(sys.stderr, filter=my_filter)
-LOG_MIN_LEVEL = "DEBUG"
+# LOG_MIN_LEVEL = "DEBUG"
 
 
 def parse_args_to_dict():

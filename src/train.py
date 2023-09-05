@@ -9,7 +9,7 @@ from src.inference.ensemble_main import ensemble_the_repeats
 from src.eval import evaluate_datasets_per_epoch
 from src.log_ML.log_ensemble import log_ensemble_results
 from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, \
-    log_crossvalidation_results, log_averaged_repeats
+    log_crossvalidation_results, log_averaged_and_best_repeats
 from src.log_ML.model_saving import save_models_if_improved
 from src.utils.model_utils import import_segmentation_model
 from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_model_training_params, \
@@ -88,8 +88,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
 
     logger.info('Done training all the {} repeats of "{}"'.format(training_config['NO_REPEATS'], fold_name))
 
-    # Log repeat averages
-    log_averaged_repeats(repeat_results, config=config)
+    # Log (repeat averages) and best repeats
+    log_averaged_and_best_repeats(repeat_results, fold_name=fold_name, config=config)
 
     # Ensemble the repeats (submodels)
     ensemble_results = ensemble_the_repeats(repeat_results=repeat_results,
@@ -137,7 +137,8 @@ def train_single_model(dataloaders: dict,
                               repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
 
     # When training is done, you con for example log the repeat/experiment/n_epochs level results
-    log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config)
+    log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
+                         repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
 
     results_out = {
                    'train_results': train_results,

@@ -51,7 +51,11 @@ def inference_sample(batch_data,
 
 def conv_metatensor_to_numpy(metatensor_in: MetaTensor) -> np.ndarray:
     # https://github.com/Project-MONAI/MONAI/issues/4649#issuecomment-1177319399
-    numpy_array = metatensor_in.detach().numpy()
+    try:
+        numpy_array = metatensor_in.cpu().detach().numpy()
+    except Exception as e:
+        # CHECK LATER IF NEEDED when you don't have a NVIDIA GPU for training
+        numpy_array = metatensor_in.detach().numpy()
     assert len(numpy_array.shape) == 5, ('Code tested only for 5D tensors at the moment, '
                                          'now your metatensor is {}D').format(len(numpy_array.shape))
     return numpy_array[0,0,:,:,:]  # quick and dirty for single-channel and batch_sz = 1 tensors

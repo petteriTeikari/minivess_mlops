@@ -2,8 +2,10 @@ from loguru import logger
 
 from src.log_ML.log_crossval import log_cv_results
 from src.log_ML.log_epochs import log_epoch_for_tensorboard
+from src.log_ML.mlflow_log import mlflow_log_best_repeats
 from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats, \
-    reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble
+    reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble, \
+    get_best_repeat_result
 from src.log_ML.wandb_log import log_wandb_repeat_results, log_ensemble_results
 
 
@@ -18,19 +20,24 @@ def log_epoch_results(train_epoch_results, eval_epoch_results,
 
     return output_artifacts
 
-def log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config):
+def log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
+                         repeat_idx: int, fold_name: str, repeat_name: str):
 
     logger.debug('Placeholder for n epochs logging (i.e. submodel or single repeat training)')
 
 
-def log_averaged_repeats(repeat_results: dict, config: dict):
+def log_averaged_and_best_repeats(repeat_results: dict, fold_name: str, config: dict):
 
     # Average the repeat results (not ensembling per se yet, as we are averaging the metrics here, and not averaging
     # the predictions and then computing the metrics from the averaged predictions)
     averaged_results = average_repeat_results(repeat_results)
 
+    # You might want to compare single model performance to ensemble and quantify the improvement from
+    # added computational cost from ensembling over single repeat (submodel)
+    best_repeat_dicts = get_best_repeat_result(repeat_results)
+
     # ADD the actual logging of the dict here, can be the same as for CV results
-    logger.debug('Placeholder for averaged repeats')
+    mlflow_log_best_repeats(best_repeat_dicts=best_repeat_dicts, config=config)
 
 
 def log_crossvalidation_results(fold_results: dict,
