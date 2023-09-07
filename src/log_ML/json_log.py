@@ -20,6 +20,12 @@ def ts_float32(val):
     return np.float64(val)
 
 
+@to_serializable.register(np.float32)
+def ts_float32(val):
+    """Used if *val* is an instance of numpy.float32."""
+    return np.float64(val)
+
+
 @to_serializable.register(datetime.datetime)
 def ts_datetime(val):
     """Used if *val* is an instance of datetime.datetime."""

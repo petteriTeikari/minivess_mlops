@@ -1,2 +1,3 @@
+NAME: 'task_config'
 config:
   VERBOSE: True

@@ -19,7 +19,7 @@ def convert_value_to_numpy_array(value_in):
 
     else:
         # e.g. if you save strings or something else here that is hard really to use for stats computations
-        warnings.warn('Unknown value type = {}'.format(type(value_in)))
+        logger.warning('Unknown value type = {}'.format(type(value_in)))
 
     return value_in
 
@@ -58,7 +58,7 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
                     no_steps = np.nan
 
     except Exception as e:
-        warnings.warn('Problem getting number of steps ("{}"), e = {}'.format(result_type, e))
+        logger.warning('Problem getting number of steps ("{}"), e = {}'.format(result_type, e))
         no_steps = np.nan
 
     return no_steps

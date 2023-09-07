@@ -57,7 +57,7 @@ def parse_args_to_dict():
 if __name__ == '__main__':
 
     # TOADD! Actual hyperparameter config that defines the experiment to run
-    hyperparam_runs = {'hparam_tag'}
+    hyperparam_runs = {'hyperparam_example_name'}
     hparam_run_results = {}
     for hyperparam_idx, hyperparam_name in enumerate(hyperparam_runs):
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                             training_config=config['config']['TRAINING'],
                             model_config=config['config']['MODEL'],
                             machine_config=config['config']['MACHINE'],
-                            output_dir=config['run']['output_artifacts_dir'])
+                            output_dir=config['run']['output_experiment_dir'])
 
         logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
 

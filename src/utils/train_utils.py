@@ -145,7 +145,7 @@ def add_epoch_results_to_experiment_results(experim_res: dict, epoch_res: dict,
                                                     experim_arrays=deepcopy(experim_res[results_type]))
         else:
             if epoch == 1:
-                warnings.warn('Note if you have anything stored at results_type = "{}", '
+                logger.warning('Note if you have anything stored at results_type = "{}", '
                               'they do not get autocollected over epochs at the moment,\n'
                               'only the keys in "arrays" and "scalars" subdictionaries are correctly implemented'.
                               format(results_type))

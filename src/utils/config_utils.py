@@ -1,5 +1,7 @@
 import os
 import warnings
+from copy import deepcopy
+from datetime import datetime, timezone
 
 from typing import Dict, Any
 import hashlib
@@ -42,17 +44,40 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     config['config']['MACHINE'] = set_up_environment(machine_config=config['config']['MACHINE'],
                                                      local_rank=config['ARGS']['local_rank'])
 
+    config_hash = dict_hash(dictionary=config['config'])
+    start_time = get_datetime_string()
+    output_base_dir = os.path.join(config['ARGS']['output_dir'], 'experiments')
     config['run'] = {
         'hyperparam_name': hyperparam_name,
-        'output_artifacts_dir': os.path.join(config['ARGS']['output_dir'], hyperparam_name),
-        # 'config_hash': dict_hash(config['config'])
+        'hyperparam_base_name': hyperparam_name,
+        'output_base_dir': output_base_dir,
+        'output_experiment_dir': os.path.join(output_base_dir, hyperparam_name),
+        'output_wandb_dir': os.path.join(output_base_dir, 'WANDB'),
+        'output_mlflow_dir': os.path.join(output_base_dir, 'MLflow'),
+        'config_hash': config_hash,
+        'start_time': start_time
     }
+
+    # Get a predefined smaller subset to be logged as MLflow/WANDB columns/hyperparameters
+    # to make the dashboards cleaner, or alternatively you can just dump the whole config['config']
+    config['hyperparameters'] = define_hyperparam_run_params(config)
+    config['hyperparameters_flat'] = flatten_nested_dictionary(dict_in=config['hyperparameters'])
+
+    if config['config']['LOGGING']['unique_hyperparam_name_with_hash'] == 1:
+        # i.e. whether you want a tiny change in dictionary content make this training to be grouped with
+        # another existing (this is FALSE), or to be a new hyperparam name (TRUE) if you forgot for example to change
+        # the hyperparam run name after some config changes. In some cases you would like to run the same experiment
+        # over and over again and to be grouped under the same run if you want to know how reproducible your run is
+        # and don't want to add for example date to the hyperparam name
+        # e.g. from "'hyperparam_example_name'" ->
+        #     "'hyperparam_example_name_9e0c146a68ec606442a6ec91265b11c3'"
+        config['run']['hyperparam_name'] += '_{}'.format(config_hash)
 
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
                   "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-    logger.add(os.path.join(config['run']['output_artifacts_dir'], 'log_{}.txt'.format(hyperparam_name)),
+    logger.add(os.path.join(config['run']['output_experiment_dir'], 'log_{}.txt'.format(hyperparam_name)),
                level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
-    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_artifacts_dir']))
+    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_experiment_dir']))
 
     # Initialize ML logging (experiment tracking)
     config['run']['mlflow'] = init_mlflow_logging(config=config,
@@ -138,7 +163,7 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
         torch.backends.cudnn.benchmark = True
     else:
         device = 'cpu'
-        warnings.warn('No Nvidia CUDA GPU found, training on CPU instead!')
+        logger.warning('No Nvidia CUDA GPU found, training on CPU instead!')
 
     # see if this is actually the best way to do things, as "parsed" things start to be added to a static config dict
     machine_config['IN_USE'] = {'device': device,
@@ -155,6 +180,8 @@ def hash_config_dictionary(dict_in: dict):
     :return:
     """
 
+
+
 def dict_hash(dictionary: Dict[str, Any]) -> str:
     """
     MD5 hash of a dictionary.
@@ -164,6 +191,96 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
     # We need to sort arguments so {'a': 1, 'b': 2} is
     # the same as {'b': 2, 'a': 1}
     # Fix this with the "to_serializable" TypeError: Object of type int64 is not JSON serializable
-    encoded = json.dumps(dictionary, sort_keys=True, default=to_serializable).encode()
-    dhash.update(encoded)
-    return dhash.hexdigest()
+    try:
+        encoded = json.dumps(dictionary, sort_keys=True, default=to_serializable).encode()
+        dhash.update(encoded)
+        hash_out = dhash.hexdigest()
+    except Exception as e:
+        logger.warning('Problem getting the hash of the config dictionary, error = {}'.format(e))
+    return hash_out
+
+
+def get_datetime_string():
+
+    # Use GMT time if you have coworkers across the world running the jobs
+    now = datetime.now(timezone.utc)
+    date = now.strftime("%Y%m%d-%H%MGMT")
+
+    return date
+
+
+def define_hyperparam_run_params(config: dict) -> dict:
+    """
+    To be optimized later? You could read these from the config as well, which subdicts count as
+    experiment hyperparameters. Not just dumping all possibly settings that maybe not have much impact
+    on the "ML science" itself, e.g. number of workers for dataloaders or something
+    :param config:
+    :return:
+    """
+
+    hyperparams = {}
+    cfg = config['config']
+
+    logger.info('Hand-picking the keys/subdicts from "config" that are logged as hyperparameters for MLflow/WANDB')
+
+    # What datasets were you used for training the model
+    hyperparams['datasets'] = cfg['DATA']['DATA_SOURCE']['DATASET_NAME']
+
+    # What model and architecture hyperparams you used
+    hyperparams['model'] = {}
+    # Well maybe you would not want all these to be logged either?
+    model_name = cfg['MODEL']['MODEL_NAME']
+    hyperparams['model'] = cfg['MODEL'][model_name]   # these are not all maybe wanted/needed
+    hyperparams['model']['name'] = model_name
+
+    # Training params
+    training_tmp = deepcopy(cfg['TRAINING'])
+    training_tmp.pop('METRICS', 'training_tmp')
+    hyperparams['training'] = training_tmp
+
+    setting_name = 'LOSS'
+    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
+                                                                   settings_key='LOSS_FUNCTIONS')
+    setting_name = 'OPTIMIZER'
+    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
+                                                                   settings_key='OPTIMIZERS')
+    setting_name = 'SCHEDULER'
+    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
+                                                                   settings_key='SCHEDULERS')
+
+    return hyperparams
+
+
+def parse_settings_by_name(cfg: dict, setting_name: str, settings_key: str) -> dict:
+    settings_tmp = cfg[settings_key]
+    # remove one nesting level
+    name = list(settings_tmp.keys())[0]
+    settings = settings_tmp[name]  # similarly here, you would like to have manual LUT for "main params"
+    settings['name'] = name
+    return settings
+
+
+def flatten_nested_dictionary(dict_in: dict, delim: str = '__') -> dict:
+
+    def parse_non_dict(var_in):
+        # placeholder if you for example have lists that you would like to convert to strings?
+        return var_in
+
+    dict_out = {}
+    for key1 in dict_in:
+        subentry = dict_in[key1]
+        if isinstance(subentry, dict):
+            for key2 in subentry:
+                subentry2 = subentry[key2]
+                key_out2 = '{}{}{}'.format(key1, delim, key2)
+                if isinstance(subentry2, dict):
+                    for key3 in subentry2:
+                        subentry3 = subentry2[key3]
+                        key_out3 = '{}{}{}{}{}'.format(key1, delim, key2, delim, key3)
+                        dict_out[key_out3] = parse_non_dict(subentry3)
+                else:
+                    dict_out[key_out2] = parse_non_dict(subentry2)
+        else:
+            dict_out[key1] = parse_non_dict(subentry)
+
+    return dict_out

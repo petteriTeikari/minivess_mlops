@@ -35,7 +35,7 @@ def get_commit_id() -> dict:
         git_hash_short = get_git_revision_short_hash()
         git_hash = get_git_revision_hash()
     except Exception as e:
-        warnings.warn('Failed to get the git hash, e = {}'.format(e))
+        logger.warning('Failed to get the git hash, e = {}'.format(e))
         git_hash_short, git_hash = np.nan, np.nan
 
     return {'git_hash_short': git_hash_short, 'git_hash': git_hash}
@@ -52,18 +52,18 @@ def get_library_versions() -> dict:
         metadata['v_Torch'] = str(torch.__version__)
         # https://www.thepythoncode.com/article/get-hardware-system-information-python
     except Exception as e:
-        warnings.warn('Problem getting library versions, error = {}'.format(e))
+        logger.warning('Problem getting library versions, error = {}'.format(e))
 
     try:
         metadata['monai'] = get_monai_config()
     except Exception as e:
-        warnings.warn('Problem with the MONAI printouts, error = {}'.format(e))
+        logger.warning('Problem with the MONAI printouts, error = {}'.format(e))
 
     try:
         metadata['v_CUDA'] = torch.version.cuda
         metadata['v_CuDNN'] = torch.backends.cudnn.version()
     except Exception as e:
-        warnings.warn('Problem getting CUDA library versions, error = {}'.format(e))
+        logger.warning('Problem getting CUDA library versions, error = {}'.format(e))
 
     return metadata
 
@@ -104,7 +104,7 @@ def get_system_information() -> dict:
         metadata['sys_cpu'] = get_processor_info()
         metadata['sys_RAM_GB'] = str(round(psutil.virtual_memory().total / (1024 ** 3), 1))
     except Exception as e:
-        warnings.warn('Problem getting system info, error = {}'.format(e))
+        logger.warning('Problem getting system info, error = {}'.format(e))
 
     return metadata
 
@@ -116,11 +116,11 @@ def get_processor_info():
     if system() == "Windows":
         all_info = processor()
         # cpuinfo better? https://stackoverflow.com/a/62888665
-        warnings.warn('You need to add to Windows parsing for your CPU name')
+        logger.warning('You need to add to Windows parsing for your CPU name')
 
     elif system() == "Darwin":
         all_info = subprocess.check_output(['/usr/sbin/sysctl', "-n", "machdep.cpu.brand_string"]).strip()
-        warnings.warn('You need to add to Mac parsing for your CPU name')
+        logger.warning('You need to add to Mac parsing for your CPU name')
 
     elif system() == "Linux":
         command = "cat /proc/cpuinfo"
@@ -130,6 +130,6 @@ def get_processor_info():
                 model_name = re.sub(".*model name.*:", "", line, 1)
 
     else:
-        warnings.warn('Unknown OS = {}, cannot get the CPU name'.format(system()))
+        logger.warning('Unknown OS = {}, cannot get the CPU name'.format(system()))
 
     return model_name

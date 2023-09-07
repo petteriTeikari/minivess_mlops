@@ -210,6 +210,7 @@ config:
   # LOGGING
   # ----------------------------------------------------------------------------------- #
   LOGGING:
+    unique_hyperparam_name_with_hash: True
     TENSORBOARD:
       placeholder: 1
     MLFLOW:

@@ -95,7 +95,7 @@ def nibabel_file_checker(filepath: str, debug_verbose: bool = False):
         read_problem = np.nan
 
     except Exception as e:
-        warnings.warn('Problem opening the file "{}", e = {}'.format(fname, e))
+        logger.warning('Problem opening the file "{}", e = {}'.format(fname, e))
         dict_out = None
         read_problem = fname
 

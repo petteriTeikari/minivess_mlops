@@ -59,7 +59,7 @@ def get_metadata_for_sample_metrics(metadata: dict) -> dict:
             'sample_name': np.expand_dims(np.array((sample_name)), axis=0)
         }
     except Exception as e:
-        warnings.warn('Problem getting the metadata? error = "{}",\n'
+        logger.warning('Problem getting the metadata? error = "{}",\n'
                       'This tested now only for MINIVESS that has the filepath in the metadata'.format(e))
 
     return sample_metadata

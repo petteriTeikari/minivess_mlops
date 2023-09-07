@@ -39,7 +39,7 @@ def init_mlflow_logging(config: dict,
         else:
 
             # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
-            local_server_path = os.path.join(config['ARGS']['output_dir'], 'mlflow')
+            local_server_path = config['run']['output_mlflow_dir']
             os.makedirs(local_server_path, exist_ok=True)
             mlflow.set_tracking_uri(local_server_path)
 

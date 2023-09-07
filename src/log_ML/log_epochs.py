@@ -15,7 +15,7 @@ def log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
     try:
         os.makedirs(output_artifacts['epoch_level']['tb_dir'], exist_ok=True)
     except Exception as e:
-        warnings.warn('Problem creating Tensorboard artifact directory to "{}",'
+        logger.warning('Problem creating Tensorboard artifact directory to "{}",'
                       '\nerror={}'.format(output_artifacts['epoch_level']['tb_dir'], e))
 
     # Create the Tensorboard writer if it does not yet exist (on epoch 0) on the artifact directory
