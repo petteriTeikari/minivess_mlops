@@ -46,17 +46,24 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
 
     config_hash = dict_hash(dictionary=config['config'])
     start_time = get_datetime_string()
-    output_base_dir = os.path.join(config['ARGS']['output_dir'], 'experiments')
+    output_experiments_base_dir = os.path.join(config['ARGS']['output_dir'], 'experiments')
     config['run'] = {
         'hyperparam_name': hyperparam_name,
         'hyperparam_base_name': hyperparam_name,
-        'output_base_dir': output_base_dir,
-        'output_experiment_dir': os.path.join(output_base_dir, hyperparam_name),
-        'output_wandb_dir': os.path.join(output_base_dir, 'WANDB'),
-        'output_mlflow_dir': os.path.join(output_base_dir, 'MLflow'),
+        'output_base_dir': config['ARGS']['output_dir'],
+        'output_experiments_base_dir': output_experiments_base_dir,
+        'output_experiment_dir': os.path.join(output_experiments_base_dir, hyperparam_name),
+        # these sit outside the experiments and are not "hyperparameter run"-specific
+        'output_wandb_dir': os.path.join(config['ARGS']['output_dir'], 'WANDB'),
+        'output_mlflow_dir': os.path.join(config['ARGS']['output_dir'], 'MLflow'),
         'config_hash': config_hash,
         'start_time': start_time
     }
+
+    # Init variables for 'run'
+    config['run']['repeat_artifacts'] = {}
+    config['run']['ensemble_artifacts'] = {}
+    config['run']['fold_dir'] = {}
 
     # Get a predefined smaller subset to be logged as MLflow/WANDB columns/hyperparameters
     # to make the dashboards cleaner, or alternatively you can just dump the whole config['config']
@@ -159,7 +166,11 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
 
     if len(available_gpus) > 0:
         device = torch.device(f"cuda:{local_rank}")
-        torch.cuda.set_device(device)
+        try:
+            torch.cuda.set_device(device)
+        except Exception as e:
+            # e.g. "CUDA unknown error - this may be due to an incorrectly set up environment"
+            raise EnvironmentError('Problem setting up the CUDA device'.format(e))
         torch.backends.cudnn.benchmark = True
     else:
         device = 'cpu'

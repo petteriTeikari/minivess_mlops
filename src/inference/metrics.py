@@ -1,5 +1,6 @@
 import numpy as np
 import time
+from loguru import logger
 
 import torch
 from monai.metrics import compute_hausdorff_distance, compute_generalized_dice
@@ -7,15 +8,18 @@ from monai.utils import convert_to_tensor
 from monai.networks.utils import one_hot
 
 def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.ndarray,
+                                     eval_config: dict,
                                      include_background: bool = False,
                                      debug_mode: bool = True):
 
     # Do the wrangling and checks
     x, y, y_pred, y_onehot, y_pred_onehot, sample_metrics = prepare_for_metrics(y=y, y_pred=y_pred, x=x)
 
+    metrics_computed = 0
+
     # Hausdorff, takes a lot longer than Dice but if only evaluated once after all the repeats per sample,
     # this does not get some computationally heavy
-    if not debug_mode:
+    if 'hausdorff' in eval_config['METRICS']:
         t0 = time.time()
         metric = 'hausdorff'
         sample_metrics['metrics'][metric] = (compute_hausdorff_distance(y_pred=y_pred_onehot, y=y_onehot,
@@ -23,14 +27,20 @@ def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.nd
                                                   detach().squeeze().numpy())
         sample_metrics['metrics'][metric] = np.expand_dims(sample_metrics['metrics'][metric], axis=0)
         sample_metrics['timing'][metric] = np.array([time.time() - t0])
+        metrics_computed += 1
 
-    # (Generalized) Dice
-    t0 = time.time()
-    metric = 'dice'
-    sample_metrics['metrics'][metric] = (compute_generalized_dice(y_pred=y_pred_onehot, y=y_onehot,
-                                                                      include_background=include_background).
-                                         detach().numpy())
-    sample_metrics['timing'][metric] = np.array([time.time() - t0])
+    if 'dice' in eval_config['METRICS']:
+        t0 = time.time()
+        metric = 'dice'
+        sample_metrics['metrics'][metric] = (compute_generalized_dice(y_pred=y_pred_onehot, y=y_onehot,
+                                                                          include_background=include_background).
+                                             detach().numpy())
+        sample_metrics['timing'][metric] = np.array([time.time() - t0])
+        metrics_computed += 1
+
+    if metrics_computed == 0:
+        logger.warning('No metrics computed after re-inference, is your config file correct with these'
+                       'metrics to be computed:\n{}'.format(eval_config['METRICS']))
 
     return sample_metrics
 

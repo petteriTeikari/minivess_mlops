@@ -162,9 +162,25 @@ config:
     # Do not track change for these n epochs at all if your first epochs have noisy metrics
     NO_WARMUP_EPOCHS: 0
     # You could smooth the metric curve if again you get noisy / spurious metrics, and get those
-    # best metrics in practive only from the end of the training when optimization has converged
+    # best metrics in practice only from the end of the training when optimization has converged
     EMA_SMOOTH: False
     SAVE_FULL_MODEL: True
+
+  # ----------------------------------------------------------------------------------- #
+  # VALIDATION_BEST
+  # ----------------------------------------------------------------------------------- #
+  VALIDATION_BEST:
+    # The "VALIDATION" above is done after each epoch, or after n epochs. This can get a bit
+    # expensive to done often if you for example want to compute Hausdorff distance.
+    # This "VALIDATION_BEST" controls the inference done for best model after each repeat,
+    # for ensemble of models, etc.
+    METRICS:
+      - 'dice'
+      - 'hausdorff'
+    METRICS_OPERATORS:
+      # which is better, higher (max) or lower (min) value for this metric (see above)
+      - 'max'
+      - 'min'
 
   # ----------------------------------------------------------------------------------- #
   # DATASETS

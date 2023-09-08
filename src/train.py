@@ -5,7 +5,7 @@ import torch
 from tqdm import tqdm
 from loguru import logger
 
-from src.inference.ensemble_main import ensemble_the_repeats
+from src.inference.ensemble_main import reinference_dataloaders
 from src.eval import evaluate_datasets_per_epoch
 from src.log_ML.log_ensemble import log_ensemble_results
 from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, \
@@ -26,9 +26,6 @@ def training_script(experim_dataloaders: dict,
     # Cross-validation loop (if used), i.e. when train/val splits change for each execution
     os.makedirs(output_dir, exist_ok=True)
     fold_results, ensembled_results = {}, {}
-    config['run']['repeat_artifacts'] = {}
-    config['run']['ensemble_artifacts'] = {}
-    config['run']['fold_dir'] = {}
     config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
     config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
     config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
@@ -89,14 +86,19 @@ def train_model_for_single_fold(fold_dataloaders: dict,
     logger.info('Done training all the {} repeats of "{}"'.format(training_config['NO_REPEATS'], fold_name))
 
     # Log (repeat averages) and best repeats
-    log_averaged_and_best_repeats(repeat_results, fold_name=fold_name, config=config)
+    log_averaged_and_best_repeats(repeat_results,
+                                  fold_name=fold_name,
+                                  config=config,
+                                  dataloaders=fold_dataloaders,
+                                  device=machine_config['IN_USE']['device'])
 
     # Ensemble the repeats (submodels)
-    ensemble_results = ensemble_the_repeats(repeat_results=repeat_results,
-                                            dataloaders=fold_dataloaders,
-                                            artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
-                                            config=config,
-                                            device=machine_config['IN_USE']['device'])
+    ensemble_results = reinference_dataloaders(input_dict=repeat_results,
+                                               dataloaders=fold_dataloaders,
+                                               artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
+                                               config=config,
+                                               device=machine_config['IN_USE']['device'],
+                                               model_scheme='ensemble_from_repeats')
 
     # Log inference
     log_ensemble_results(ensemble_results, config=config)

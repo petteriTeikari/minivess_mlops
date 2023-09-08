@@ -192,6 +192,7 @@ def import_model_from_path(model_path: str,
                            validation_config: dict):
 
     if os.path.exists(model_path):
+        logger.debug('Import saved Pytorch model from "{}"'.format(model_path))
         if validation_config['SAVE_FULL_MODEL']:
             model_dict = torch.load(model_path)
             model = model_dict['model']

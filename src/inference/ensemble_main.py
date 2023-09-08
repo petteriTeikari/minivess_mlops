@@ -1,5 +1,4 @@
 import os
-import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -9,28 +8,29 @@ from loguru import logger
 from tqdm import tqdm
 
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
-    get_metadata_for_sample_metrics, merge_nested_dicts, compute_split_metric_stats
-from src.inference.inference_utils import inference_sample, conv_metatensor_to_numpy
-from src.inference.metrics import get_sample_metrics_from_np_masks, get_sample_uq_metrics_from_ensemble_stats
+    compute_split_metric_stats
+from src.inference.inference_utils import inference_sample, inference_best_repeat, \
+    get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
 from src.utils.data_utils import redefine_dataloader_for_inference
 
 
-def ensemble_the_repeats(repeat_results: dict,
-                         dataloaders: dict,
-                         artifacts_output_dir: str,
-                         config: dict,
-                         device: str,
-                         debug_mode: bool = False):
+def reinference_dataloaders(input_dict: dict,
+                            dataloaders: dict,
+                            artifacts_output_dir: str,
+                            config: dict,
+                            device,
+                            model_scheme: str = 'ensemble_from_repeats',
+                            debug_mode: bool = False):
 
     os.makedirs(artifacts_output_dir, exist_ok=True)
-    ensemble_results = {}
+    results_out = {}
     for split in dataloaders:
 
         if split == 'TEST':
             # add this check to some debug mode to speed up development, and not having to compute all the splits
 
-            logger.info('Ensemble inference for split "{}"'.format(split))
+            logger.info('Inference for split "{}"'.format(split))
             if isinstance(dataloaders[split], dict):
                 # i.e. this is either VAL or TEST. You could validate (save best model) based on multiple datasets if
                 # desired at some point, and similarly you could have n external datasets that you would like to evaluate
@@ -42,11 +42,23 @@ def ensemble_the_repeats(repeat_results: dict,
                                                                    split=split,
                                                                    device=device,
                                                                    config=config)
-                    ensemble_results[split] = inference_ensemble_dataloader(dataloader=dataloader,
-                                                                            split=split,
-                                                                            repeat_results=repeat_results,
-                                                                            config=config,
-                                                                            device=device)
+
+                    if model_scheme == 'ensemble_from_repeats':
+                        results_out[split] = inference_ensemble_dataloader(dataloader=dataloader,
+                                                                           split=split,
+                                                                           repeat_results=input_dict,
+                                                                           config=config,
+                                                                           device=device)
+                    elif model_scheme == 'best_repeats':
+                        results_out[split] = inference_best_repeat(dataloader=dataloader,
+                                                                   split=split,
+                                                                   best_repeat_dicts=input_dict,
+                                                                   config=config,
+                                                                   device=device)
+
+                    else:
+                        raise NotImplementedError('Unknown or not yet implemented '
+                                                  'model_scheme = "{}"'.format(model_scheme))
 
             else:
                 # TRAIN had no possibility to use multiple datasets (you could train for sure for multiple datasets,
@@ -57,15 +69,25 @@ def ensemble_the_repeats(repeat_results: dict,
                                                                split=split,
                                                                device=device,
                                                                config=config)
-                ensemble_results[split] = inference_ensemble_dataloader(dataloader=dataloader,
-                                                                        split=split,
-                                                                        repeat_results=repeat_results,
-                                                                        config=config,
-                                                                        device=device)
 
+                if model_scheme == 'ensemble_from_repeats':
+                    results_out[split] = inference_ensemble_dataloader(dataloader=dataloader,
+                                                                       split=split,
+                                                                       repeat_results=input_dict,
+                                                                       config=config,
+                                                                       device=device)
+                elif model_scheme == 'best_repeats':
+                    results_out[split] = inference_best_repeat(dataloader=dataloader,
+                                                               split=split,
+                                                               best_repeat_dicts=input_dict,
+                                                               config=config,
+                                                               device=device)
 
+                else:
+                    raise NotImplementedError('Unknown or not yet implemented '
+                                              'model_scheme = "{}"'.format(model_scheme))
 
-    return ensemble_results
+    return results_out
 
 
 def inference_ensemble_dataloader(dataloader,
@@ -128,9 +150,10 @@ def inference_ensemble_dataloader(dataloader,
 
                     # And let's compute the metrics from the ensembled prediction
                     sample_ensemble_metrics = (
-                        get_ensemble_metrics(ensemble_stat_results=ensemble_stat_results,
-                                             config=config,
-                                             batch_data=batch_data))
+                        get_inference_metrics(ensemble_stat_results=ensemble_stat_results,
+                                              y_pred=ensemble_stat_results['arrays']['mask'],
+                                              config=config,
+                                              batch_data=batch_data))
 
                     # Collect the metrics for each sample so you can for example compute mean dice for the split
                     split_metrics[dataset][metric_to_track] = \
@@ -182,23 +205,3 @@ def compute_ensembled_response(input_data: np.ndarray,
     return variable_stats
 
 
-def get_ensemble_metrics(ensemble_stat_results: dict,
-                         config: dict,
-                         batch_data: dict) -> dict:
-
-    if 'label' in batch_data:
-        # cannot compute any supervised metrics, if the label (segmentation mask) does not come with the image data
-        x = conv_metatensor_to_numpy(batch_data['image'])
-        y = ground_truth = conv_metatensor_to_numpy(batch_data['label'])
-        y_pred = ensemble_stat_results['arrays']['mask']
-        ensemble_metrics = get_sample_metrics_from_np_masks(x, y, y_pred)
-
-        ensemble_uq_metrics = get_sample_uq_metrics_from_ensemble_stats(ensemble_stat_results)
-        ensemble_metrics2 = merge_nested_dicts(ensemble_metrics, ensemble_uq_metrics) # {**ensemble_metrics, **ensemble_uq_metrics}
-
-        ensemble_metrics['metadata'] = get_metadata_for_sample_metrics(metadata=batch_data['metadata'][0])
-
-    else:
-        ensemble_metrics = None
-
-    return ensemble_metrics
