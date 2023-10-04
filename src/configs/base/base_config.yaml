@@ -3,7 +3,7 @@
 defaults:
   - _self_
   # you must specify the base config you want to run
-  - config: ??? # check later Hydra part
+  - config: ??? # check later Hydra/OmegaConf part
 
 VERSION: 0.01alpha
 NAME: 'base_config'

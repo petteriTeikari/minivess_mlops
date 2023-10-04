@@ -83,8 +83,14 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
 
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
                   "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-    logger.add(os.path.join(config['run']['output_experiment_dir'], 'log_{}.txt'.format(hyperparam_name)),
-               level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
+    try:
+        logger.add(os.path.join(config['run']['output_experiment_dir'], 'log_{}.txt'.format(hyperparam_name)),
+                   level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
+    except Exception as e:
+        raise IOError('Problem initializing the log file to the artifacts output, have you created one? '
+                      'do you have the permissions correct? See README.md for the "minivess_mlops_artifacts" creation'
+                      'with symlink to /mnt \n error msg = {}'.format(e))
+
     logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_experiment_dir']))
 
     # Initialize ML logging (experiment tracking)
@@ -135,10 +141,9 @@ def import_config_from_yaml(config_file: str = 'base_config.yaml',
     config_path = os.path.join(config_dir, config_file)
     if os.path.exists(config_path):
         logger.info('Import {} config from "{}", method = "{}"', config_type, config_path, load_method)
-        if load_method == 'basic':
-            config = import_yaml_file(config_path)
-        elif load_method == 'OmegaConf':
+        if load_method == 'OmegaConf':
             # https://www.sscardapane.it/tutorials/hydra-tutorial/#first-steps-manipulating-a-yaml-file
+            # https://omegaconf.readthedocs.io/en/2.3_branch/
             config = OmegaConf.load(config_path)
         else:
             raise IOError('Unknown method for handling configs? load_method = {}'.format(load_method))
@@ -146,24 +151,6 @@ def import_config_from_yaml(config_file: str = 'base_config.yaml',
         raise IOError('Cannot find {} config from = {}'.format(config_type, config_path))
 
     return config
-
-
-def import_yaml_file(yaml_path: str):
-
-    # TOADD! add scientifc notation resolver? e.g. for lr https://stackoverflow.com/a/30462009/6412152
-    with open(yaml_path) as file:
-        try:
-            cfg = yaml.load(file, Loader=yaml.FullLoader)
-        except yaml.YAMLError as exc:
-            print(exc)
-
-    if 'cfg' not in locals():
-        raise IOError('YAML import failed! See the the line and columns above that were not parsed correctly!\n'
-                      '\t\tI assume that you added or modified some entries and did something illegal there?\n'
-                      '\t\tMaybe a "=" instead of ":"?\n'
-                      '\t\tMaybe wrong use of "’" as the closing quote?')
-
-    return cfg
 
 
 def set_up_environment(machine_config: dict, local_rank: int = 0):

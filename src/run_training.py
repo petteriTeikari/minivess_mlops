@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # will be the only storage class. This should only matter to you if you are using storages directly.
 # To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
 
-# FIXME! MLflow uses pydantic and it throws: Field "model_server_url" has conflict with protected namespace "model_".
+# TOEXPLORE! MLflow uses pydantic and it throws: Field "model_server_url" has conflict with protected namespace "model_".
 #  Field "model_server_url" has conflict with protected namespace "model_".
 
 # Control logger level here, make it nicer later
