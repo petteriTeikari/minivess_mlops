@@ -18,6 +18,24 @@ def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
         with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
             zip_ref.extractall(local_data_dir)
 
+
+    def check_if_extracted_already(local_data_dir: str) -> bool:
+        already_extracted = False
+        if os.path.exists(local_data_dir):
+            files_and_subdirs_in_dir = glob.glob(os.path.join(local_data_dir, '*'))
+            if len(files_and_subdirs_in_dir) > 0:
+                already_extracted = True
+        return already_extracted
+
+
+    def download_zip(input_url: str):
+        query_parameters = {"downloadformat": "zip"}
+        response = requests.get(input_url, params=query_parameters)
+        with open("gdp_by_country.zip", mode="wb") as file:
+            ...
+            file.write(response.content)
+
+
     input_filename = input_url.split('/')[-1]
     input_extension = '.zip'
     local_data_dir = os.path.join(data_dir, input_filename)
@@ -26,31 +44,41 @@ def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
     zip_out = os.path.join(data_dir, input_filename)
     os.makedirs(zip_out, exist_ok=True)
 
-    if os.path.exists(local_data_dir):
-        # if the zipping failed, and only the folder was created, this obviously thinks that the
-        # download and extraction went well. #TO-OPTIMIZE
+    if check_if_extracted_already(local_data_dir):
         logger.info('Dataset "{}" has already been downloaded and extracted to "{}"', dataset_name, zip_out)
 
-    elif os.path.exists(local_data_dir):
-        # you have manually pasted the zip here and this would autoextract the files to the three folders:
-        logger.info('Dataset .zip "{}" has already been downloaded, and extracting this file "{}"', dataset_name, zip_out)
+    elif os.path.exists(local_zip_path):
+        # you have manually pasted the zip here and this would autoextract the files to the three folders,
+        # or your download went fine, and something crashed before extraction
+        logger.info('Dataset .zip "{}" has already been downloaded, and extracting this file "{}"',
+                    dataset_name, zip_out)
         extract_minivess_zip(local_zip_path, local_data_dir)
 
     else:
-        raise NotImplementedError('Implement the download!')
-        response = requests.get(input_url)  # making requests to server
-        logger.info('Downloading dataset "{}" to "{}"', dataset_name, local_path)
-        with open(local_path, "wb") as handle:
-            for data in tqdm(response.iter_content()):
-                handle.write(data)
-
-        with zipfile.ZipFile(local_path, 'r') as zip_ref:
-            zip_ref.extractall(zip_out)
-
-        dir_size_mb = round(100 * get_dir_size(start_path=zip_out) / (1024 ** 2)) / 100
-        logger.info('Extracted the zip file to "{}" (size on disk = {} MB)', zip_out, dir_size_mb)
+        logger.info('Downloading dataset "{}" to "{}"', dataset_name, local_zip_path)
+        download_zip_from_ebrains(input_url, local_zip_path)
+        extract_minivess_zip(local_zip_path, local_data_dir)
+        # dir_size_mb = round(100 * get_dir_size(start_path=zip_out) / (1024 ** 2)) / 100
+        # logger.info('Extracted the zip file to "{}" (size on disk = {} MB)', zip_out, dir_size_mb)
 
     return zip_out
+
+
+def download_zip_from_ebrains(input_url, local_zip_path):
+    """
+    https://github.com/HumanBrainProject/ebrains-drive/blob/master/doc.md#seaffile_get
+    https://gitlab.ebrains.eu/fousekjan/tvb-ebrains-data/-/blob/master/tvb_ebrains_data/data.py
+    https://github.com/HumanBrainProject/ebrains-drive
+    https://github.com/HumanBrainProject/fairgraph
+
+    Not sure if the download is possible unauthenticated?
+    """
+
+    raise NotImplementedError('Implement the download from EBRAINS. your standard requests approach will not work\n'
+                              'Manual workaround now by downloading the .zip manually: {}\n'
+                              'Save this then to {}\n'
+                              'And run this script again, and the .zip will be autoextracted'.
+                              format(input_url, local_zip_path))
 
 
 def quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fname_in: str = 'mv39'):
