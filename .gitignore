@@ -6,3 +6,4 @@
 /src/runs/*
 /src/wandb/*
 /mlruns/*
+*.pdf

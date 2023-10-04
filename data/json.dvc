@@ -1,0 +1,6 @@
+outs:
+- md5: 60401763cb934fbdcbb1e84d80e6c034.dir
+  size: 30665
+  nfiles: 70
+  hash: md5
+  path: json

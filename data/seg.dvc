@@ -1,0 +1,6 @@
+outs:
+- md5: 381ac4178d63f68f300c9cdd0c135ef8.dir
+  size: 19954997
+  nfiles: 70
+  hash: md5
+  path: seg
