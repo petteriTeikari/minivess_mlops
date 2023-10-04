@@ -11,11 +11,19 @@ import psutil
 import torch
 
 
-def get_run_metadata():
+def get_run_metadata(metadata_method: str = 'MONAI'):
 
-    metadata = get_library_versions()
-    sysinfo = get_system_information()
-    metadata = {**metadata, **sysinfo}
+    if metadata_method == 'MONAI':
+        # MONAI already comes with functions to return you library versions and system information
+        metadata = get_monai_config()
+
+    elif format == 'custom_subset':
+        metadata = get_library_versions()
+        sysinfo = get_system_information()
+        metadata = {**metadata, **sysinfo}
+    else:
+        raise NotImplementedError('Unknown metadata_method to get metadata for logging = "{}"'.format(metadata_method))
+
     ids = get_commit_id()
     metadata = {**metadata, **ids}
 
@@ -55,11 +63,6 @@ def get_library_versions() -> dict:
         logger.warning('Problem getting library versions, error = {}'.format(e))
 
     try:
-        metadata['monai'] = get_monai_config()
-    except Exception as e:
-        logger.warning('Problem with the MONAI printouts, error = {}'.format(e))
-
-    try:
         metadata['v_CUDA'] = torch.version.cuda
         metadata['v_CuDNN'] = torch.backends.cudnn.version()
     except Exception as e:
@@ -68,7 +71,7 @@ def get_library_versions() -> dict:
     return metadata
 
 
-def get_monai_config():
+def get_monai_config(flatten_dict: bool = True, clean_for_omegaconf: bool = True):
 
     monai_dict = {}
 
@@ -76,6 +79,10 @@ def get_monai_config():
     monai_dict['libs'] = get_config_values()
     monai_dict['system'] = get_system_info()
     monai_dict['GPU'] = get_gpu_info()
+
+    # Manual fix for Pytorch version as it comes out as "TorchVersion" and not as a str that would work with OmegaConf
+    if 'Pytorch' in monai_dict['libs']:
+        monai_dict['libs']['Pytorch'] = str(monai_dict['libs']['Pytorch'])
 
     logger.info('MONAI | LIBRARY VERSIONS:')
     for k, v in monai_dict['libs'].items():
@@ -93,7 +100,27 @@ def get_monai_config():
     for k, v in monai_dict['GPU'].items():
         logger.info('  {}: {}'.format(k, v))
 
+    if flatten_dict:
+        monai_dict = {**monai_dict['MONAI_libs'], **monai_dict['libs'], **monai_dict['system'], **monai_dict['GPU']}
+
+    if clean_for_omegaconf:
+        monai_dict = clean_monai_dict_for_omegaconf(monai_dict)
+
     return monai_dict
+
+
+def clean_monai_dict_for_omegaconf(monai_dict):
+
+    dict_out = {}
+    for key_in in list(monai_dict.keys()):
+        value = monai_dict[key_in]
+        if isinstance(value, (str, int, float)):
+            dict_out[key_in] = value
+        else:
+            logger.warning('MONAI metadata key = "{}" not cleaned to OmegaConf as its type was too "exotic", '
+                           'type = {} (you see these on log though)'.format(key_in, type(value)))
+
+    return dict_out
 
 
 def get_system_information() -> dict:
