@@ -53,7 +53,11 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
 
                 if len(sub_res) > 0:
                     first_array_as_ex = sub_res[list(sub_res.keys())[0]]
-                    no_steps = len(first_array_as_ex)
+                    if isinstance(first_array_as_ex, float):
+                        # special edge case when you only trained for one epoch
+                        no_steps = 1
+                    else:
+                        no_steps = len(first_array_as_ex)
                 else:
                     # if you have no metrics saved to "arrays", cannot get the metric
                     no_steps = np.nan
