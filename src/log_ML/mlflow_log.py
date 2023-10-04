@@ -5,8 +5,9 @@ from loguru import logger
 import configparser
 
 def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
-
-
+    """
+    https://mlflow.org/docs/latest/auth/index.html#using-credentials-file
+    """
     pwd = os.getcwd()
     secrets_dir = os.path.join(pwd, '..', 'secrets')
     if not os.path.exists(secrets_dir):

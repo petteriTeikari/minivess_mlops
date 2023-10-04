@@ -173,6 +173,7 @@ config:
   # VALIDATION_BEST
   # ----------------------------------------------------------------------------------- #
   VALIDATION_BEST:
+    enable: False
     # The "VALIDATION" above is done after each epoch, or after n epochs. This can get a bit
     # expensive to done often if you for example want to compute Hausdorff distance.
     # This "VALIDATION_BEST" controls the inference done for best model after each repeat,
@@ -244,5 +245,5 @@ config:
         enable: True
 
     WANDB:
-      placeholder: 1
+      enable: True
       s3: null

@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 import glob
+
+import omegaconf
 from loguru import logger
 import wandb
 
@@ -68,18 +70,27 @@ def wandb_init_wrapper(project: str = None,
 
     os.makedirs(dir, exist_ok=True)
 
+    # Remember that the config dictionary might be actually an OmegaConf object, and we need to
+    # convert it back to ordinary dictionary if you want to dump it as a parameter dictionary to WANDB
+    if isinstance(param_conf, omegaconf.dictconfig.DictConfig):
+        logger.info('Convert parameter dictionary from OmegaConf to Dict')
+        param_conf = dict(param_conf)
+
     # https://docs.wandb.ai/ref/python/init
     # logger.info('Initialize Weights and Biases logging, \n'
     #             'project = "{}"'.format(project))
-    wandb_run = wandb.init(project = project,
-                           job_type = job_type,
-                           group = group,
-                           name = name,
-                           dir = dir,
-                           notes = notes,
-                           tags = tags,
-                           config = param_conf,
-                           save_code=True)
+    try:
+        wandb_run = wandb.init(project = project,
+                               job_type = job_type,
+                               group = group,
+                               name = name,
+                               dir = dir,
+                               notes = notes,
+                               tags = tags,
+                               config = param_conf,
+                               save_code=True)
+    except Exception as e:
+        raise IOError('Problem initializing WANDB, e = {}'.format(e))
 
     return wandb_run
 

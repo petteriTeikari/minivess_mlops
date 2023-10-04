@@ -46,18 +46,21 @@ def log_averaged_and_best_repeats(repeat_results: dict,
                      config=config,
                      service='MLflow')
 
-    # Re-inference the dataloader with the best model(s) of the best repeat
-    # e.g. you want to have Hausdorff distance here that you thought to be too heavy to compute while training
-    best_repeat_metrics = reinference_dataloaders(input_dict=best_repeat_dicts,
-                                                  config=config,
-                                                  artifacts_output_dir=config['run']['output_experiment_dir'],
-                                                  dataloaders=dataloaders,
-                                                  device=device,
-                                                  model_scheme='best_repeats')
+    if config['config']['VALIDATION_BEST']['enable']:
+        # Re-inference the dataloader with the best model(s) of the best repeat
+        # e.g. you want to have Hausdorff distance here that you thought to be too heavy to compute while training
+        best_repeat_metrics = reinference_dataloaders(input_dict=best_repeat_dicts,
+                                                      config=config,
+                                                      artifacts_output_dir=config['run']['output_experiment_dir'],
+                                                      dataloaders=dataloaders,
+                                                      device=device,
+                                                      model_scheme='best_repeats')
 
-    # log best repeat metrics here to MLflow/WANDB
-    log_best_reinference_metrics(best_repeat_metrics=best_repeat_metrics,
-                                 config=config)
+        # log best repeat metrics here to MLflow/WANDB
+        log_best_reinference_metrics(best_repeat_metrics=best_repeat_metrics,
+                                     config=config)
+    else:
+        logger.info('Skip VALIDATION_BEST')
 
 
 def log_best_repeats(best_repeat_dicts: dict, config: dict,
@@ -94,24 +97,31 @@ def log_crossvalidation_results(fold_results: dict,
     cv_results = compute_crossval_stats(fold_results_reordered)
 
     ensembled_results_reordered = reorder_ensemble_crossvalidation_results(ensembled_results)
-    cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
-    sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
+    if ensembled_results_reordered is not None:
+        cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
+        sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
 
-    log_wandb_repeat_results(fold_results=fold_results,
+    if config['config']['LOGGING']['WANDB']['enable']:
+        log_wandb_repeat_results(fold_results=fold_results,
+                                 output_dir=config['run']['output_base_dir'],
+                                 config=config)
+    else:
+        logger.info('Skipping repeat-level WANDB Logging!')
+
+    if ensembled_results_reordered is not None:
+        log_ensemble_results(ensembled_results=ensembled_results,
                              output_dir=config['run']['output_base_dir'],
                              config=config)
 
-    log_ensemble_results(ensembled_results=ensembled_results,
-                         output_dir=config['run']['output_base_dir'],
-                         config=config)
-
-    logged_model_paths = log_cv_results(cv_results=cv_results,
-                                        cv_ensemble_results=cv_ensemble_results,
-                                        fold_results=fold_results,
-                                        config=config,
-                                        output_dir=config['run']['output_base_dir'],
-                                        cv_averaged_output_dir=config['run']['cross_validation_averaged'],
-                                        cv_ensembled_output_dir=config['run']['cross_validation_ensembled'])
+        logged_model_paths = log_cv_results(cv_results=cv_results,
+                                            cv_ensemble_results=cv_ensemble_results,
+                                            fold_results=fold_results,
+                                            config=config,
+                                            output_dir=config['run']['output_base_dir'],
+                                            cv_averaged_output_dir=config['run']['cross_validation_averaged'],
+                                            cv_ensembled_output_dir=config['run']['cross_validation_ensembled'])
+    else:
+        logged_model_paths = None
 
     logger.info('Done with the WANDB Logging!')
     mlflow.end_run()

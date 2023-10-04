@@ -2,6 +2,7 @@ import json
 import os
 import warnings
 from functools import singledispatch
+from loguru import logger
 
 import numpy as np
 import wandb.sdk.wandb_run
