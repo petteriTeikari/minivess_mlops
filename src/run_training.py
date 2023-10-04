@@ -1,6 +1,10 @@
 import argparse
 import os
+
 import sys
+src_path = os.path.dirname(os.path.abspath(__file__))
+project_path = os.path.split(src_path)[0]
+sys.path.insert(0, project_path) # so that src. is imported correctly also in VSCode by default
 
 from src.train import training_script
 from src.utils.config_utils import import_config, set_up_environment
@@ -14,6 +18,9 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # __init__.py:127: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage
 # will be the only storage class. This should only matter to you if you are using storages directly.
 # To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+
+# FIXME! MLflow uses pydantic and it throws: Field "model_server_url" has conflict with protected namespace "model_".
+#  Field "model_server_url" has conflict with protected namespace "model_".
 
 # Control logger level here, make it nicer later
 # https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574

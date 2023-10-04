@@ -13,6 +13,8 @@ from loguru import logger
 import collections.abc
 import torch.distributed as dist
 
+from omegaconf import OmegaConf
+
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
 
@@ -27,7 +29,6 @@ if not os.path.exists(BASE_CONFIG_DIR):
 def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
                   hyperparam_name: str = None, log_level: str = "INFO"):
 
-    # TO-OPTIMIZE: Switch to Hydra here?
     base_config = import_config_from_yaml(config_file = base_config_file,
                                           config_dir = BASE_CONFIG_DIR,
                                           config_type = 'base')
@@ -118,17 +119,29 @@ def update_base_with_task_config(task_config_file: str, config_dir: str, base_co
     config, no_of_updates = update_config_dictionary(d = base_config, u = task_config)
     logger.info('Updated the base config with a total of {} changed keys from the task config', no_of_updates)
 
+    # TOADD: Hydra
+    # https://www.sscardapane.it/tutorials/hydra-tutorial/#first-steps-manipulating-a-yaml-file
+    # https://medium.com/pytorch/hydra-a-fresh-look-at-configuration-for-machine-learning-projects-50583186b710
+    # https://github.com/khuyentran1401/Machine-learning-pipeline
+
     return config
 
 
 def import_config_from_yaml(config_file: str = 'base_config.yaml',
                             config_dir: str = CONFIG_DIR,
-                            config_type: str = 'base'):
+                            config_type: str = 'base',
+                            load_method: str = 'OmegaConf'):
 
     config_path = os.path.join(config_dir, config_file)
     if os.path.exists(config_path):
-        logger.info('Import {} config from "{}"', config_type, config_path)
-        config = import_yaml_file(config_path)
+        logger.info('Import {} config from "{}", method = "{}"', config_type, config_path, load_method)
+        if load_method == 'basic':
+            config = import_yaml_file(config_path)
+        elif load_method == 'OmegaConf':
+            # https://www.sscardapane.it/tutorials/hydra-tutorial/#first-steps-manipulating-a-yaml-file
+            config = OmegaConf.load(config_path)
+        else:
+            raise IOError('Unknown method for handling configs? load_method = {}'.format(load_method))
     else:
         raise IOError('Cannot find {} config from = {}'.format(config_type, config_path))
 

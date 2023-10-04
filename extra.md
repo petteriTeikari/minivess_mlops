@@ -7,13 +7,27 @@ sudo apt install python3.8
 sudo apt install python3.8-distutils
 ```
 
+## Poetry remote ssh env
+
+### Pycharm
+
+Not working
+https://youtrack.jetbrains.com/issue/PY-52688
+
+
 ## Poetry for VSCode
 
-Run:
+Run?
 
 ```
 poetry config virtualenvs.in-project true
 ```
+
+### SSH
+
+https://code.visualstudio.com/docs/remote/remote-overview
+https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack
+
 
 ## Licublas issue with Poetry
 
