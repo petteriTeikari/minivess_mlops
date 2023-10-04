@@ -36,12 +36,16 @@ def check_file_listing(list_of_files: list,
 
 
 def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: list):
-
+    """
+    Return floats instead of Numpy floats to ensure compatibility with OmegaConf
+    (You could not dumnp all the derived values to OmegaConf-compatible dict too, but now easier to use just one dict)
+    omegaconf.errors.UnsupportedValueType: Value 'float64' is not a supported primitive type
+    """
     def get_size_stats_per_coord(list_of_sizes: list) -> dict:
-        return {'mean': np.mean(list_of_sizes),
-                'median': np.median(list_of_sizes),
-                'min': np.min(list_of_sizes),
-                'max': np.max(list_of_sizes),
+        return {'mean': float(np.mean(list_of_sizes)),
+                'median': float(np.median(list_of_sizes)),
+                'min': float(np.min(list_of_sizes)),
+                'max': float(np.max(list_of_sizes)),
                 'n': len(list_of_sizes)
                 }
 

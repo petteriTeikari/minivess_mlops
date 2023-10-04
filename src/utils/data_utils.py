@@ -1,6 +1,7 @@
 import os
 from loguru import logger
 
+from src.datasets.dvc_utils import get_dvc_commit
 from src.datasets.minivess import download_and_extract_minivess_dataset, define_minivess_dataset, \
     define_minivess_splits, get_minivess_filelisting
 from src.utils.general_utils import check_if_key_in_dict
@@ -192,9 +193,10 @@ def import_dataset(data_config: dict, data_dir: str, dataset_name: str):
 
         input_url = dataset_cfg['DATA_DOWNLOAD_URL']
         dataset_dir = download_and_extract_minivess_dataset(input_url=input_url, data_dir=data_dir)
-        a = 1
+        get_dvc_commit(dataset_dir)
         filelisting, data_config['DATA_SOURCE'][dataset_name]['STATS'] = get_minivess_filelisting(dataset_dir)
         fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
+
     else:
         raise NotImplementedError('Do not yet know how to download a dataset '
                                   'called = "{}"'.format(dataset_name))

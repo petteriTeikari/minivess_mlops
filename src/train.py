@@ -93,15 +93,16 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                   device=machine_config['IN_USE']['device'])
 
     # Ensemble the repeats (submodels)
-    ensemble_results = reinference_dataloaders(input_dict=repeat_results,
-                                               dataloaders=fold_dataloaders,
-                                               artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
-                                               config=config,
-                                               device=machine_config['IN_USE']['device'],
-                                               model_scheme='ensemble_from_repeats')
+    if a == 1:
+        ensemble_results = reinference_dataloaders(input_dict=repeat_results,
+                                                   dataloaders=fold_dataloaders,
+                                                   artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
+                                                   config=config,
+                                                   device=machine_config['IN_USE']['device'],
+                                                   model_scheme='ensemble_from_repeats')
 
-    # Log inference
-    log_ensemble_results(ensemble_results, config=config)
+        # Log inference
+        log_ensemble_results(ensemble_results, config=config)
 
     return repeat_results, ensemble_results
 
