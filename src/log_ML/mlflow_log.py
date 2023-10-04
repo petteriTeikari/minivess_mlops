@@ -6,7 +6,7 @@ from loguru import logger
 def init_mlflow_logging(config: dict,
                         mlflow_config: dict,
                         experiment_name: str = "MINIVESS_segmentation",
-                        run_name: str = "UNet3D") -> dict:
+                        run_name: str = "UNet3D"):
     """
     see e.g. https://github.com/Project-MONAI/tutorials/blob/main/experiment_management/spleen_segmentation_mlflow.ipynb
     https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded
@@ -60,6 +60,36 @@ def init_mlflow_logging(config: dict,
     else:
         logger.info('Skipping MLflow Experiment tracking')
 
-    return {'experiment': experiment, 'active_run': active_run}
+    mlflow_dict = {'experiment': experiment, 'active_run': active_run}
+
+    # As we are using OmegaConf, you cannot just dump whatever stored in Dictionaries
+    mlflow_dict_omegaconf = mlflow_dicts_to_omegaconf_dict(experiment, active_run)
+
+    return mlflow_dict_omegaconf, mlflow_dict
 
 
+def mlflow_dicts_to_omegaconf_dict(experiment, active_run):
+
+    def convert_indiv_dict(object_in, prefix: str = None):
+        dict_out = {}
+        for property, value in vars(object_in).items():
+
+            if property[0] == '_': # remove the _
+                property = property[1:]
+
+            if prefix is not None:
+                key_out = prefix + property
+            else:
+                key_out = property
+
+            # at the moment, just output the string values, as in names and paths
+            if isinstance(value, str):
+                dict_out[key_out] = value
+
+        return dict_out
+
+
+    experiment_out = convert_indiv_dict(object_in=experiment)
+    mlflow_dict_out = {**experiment_out, **active_run.data.tags}
+
+    return mlflow_dict_out

@@ -94,10 +94,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_experiment_dir']))
 
     # Initialize ML logging (experiment tracking)
-    config['run']['mlflow'] = init_mlflow_logging(config=config,
-                                                  mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                                  experiment_name = config['ARGS']['project_name'],
-                                                  run_name = config['run']['hyperparam_name'])
+    config['run']['mlflow'] , mlflow_dict =  init_mlflow_logging(config=config,
+                                                                 mlflow_config=config['config']['LOGGING']['MLFLOW'],
+                                                                 experiment_name = config['ARGS']['project_name'],
+                                                                  run_name = config['run']['hyperparam_name'])
 
     return config
 
