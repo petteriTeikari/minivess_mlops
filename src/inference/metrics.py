@@ -80,9 +80,9 @@ def get_sample_uq_metrics_from_ensemble_stats(ensemble_stat_results):
     sample_metrics['metrics'] = {}
     sample_metrics['timing'] = {}
 
-    t0 = time.time()
-    metric = 'mean_var'  # quick'n'dirty estimate on how different are the predictions between repeats (submodels)
-    sample_metrics['metrics'][metric] = np.array([np.mean(ensemble_stat_results['arrays']['var'])])
-    sample_metrics['timing'][metric] = np.array([time.time() - t0])
+    # t0 = time.time()
+    # metric = 'meanVar'  # quick'n'dirty estimate on how different are the predictions between repeats (submodels)
+    # sample_metrics['metrics'][metric] = np.array([np.mean(ensemble_stat_results['arrays']['var'])])
+    # sample_metrics['timing'][metric] = np.array([time.time() - t0])
 
     return sample_metrics

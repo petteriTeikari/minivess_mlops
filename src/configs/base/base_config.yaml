@@ -172,6 +172,10 @@ config:
   # ----------------------------------------------------------------------------------- #
   # VALIDATION_BEST
   # ----------------------------------------------------------------------------------- #
+  # If you want to compute some heavier metrics like Hausdorff, for each repeat, otherwise
+  # you just get the basic metrics like Dice logged. Most of the time you probably don't care for this
+  # and you can save some time by not computing this again. But if you want to compare like Hausdorff
+  # between the ensemble and the best repeat, enable this then
   VALIDATION_BEST:
     enable: False
     # The "VALIDATION" above is done after each epoch, or after n epochs. This can get a bit
@@ -190,7 +194,7 @@ config:
   # ENSEMBLE
   # ----------------------------------------------------------------------------------- #
   ENSEMBLE:
-    enable: False
+    enable: True
 
   # ----------------------------------------------------------------------------------- #
   # DATASETS
@@ -237,13 +241,22 @@ config:
   # ----------------------------------------------------------------------------------- #
   LOGGING:
     unique_hyperparam_name_with_hash: True
+    # Define a "main metric" to reduce the clutter on your logging columns, as in the number that you
+    # mainly want to see
+    MAIN_METRIC:
+      # What metric determines the model saving to disk (you could e.g. track best loss and best metric)
+      # Giving you 2 "best models" per training repeat
+      tracked_metric: 'dice'
+      # Metric that you think is the most informative ranking the runs
+      metric: 'dice'
+      # The evaluation performance on which dataset you are interested in the most
+      dataset: 'MINIVESS'
     TENSORBOARD:
       placeholder: 1
     MLFLOW:
       server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'
       TRACKING:
         enable: True
-
     WANDB:
       enable: True
       s3: null

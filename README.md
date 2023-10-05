@@ -8,7 +8,7 @@ Scientific Data 10, 141 doi: [10.1038/s41597-023-02048-8](https://doi.org/10.103
 
 ## Prerequisites
 
-Tested on Ubuntu 22.04
+Tested on Ubuntu 22.04 
 
 ### Code
 
@@ -28,7 +28,7 @@ a mount point (so you have the same path for Docker and local devel):
 sudo ln -s ~/minivess_mlops_artifacts/ /mnt/minivess_mlops_artifacts
 ```
 
-* Script should automatically download the data (_TODO!_)
+* Script should automatically download the data (This seems to require authentication with the EBrains API?)
 * (backup option) Download data manually from EBRAINS: https://doi.org/10.25493/HPBE-YHK, and copy `d-bf268b89-1420-476b-b428-b85a913eb523.zip` to `/mnt/minivess_mlops_artifacts/data`
 
 
@@ -48,14 +48,20 @@ This file contains only the parameters that you want to change,
 as compared to the "base config" in `src/configs/base/base_config.yaml`.
 A logic for example used in the [`VISSL` library](https://colab.research.google.com/github/facebookresearch/vissl/blob/stable/tutorials/Understanding_VISSL_Training_and_YAML_Config.ipynb)
 
-Experiment management _TODO_ for [`Hydra`](https://hydra.cc/) / [`OmegaConf`](https://omegaconf.readthedocs.io/)
+At the moment using the [`OmegaConf`](https://omegaconf.readthedocs.io/) for managing configuration dictionary, see later if some [`Hydra`](https://hydra.cc/) is needed on top of it. 
 
 ### Inference / serving
 
 ## Features/tasks to do
 
-* ML Tests
-* Experiment tracking (WANDB, MLFlow)
+* ML Tests / CI/CD (e.g. [https://github.com/recommenders-team/recommenders/pull/1989](https://github.com/recommenders-team/recommenders/pull/1989))
+* Experiment tracking (WANDB and MLFlow)
 * Data versioning (DVC)
-* Experiment+Data versioning with Daqshub?
-
+  * Where to actually get the data as EBrains is not the most user-friendly. Add some Airflow for simulating if you had one images coming from experiments all the time?
+* Integrate stuff with Daqshub?
+* Demo ML Experiment with some off-the-shelf MONAI segmentor against arXiv/github 3rd party methods so that you get an example how to add stuff from papers to this pipeline
+  * e.g. [Butoi et al. 2023: "UniverSeg"](https://universeg.csail.mit.edu/) and some medical SAM variant like [Lei et al. (2023): "MedLSAM: Localize and Segment Anything Model for 3D Medical Images"](https://github.com/openmedlab/MedLSAM)
+* Training script
+  * Add additional nesting allowing "diverse ensembles" so that each submodel of the ensemble could be of a different architecture
+  * Add some sort of hierarchical model training allowing the training of "foundational model" with its finetuning on one go (most likely just freeze the foundation model and finetune it yourself)
+* Need to add an additional dataset to demonstrate how to train/evaluate on multiple separate subsets of the whole training corpus

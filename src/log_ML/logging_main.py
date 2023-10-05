@@ -41,11 +41,6 @@ def log_averaged_and_best_repeats(repeat_results: dict,
     # added computational cost from ensembling over single repeat (submodel)
     best_repeat_dicts = get_best_repeat_result(repeat_results)
 
-    # Log the metric results of the best repeat out of n repeats
-    log_best_repeats(best_repeat_dicts=best_repeat_dicts,
-                     config=config,
-                     service='MLflow')
-
     if config['config']['VALIDATION_BEST']['enable']:
         # Re-inference the dataloader with the best model(s) of the best repeat
         # e.g. you want to have Hausdorff distance here that you thought to be too heavy to compute while training
@@ -60,7 +55,13 @@ def log_averaged_and_best_repeats(repeat_results: dict,
         log_best_reinference_metrics(best_repeat_metrics=best_repeat_metrics,
                                      config=config)
     else:
-        logger.info('Skip VALIDATION_BEST')
+        logger.info('Skip "VALIDATION_BEST", no re-computation of "heavier metrics", '
+                    'just logging the ones obtained during training')
+
+        # Log the metric results of the best repeat out of n repeats
+        log_best_repeats(best_repeat_dicts=best_repeat_dicts,
+                         config=config,
+                         service='MLflow')
 
 
 def log_best_repeats(best_repeat_dicts: dict, config: dict,
@@ -78,12 +79,23 @@ def log_best_repeats(best_repeat_dicts: dict, config: dict,
                             metric_name = 'bestRepeat_{}_{}/{}/{}/{}'.format(metric, split, dataset_train,
                                                                              tracked_metric, dataset_eval)
                             metric_value = best_repeat['best_value']
-                            logger.info('"{}": {:.3f}'.format(metric_name, metric_value))
+                            logger.info('{} | "{}": {:.3f}'.format(service, metric_name, metric_value))
 
                             if service == 'MLflow':
                                 mlflow.log_metric(metric_name, metric_value)
                             else:
                                 raise NotImplementedError('Unknown Experiment Tracking service = "{}"'.format(service))
+
+                            metric_main = correct_key_for_main_result(metric_name=metric_name,
+                                                                      tracked_metric=tracked_metric, metric=metric,
+                                                                      dataset=dataset_eval, split=split,
+                                                                      metric_cfg=config['config']['LOGGING'][
+                                                                          'MAIN_METRIC'])
+
+                            if metric_main != metric_name:
+                                if service == 'MLflow':
+                                    mlflow.log_metric(metric_main, metric_value)
+                                    logger.info('{} (main) | "{}": {:.3f}'.format(service, metric_main, metric_value))
 
 
 def log_crossvalidation_results(fold_results: dict,
@@ -131,6 +143,50 @@ def log_crossvalidation_results(fold_results: dict,
 
 
 def log_best_reinference_metrics(best_repeat_metrics: dict,
-                                 config: dict):
+                                 config: dict,
+                                 stat_key: str = 'split_metrics_stat',
+                                 stat_value_to_log: str = 'mean',
+                                 service: str = 'MLflow'):
 
-    a = 'placeholder'
+    for split in list(best_repeat_metrics.keys()):
+        split_stats = best_repeat_metrics[split][stat_key]
+        for dset1 in split_stats:
+            for tracked_metric in split_stats[dset1]:
+                for dset2 in split_stats[dset1][tracked_metric]:
+                    metrics = split_stats[dset1][tracked_metric][dset2]['metrics']
+                    for metric in metrics:
+                        stats_dict = metrics[metric]
+                        metric_name = 'bestRepeat_{}_{}/{}/{}/{}'.format(metric, split, dset1,
+                                                                         tracked_metric, dset2)
+                        value = stats_dict[stat_value_to_log]
+                        logger.info('{} | "{}": {:.3f}'.format(service, metric_name, value))
+
+                        # TO-OPTIMIZE: If you start having multiple tracked metrics, and multiple metrics,
+                        # you start to have millions of columns, and you might want to define in your config
+                        # "a main metric" that it gets easier to quickly check out your experiments?
+
+                        if service == 'MLflow':
+                            mlflow.log_metric(metric_name, value)
+                        else:
+                            raise NotImplementedError('Unknown Experiment Tracking service = "{}"'.format(service))
+
+                        metric_main = correct_key_for_main_result(metric_name=metric_name,
+                                                                  tracked_metric=tracked_metric, metric=metric,
+                                                                  dataset=dset2, split=split,
+                                                                  metric_cfg=config['config']['LOGGING']['MAIN_METRIC'])
+
+                        if metric_main != metric_name:
+                            if service == 'MLflow':
+                                mlflow.log_metric(metric_main, value)
+                                logger.info('{} (main) | "{}": {:.3f}'.format(service, metric_main, value))
+
+def correct_key_for_main_result(metric_name: str, tracked_metric: str, metric: str, split: str, dataset: str,
+                                metric_cfg: dict):
+
+    if tracked_metric == metric_cfg['tracked_metric']  \
+        and metric == metric_cfg['metric'] and dataset == metric_cfg['dataset']:
+
+        metric_type = metric_name.split('_')[0]
+        metric_name = metric_type + '_' + split
+
+    return metric_name
