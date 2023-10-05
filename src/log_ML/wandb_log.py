@@ -242,7 +242,8 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
 
     #
     logger.info('TODO! ENSEMBLED Cross-Validation results | Loguru log to WANDB')
-
+    # 2023-10-05 17:55:51.088 | INFO     | src.utils.config_utils:import_config:94 -
+    #     Log will be saved to disk to "/mnt/minivess_mlops_artifacts/output/experiments/hyperparam_example_name"
 
     wandb.finish()
 

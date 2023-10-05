@@ -101,7 +101,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                                    device=machine_config['IN_USE']['device'],
                                                    model_scheme='ensemble_from_repeats')
         # Log inference
-        log_ensemble_results(ensemble_results, config=config)
+        log_ensemble_results(ensemble_results, config=config, fold_name=fold_name)
 
     else:
         logger.info('Skip ENSEMBLING')

@@ -6,7 +6,8 @@ from src.log_ML.logging_main import correct_key_for_main_result
 
 def log_ensemble_results(ensemble_results, config: dict,
                          stat_key: str = 'mean',
-                         service: str = 'MLflow'):
+                         service: str = 'MLflow',
+                         fold_name: str = None):
 
     logger.info('Logging ensemble metrics to experiment tracking service = {}'.format(service))
 
@@ -17,7 +18,7 @@ def log_ensemble_results(ensemble_results, config: dict,
                 metrics = split_stats[dset][tracked_metric]['metrics']
                 for metric in metrics:
                     stats_dict = metrics[metric]
-                    metric_name = 'ensemble_{}_{}/{}/{}'.format(metric, split, dset, tracked_metric)
+                    metric_name = '{}/ensemble_{}_{}/{}/{}'.format(fold_name, metric, split, dset, tracked_metric)
                     value = stats_dict[stat_key]
                     logger.info('{} | "{}": {:.3f}'.format(service, metric_name, value))
 
@@ -26,7 +27,7 @@ def log_ensemble_results(ensemble_results, config: dict,
                     else:
                         raise NotImplementedError('Unknown Experiment Tracking service = "{}"'.format(service))
 
-                    metric_main = correct_key_for_main_result(metric_name=metric_name,
+                    metric_main = correct_key_for_main_result(metric_name=metric_name, fold_name=fold_name,
                                                               tracked_metric=tracked_metric, metric=metric,
                                                               dataset=dset, split=split,
                                                               metric_cfg=config['config']['LOGGING']['MAIN_METRIC'])
