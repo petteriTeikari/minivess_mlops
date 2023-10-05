@@ -7,7 +7,7 @@ from loguru import logger
 import numpy as np
 
 from src.log_ML.json_log import to_serializable
-from src.log_ML.wandb_log import wandb_log_crossval
+from src.log_ML.wandb_log import log_crossval_res
 
 
 def log_cv_results(cv_results: dict,
@@ -28,7 +28,7 @@ def log_cv_results(cv_results: dict,
                               cv_averaged_output_dir=cv_averaged_output_dir,
                               cv_ensembled_output_dir=cv_ensembled_output_dir)
 
-    model_paths = wandb_log_crossval(cv_results=cv_results,
+    model_paths = log_crossval_res(cv_results=cv_results,
                                      cv_ensemble_results=cv_ensemble_results,
                                      fold_results=fold_results,
                                      cv_averaged_output_dir=cv_averaged_output_dir,

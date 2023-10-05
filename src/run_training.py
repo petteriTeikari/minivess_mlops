@@ -39,7 +39,7 @@ def parse_args_to_dict():
     parser.add_argument('-c', '--task_config-file', type=str, required=True,
                         default='task_config.yaml',
                         help="Name of your task-specific .yaml file, e.g. 'config_test'")
-    parser.add_argument('-dbg', '--debug_mode', action="store_const", const=False,
+    parser.add_argument('-dbg', '--debug_mode', action="store_const", const=True,
                         help="Sets debug flag on. Quick way for example to train for less epochs or something else,"
                              "when you are not actually training but mostly developing the code")
     parser.add_argument('-data', '--data_dir', type=str, required=False,
@@ -78,7 +78,8 @@ if __name__ == '__main__':
 
         # Collect the data and define splits
         fold_split_file_dicts, config['config']['DATA'] = \
-            import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'])
+            import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'],
+                            debug_mode=args['debug_mode'])
 
         # Create and validate datasets and dataloaders
         experim_datasets, experim_dataloaders = \

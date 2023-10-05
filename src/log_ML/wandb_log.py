@@ -127,33 +127,33 @@ def log_ensemble_results(ensembled_results: dict,
         wandb.finish()
 
 
-def wandb_log_crossval(cv_results: dict,
-                       cv_ensemble_results: dict,
-                       fold_results: dict,
-                       cv_averaged_output_dir: str,
-                       cv_ensembled_output_dir: str,
-                       output_dir: str,
-                       config: dict):
+def log_crossval_res(cv_results: dict,
+                     cv_ensemble_results: dict,
+                     fold_results: dict,
+                     cv_averaged_output_dir: str,
+                     cv_ensembled_output_dir: str,
+                     output_dir: str,
+                     config: dict):
 
     logger.info('Logging AVERAGED Cross-Validation results to WANDB')
-    wandb_log_cv_results(cv_results=cv_results,
-                         cv_dir_out=cv_averaged_output_dir,
-                         config=config,
-                         output_dir=output_dir)
+    log_cv_results(cv_results=cv_results,
+                   cv_dir_out=cv_averaged_output_dir,
+                   config=config,
+                   output_dir=output_dir)
 
     logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
-    model_paths = wandb_log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
-                                                cv_dir_out=cv_ensembled_output_dir,
-                                                fold_results=fold_results,
-                                                config=config,
-                                                output_dir=output_dir)
+    model_paths = log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
+                                          cv_dir_out=cv_ensembled_output_dir,
+                                          fold_results=fold_results,
+                                          config=config,
+                                          output_dir=output_dir)
 
     return model_paths
 
 
-def wandb_log_cv_results(cv_results: dict, cv_dir_out: str, config: dict, output_dir: str,
-                         stat_keys_to_reject: tuple = ('n'),
-                         var_types: tuple = ('scalars', 'metadata_scalars')):
+def log_cv_results(cv_results: dict, cv_dir_out: str, config: dict, output_dir: str,
+                   stat_keys_to_reject: tuple = ('n'),
+                   var_types: tuple = ('scalars', 'metadata_scalars')):
 
     log_name = 'CV_averaged'
     try:
@@ -190,12 +190,12 @@ def wandb_log_cv_results(cv_results: dict, cv_dir_out: str, config: dict, output
     wandb.finish()
 
 
-def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
-                                  cv_dir_out: str,
-                                  fold_results: dict,
-                                  config: dict,
-                                  output_dir: str,
-                                  stat_keys_to_reject: tuple = ('n')):
+def log_cv_ensemble_results(cv_ensemble_results: dict,
+                            cv_dir_out: str,
+                            fold_results: dict,
+                            config: dict,
+                            output_dir: str,
+                            stat_keys_to_reject: tuple = ('n')):
 
     log_name = 'CV_ensembled'
     try:
@@ -242,6 +242,7 @@ def wandb_log_cv_ensemble_results(cv_ensemble_results: dict,
 
     #
     logger.info('TODO! ENSEMBLED Cross-Validation results | Loguru log to WANDB')
+
 
     wandb.finish()
 

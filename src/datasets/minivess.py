@@ -230,3 +230,18 @@ def create_dataset_per_split(dataset_config: dict, split: str, split_file_dict: 
                                   'not = "{}"'.format(pytorch_dataset_type))
 
     return ds
+
+
+def minivess_debug_splits(fold_split_file_dicts: dict):
+
+    logger.warning('DEBUG MODE ON! Taking subsets of the data to speed things up (e.g. on CPU debug/development)')
+    for fold in fold_split_file_dicts:
+        for split in fold_split_file_dicts[fold]:
+            if split == 'TEST':
+                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:1]
+            if split == 'TRAIN':
+                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:2]
+            if split == 'VAL':
+                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:2]
+
+    return fold_split_file_dicts

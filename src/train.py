@@ -175,8 +175,6 @@ def train_n_epochs_script(model, dataloaders,
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L285
     print(' ')
-    assert training_config['NUM_EPOCHS'] > 1, ('Not all functions yet handle the edge case of no_epochs = 1,'
-                                               'you get floats instead of numpy arrays')
     for epoch in tqdm(range(start_epoch, training_config['NUM_EPOCHS']),
                       desc='Training the network, {}, repeat {}, epoch#'.format(fold_name, repeat_idx+1),
                       position=0):

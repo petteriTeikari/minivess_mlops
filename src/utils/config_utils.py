@@ -99,6 +99,16 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
                                                                 experiment_name = config['ARGS']['project_name'],
                                                                 run_name = config['run']['hyperparam_name'])
 
+    if args['debug_mode']:
+        set_config_for_debug_mode(config)
+
+    return config
+
+
+def set_config_for_debug_mode(config):
+    logger.warning('DEBUG MODE ON! Setting config, so that you train only for one epoch')
+    config['config']['TRAINING']['NUM_EPOCHS'] = 1
+
     return config
 
 

@@ -2,6 +2,7 @@ import time
 import warnings
 from copy import deepcopy
 
+from loguru import logger
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -118,7 +119,8 @@ def combine_epoch_and_experiment_dicts(epoch_results: dict, experiment_results: 
 
     if len(experiment_results) == 0:
         # i.e. the first epoch
-        experiment_results = epoch_results
+        experiment_results = deepcopy(epoch_results)
+        experiment_results = convert_scalars_to_arrays(experiment_results)
     else:
         for split_name in epoch_results.keys():
             for dataset_name in epoch_results[split_name].keys():
@@ -126,6 +128,27 @@ def combine_epoch_and_experiment_dicts(epoch_results: dict, experiment_results: 
                 experim_res = experiment_results[split_name][dataset_name]
                 experiment_results[split_name][dataset_name] = \
                     add_epoch_results_to_experiment_results(experim_res, epoch_res, split_name, dataset_name, epoch)
+
+    return experiment_results
+
+
+def convert_scalars_to_arrays(experiment_results: dict):
+
+    logger.debug('On first epoch, convert the scalars to arrays')
+    for split in experiment_results:
+        for dataset in experiment_results[split]:
+            for var_type in experiment_results[split][dataset]:
+                for scalar_key in experiment_results[split][dataset][var_type]:
+                    # print(split, dataset, var_type, scalar_key) # e.g. TRAIN MINIVESS scalars loss
+
+                    if isinstance(experiment_results[split][dataset][var_type][scalar_key], (float, int)):
+                        # on the 2nd epoch, we convert the float into a numpy array
+                        # so "scalars" will become an array if this is confusing, but "arrays" would contain variables
+                        # that would have multiple values at epoch level, e.g. like a 1D histogram you could collect to
+                        # experiment-level 2D array with 1D histogram per each epoch
+                        experiment_results[split][dataset][var_type][scalar_key] = (
+                            np.array(experiment_results[split][dataset][var_type][scalar_key])[np.newaxis])
+
 
     return experiment_results
 
@@ -158,13 +181,6 @@ def combine_epoch_and_experiment_scalars(epoch_scalars, experim_scalars):
 
     for scalar_key in epoch_scalars.keys():
         epoch_scalar_per_key = np.array(epoch_scalars[scalar_key]).copy()
-        if isinstance(experim_scalars[scalar_key], float):
-            # on the 2nd epoch, we convert the float into a numpy array
-            # so "scalars" will become an array if this is confusing, but "arrays" would contain variables
-            # that would have multiple values at epoch level, e.g. like a 1D histogram you could collect to
-            # experiment-level 2D array with 1D histogram per each epoch
-            experim_scalars[scalar_key] = np.array(experim_scalars[scalar_key])
-
         experim_scalars[scalar_key] = np.hstack([experim_scalars[scalar_key], epoch_scalar_per_key])
 
     return experim_scalars
