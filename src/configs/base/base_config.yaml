@@ -131,6 +131,8 @@ config:
   # TRAINING
   # ----------------------------------------------------------------------------------- #
   TRAINING:
+    # Have a look on the float16 vs bfloat16, and whether to for example include
+    # HuggingFace's accelerate here, or what is the easiest?
     AMP: True
     NO_REPEATS: 2
     NUM_EPOCHS: 2

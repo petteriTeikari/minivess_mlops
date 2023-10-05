@@ -91,3 +91,14 @@ def write_config_as_yaml(config: dict, dir_out: str):
             logger.warning('Problem writing the config to disk, e = {}'.format(e))
 
     return path_out
+
+
+def get_used_services(logging_cfg: dict):
+
+    services = []
+    if logging_cfg['MLFLOW']['TRACKING']['enable']:
+        services.append('MLflow')
+    if logging_cfg['WANDB']['enable']:
+        services.append('WANDB')
+
+    return services

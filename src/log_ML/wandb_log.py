@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import glob
 
+import mlflow
 import omegaconf
 from loguru import logger
 import wandb
@@ -95,9 +96,9 @@ def wandb_init_wrapper(project: str = None,
     return wandb_run
 
 
-def log_ensemble_results(ensembled_results: dict,
-                         output_dir: str,
-                         config: dict):
+def log_wandb_ensemble_results(ensembled_results: dict,
+                               output_dir: str,
+                               config: dict):
 
     logger.info('Logging ensemble-wise results to WANDB')
     for f, fold_name in enumerate(ensembled_results):
@@ -115,6 +116,7 @@ def log_ensemble_results(ensembled_results: dict,
             raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
         # Log the metrics
+        # TO-OPTIMIZE, you could think of using the same function really for both WANDB and MLflow
         wandb_log_ensemble_per_fold(wandb_run, fold_name, log_name,
                                     results=ensembled_results[fold_name], config=config)
 
@@ -133,12 +135,14 @@ def log_crossval_res(cv_results: dict,
                      cv_averaged_output_dir: str,
                      cv_ensembled_output_dir: str,
                      output_dir: str,
+                     logging_services: list,
                      config: dict):
 
-    logger.info('Logging AVERAGED Cross-Validation results to WANDB')
+    logger.info('Logging AVERAGED Cross-Validation results')
     log_cv_results(cv_results=cv_results,
                    cv_dir_out=cv_averaged_output_dir,
                    config=config,
+                   logging_services=logging_services,
                    output_dir=output_dir)
 
     logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
@@ -146,26 +150,32 @@ def log_crossval_res(cv_results: dict,
                                           cv_dir_out=cv_ensembled_output_dir,
                                           fold_results=fold_results,
                                           config=config,
+                                          logging_services=logging_services,
                                           output_dir=output_dir)
 
     return model_paths
 
 
-def log_cv_results(cv_results: dict, cv_dir_out: str, config: dict, output_dir: str,
+def log_cv_results(cv_results: dict,
+                   cv_dir_out: str,
+                   config: dict,
+                   logging_services: list,
+                   output_dir: str,
                    stat_keys_to_reject: tuple = ('n'),
                    var_types: tuple = ('scalars', 'metadata_scalars')):
 
     log_name = 'CV_averaged'
-    try:
-        wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
-                                       name=log_name,
-                                       group=config['run']['hyperparam_name'],
-                                       job_type='CV',
-                                       param_conf=config['config'],
-                                       dir=output_dir,
-                                       tags=['tag1', 'tag2'])
-    except Exception as e:
-        raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
+    if 'WANDB' in logging_services:
+        try:
+            wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
+                                           name=log_name,
+                                           group=config['run']['hyperparam_name'],
+                                           job_type='CV',
+                                           param_conf=config['config'],
+                                           dir=output_dir,
+                                           tags=['tag1', 'tag2'])
+        except Exception as e:
+            raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
     # Log the scalar metrics
     for dataset in cv_results:
@@ -180,34 +190,50 @@ def log_cv_results(cv_results: dict, cv_dir_out: str, config: dict, output_dir: 
                                     if stat_key not in stat_keys_to_reject:
                                         v = cv_results[dataset][tracked_metric][split][ds_eval][var_type][var][stat_key]
                                         metric_name = 'CV_{}/{}/{}_{}'.format(split, dataset, var, stat_key)
-                                        wandb.log({metric_name: v}, step=0)
+
+                                        logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, v))
+                                        if 'WANDB' in logging_services:
+                                            wandb.log({metric_name: v}, step=0)
+
+                                        if 'MLflow' in logging_services:
+                                            mlflow.log_metric(metric_name, v)
+
+                                        # TOADD! Add the main metric definition here as well
+                                        # NOTE!  ['MLflow', 'WANDB'] | "CV_VAL/MINIVESS/time_e , reject the timing?
+                                        #        or group at least to some metadata window?
 
     # Log the artifact dir
-    artifact = wandb.Artifact(name=log_name, type='artifacts')
-    artifact.add_dir(local_path=cv_dir_out, name='CV_artifacts')
-    wandb_run.log_artifact(artifact)
+    if 'WANDB' in logging_services:
+        artifact = wandb.Artifact(name=log_name, type='artifacts')
+        artifact.add_dir(local_path=cv_dir_out, name='CV_artifacts')
+        wandb_run.log_artifact(artifact)
+        wandb.finish()
 
-    wandb.finish()
+    if 'MLflow' in logging_services:
+        a = 'placeholder for averaged CV artifacts'
 
 
 def log_cv_ensemble_results(cv_ensemble_results: dict,
                             cv_dir_out: str,
                             fold_results: dict,
                             config: dict,
+                            logging_services: list,
                             output_dir: str,
-                            stat_keys_to_reject: tuple = ('n')):
+                            stat_keys_to_reject: tuple = ('n'),
+                            stat_key2: str = 'mean'):
 
     log_name = 'CV_ensembled'
-    try:
-        wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
-                                       name=log_name,
-                                       group=config['run']['hyperparam_name'],
-                                       job_type='CV_ENSEMBLE',
-                                       param_conf=config['config'],
-                                       dir=output_dir,
-                                       tags=['tag1', 'tag2'])
-    except Exception as e:
-        raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
+    if 'WANDB' in logging_services:
+        try:
+            wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
+                                           name=log_name,
+                                           group=config['run']['hyperparam_name'],
+                                           job_type='CV_ENSEMBLE',
+                                           param_conf=config['config'],
+                                           dir=output_dir,
+                                           tags=['tag1', 'tag2'])
+        except Exception as e:
+            raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
     logger.info('ENSEMBLED Cross-Validation results | Metrics')
     for split in cv_ensemble_results:
@@ -216,9 +242,43 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                 for metric in cv_ensemble_results[split][dataset][tracked_metric]:
                     for stat_key in cv_ensemble_results[split][dataset][tracked_metric][metric]:
                         if stat_key not in stat_keys_to_reject:
-                            value = cv_ensemble_results[split][dataset][tracked_metric][metric][stat_key]
+
+                            # CHECK THIS, IF THIS GOES CORRECTLY?
+                            stat_dict = cv_ensemble_results[split][dataset][tracked_metric][metric][stat_key]
+                            value = stat_dict[stat_key2]
                             metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, dataset, metric, stat_key)
-                            wandb.log({metric_name: value}, step=0)
+
+                            logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
+                            if 'WANDB' in logging_services:
+                                wandb.log({metric_name: value}, step=0)
+
+                            if 'MLflow' in logging_services:
+                                mlflow.log_metric(metric_name, value)
+
+                            # TOADD! Add the main metric definition here as well
+                            # NOTE! If only one fold, no need to log the stdev of 0
+
+
+    if 'WANDB' in logging_services:
+        model_paths = log_wandb_experiment_artifacts(log_name=log_name,
+                                                     cv_dir_out=cv_dir_out,
+                                                     output_dir=output_dir,
+                                                     config=config,
+                                                     fold_results=fold_results,
+                                                     wandb_run=wandb_run)
+    else:
+        model_paths = wandb_log_models_to_artifact_store_from_fold_results(fold_results=fold_results,
+                                                                           log_name=log_name,
+                                                                           log_wandb=False)
+
+    if 'MLflow' in logging_services:
+        a = 'placeholder for averaged CV artifacts'
+
+    return model_paths
+
+
+def log_wandb_experiment_artifacts(log_name: str, cv_dir_out: str, output_dir: str,
+                                   config: dict, fold_results: dict, wandb_run: wandb.sdk.wandb_run.Run):
 
     # Log the artifact dir
     logger.info('ENSEMBLED Cross-Validation results | Artifacts directory')
@@ -240,10 +300,10 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
     artifact_cfg.add_file(path_out)
     wandb_run.log_artifact(artifact_cfg)
 
-    #
-    logger.info('TODO! ENSEMBLED Cross-Validation results | Loguru log to WANDB')
-    # 2023-10-05 17:55:51.088 | INFO     | src.utils.config_utils:import_config:94 -
-    #     Log will be saved to disk to "/mnt/minivess_mlops_artifacts/output/experiments/hyperparam_example_name"
+    logger.info('ENSEMBLED Cross-Validation results | Loguru log saved as .txt')
+    artifact_log = wandb.Artifact(name='log', type='log')
+    artifact_log.add_file(path_out)
+    wandb_run.log_artifact(artifact_log)
 
     wandb.finish()
 
@@ -252,7 +312,8 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
 
 def wandb_log_models_to_artifact_store_from_fold_results(fold_results: dict,
                                                          log_name: str,
-                                                         wandb_run):
+                                                         wandb_run = None,
+                                                         log_wandb: bool = True):
     model_paths = {}
     n_models = 0
 
@@ -270,10 +331,11 @@ def wandb_log_models_to_artifact_store_from_fold_results(fold_results: dict,
                     model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
                     n_models += 1
 
-                    artifact_name = '{}_{}'.format(fold_name, repeat_name)
-                    artifact_model = wandb.Artifact(name=artifact_name, type=artifact_type)
-                    artifact_model.add_file(model_path)
-                    wandb_run.log_artifact(artifact_model)
+                    if log_wandb:
+                        artifact_name = '{}_{}'.format(fold_name, repeat_name)
+                        artifact_model = wandb.Artifact(name=artifact_name, type=artifact_type)
+                        artifact_model.add_file(model_path)
+                        wandb_run.log_artifact(artifact_model)
 
 
     return model_paths

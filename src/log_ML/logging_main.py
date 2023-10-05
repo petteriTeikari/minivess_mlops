@@ -7,7 +7,7 @@ from src.log_ML.log_epochs import log_epoch_for_tensorboard
 from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats, \
     reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble, \
     get_best_repeat_result
-from src.log_ML.wandb_log import log_wandb_repeat_results, log_ensemble_results
+from src.log_ML.wandb_log import log_wandb_repeat_results, log_wandb_ensemble_results
 
 
 def log_epoch_results(train_epoch_results, eval_epoch_results,
@@ -124,9 +124,9 @@ def log_crossvalidation_results(fold_results: dict,
         logger.info('Skipping repeat-level WANDB Logging!')
 
     if ensembled_results_reordered is not None:
-        log_ensemble_results(ensembled_results=ensembled_results,
-                             output_dir=config['run']['output_base_dir'],
-                             config=config)
+        log_wandb_ensemble_results(ensembled_results=ensembled_results,
+                                   output_dir=config['run']['output_base_dir'],
+                                   config=config)
 
         logged_model_paths = log_cv_results(cv_results=cv_results,
                                             cv_ensemble_results=cv_ensemble_results,

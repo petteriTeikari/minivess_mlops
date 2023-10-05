@@ -83,15 +83,17 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
 
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
                   "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
+    log_file = 'log_{}.txt'.format(hyperparam_name)
+    config['run']['output_log_path'] = os.path.join(config['run']['output_experiment_dir'], log_file)
     try:
-        logger.add(os.path.join(config['run']['output_experiment_dir'], 'log_{}.txt'.format(hyperparam_name)),
+        logger.add(config['run']['output_log_path'] ,
                    level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
     except Exception as e:
         raise IOError('Problem initializing the log file to the artifacts output, have you created one? '
                       'do you have the permissions correct? See README.md for the "minivess_mlops_artifacts" creation'
                       'with symlink to /mnt \n error msg = {}'.format(e))
 
-    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_experiment_dir']))
+    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_log_path']))
 
     # Initialize ML logging (experiment tracking)
     config['run']['mlflow'], mlflow_dict =  init_mlflow_logging(config=config,
