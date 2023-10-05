@@ -1,12 +1,17 @@
 import json
 import os
+import tempfile
 import warnings
 from functools import singledispatch
+
+import omegaconf
+from omegaconf import OmegaConf
 from loguru import logger
 
 import numpy as np
 import wandb.sdk.wandb_run
 import yaml
+
 
 
 def convert_value_to_numpy_array(value_in):
@@ -72,7 +77,21 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
 def write_config_as_yaml(config: dict, dir_out: str):
 
     path_out = os.path.join(dir_out, 'config.yaml')
-    with open(path_out, 'w') as outfile:
-        yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+    if isinstance(config, omegaconf.dictconfig.DictConfig):
+        logger.info('Dumping the OmegaConf config to disk as .yaml ({})'.format(path_out))
+        with tempfile.TemporaryDirectory() as d:
+            OmegaConf.save(config, path_out)
+            # test that this is actually the same
+            with open(path_out) as f:
+                x = yaml.unsafe_load(f)
+                assert config == x, ('The OmegaConf dictionary dumped to disk as .yaml is not the sane as used '
+                                     'for training, something funky happened during saving')
+    else:
+        logger.info('Dumping vanilla Python dictionary to disk as .yaml ({})'.format(path_out))
+        try:
+            with open(path_out, 'w') as outfile:
+                yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            logger.warning('Problem writing the config to disk, e = {}'.format(e))
 
     return path_out
