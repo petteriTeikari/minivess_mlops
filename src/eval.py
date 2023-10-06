@@ -39,7 +39,7 @@ def evaluate_1_epoch(dataloader, model, split_name, dataset_name,
     epoch_start = time.time()
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
-            if training_config['AMP']:
+            if training_config['PRECISION'] == 'AMP':
                 with torch.cuda.amp.autocast():
                     val_outputs = sliding_window_inference(inputs=batch_data["image"].to(device), **metric_dict)
             else:

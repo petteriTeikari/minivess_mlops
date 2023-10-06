@@ -133,7 +133,7 @@ config:
   TRAINING:
     # Have a look on the float16 vs bfloat16, and whether to for example include
     # HuggingFace's accelerate here, or what is the easiest?
-    AMP: True
+    PRECISION: 'AMP'
     NO_REPEATS: 2
     NUM_EPOCHS: 2
     LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
@@ -170,6 +170,13 @@ config:
     # best metrics in practice only from the end of the training when optimization has converged
     EMA_SMOOTH: False
     SAVE_FULL_MODEL: True
+    VALIDATION_PARAMS:
+      roi_size:
+        - 64
+        - 64
+        - 8
+      sw_batch_size: 4
+      overlap: 0.6
 
   # ----------------------------------------------------------------------------------- #
   # VALIDATION_BEST
@@ -197,6 +204,10 @@ config:
   # ----------------------------------------------------------------------------------- #
   ENSEMBLE:
     enable: True
+    PARAMS:
+      method: 'average'
+      # what is the cutoff for prediction of foreground
+      mask_threshold: 0.5
 
   # ----------------------------------------------------------------------------------- #
   # DATASETS

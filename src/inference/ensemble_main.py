@@ -5,9 +5,11 @@ import mlflow
 import numpy as np
 import torch
 from loguru import logger
+from omegaconf import OmegaConf
 
 from tqdm import tqdm
 
+from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_dataloader
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
     compute_split_metric_stats, get_ensemble_name
 from src.inference.inference_utils import inference_sample, inference_best_repeat, \
@@ -25,12 +27,13 @@ def reinference_dataloaders(input_dict: dict,
                             debug_mode: bool = False):
 
     # TODO! add from debug_mode, the done splits, as in the "debug" mode, we are now doing the TEST only
+    allowed_splits = ['TEST']
 
     os.makedirs(artifacts_output_dir, exist_ok=True)
     results_out = {}
     for split in dataloaders:
 
-        if split == 'TEST':
+        if split in allowed_splits:
             # add this check to some debug mode to speed up development, and not having to compute all the splits
 
             logger.info('Inference for split "{}"'.format(split))
@@ -47,11 +50,11 @@ def reinference_dataloaders(input_dict: dict,
                                                                    config=config)
 
                     if model_scheme == 'ensemble_from_repeats':
-                        results_out[split] = inference_ensemble_dataloader(dataloader=dataloader,
-                                                                           split=split,
-                                                                           repeat_results=input_dict,
-                                                                           config=config,
-                                                                           device=device)
+                        results_out[split] = inference_ensembles_dataloader(dataloader=dataloader,
+                                                                            split=split,
+                                                                            archi_results=input_dict,
+                                                                            config=config,
+                                                                            device=device)
                     elif model_scheme == 'best_repeats':
                         results_out[split] = inference_best_repeat(dataloader=dataloader,
                                                                    split=split,
@@ -71,9 +74,9 @@ def reinference_dataloaders(input_dict: dict,
                                                                device=device,
                                                                config=config)
                 if model_scheme == 'ensemble_from_repeats':
-                    results_out[split] = inference_ensemble_dataloader(dataloader=dataloader,
+                    results_out[split] = inference_ensembles_dataloader(dataloader=dataloader,
                                                                        split=split,
-                                                                       repeat_results=input_dict,
+                                                                       archi_results=input_dict,
                                                                        config=config,
                                                                        device=device)
                 elif model_scheme == 'best_repeats':
@@ -86,131 +89,88 @@ def reinference_dataloaders(input_dict: dict,
                     raise NotImplementedError('Unknown or not yet implemented '
                                               'model_scheme = "{}"'.format(model_scheme))
 
+        else:
+            logger.debug('Skipping split = {}'.format(split))
+
+
     return results_out
 
 
-def inference_ensemble_dataloader(dataloader,
-                                  split: str,
-                                  repeat_results: dict,
-                                  config: dict,
-                                  device: str):
-
-    no_samples = len(dataloader.sampler)
-    no_repeats = len(repeat_results)
-
-    split_metrics = {}
-    split_metrics_stat = {}
+def inference_ensembles_dataloader(dataloader,
+                                   split: str,
+                                   archi_results: dict,
+                                   config: dict,
+                                   device: str):
 
     # ASSUMING THAT all the repeats are the same (which should hold, and if you want to do diverse ensembles
     # later, keep the repeat and the architecture/model tweaks as separate)
-    repeat_names = list(repeat_results.keys())
-    repeat_result_example = repeat_results[repeat_names[0]]['best_dict']
+    architecture_names = list(archi_results.keys())
+    repeat_names = list(archi_results[architecture_names[0]].keys())
+    repeat_result_example = archi_results[architecture_names[0]][repeat_names[0]]['best_dict']
 
-    # DOUBLE-CHECK, why we have actually have dataset "twice", should this be removed?
-    for d, dataset in enumerate(repeat_result_example):
-        split_metrics[dataset] = {}
-        split_metrics_stat[dataset] = {}
+    no_submodels = len(architecture_names) * len(repeat_names)
+    no_eval_datasets = len(repeat_result_example)
+    no_tracked_metrics = len(repeat_result_example[list(repeat_result_example)[0]])
+    no_ensembles = no_eval_datasets*no_tracked_metrics
+    logger.info('No of submodels in ensemble = {} ({} repeats, {} architectures)'.
+                format(no_submodels, len(repeat_names), len(architecture_names)))
+    logger.info('No of ensembles = {} ({} eval_datasets, {} tracked metrics)'.
+                format(no_ensembles, no_eval_datasets, no_tracked_metrics))
 
-        for m, metric_to_track in enumerate(repeat_result_example[dataset]):
-            split_metrics[dataset][metric_to_track] = {}
-            split_metrics_stat[dataset][metric_to_track] = {}
+    _, ensemble_models_flat = collect_submodels_of_the_ensemble_archi(archi_results)
 
-            ensemble_name = get_ensemble_name(dataset_validated = dataset,
-                                              metric_to_track = metric_to_track)
+    ensemble_results = {}
+    for ensemble_name in ensemble_models_flat:
+        ensemble_results[ensemble_name] = (
+            inference_ensemble_dataloader(models_of_ensemble=ensemble_models_flat[ensemble_name],
+                                          config=config,
+                                          split=split,
+                                          dataloader=dataloader,
+                                          device=device))
 
-            model_dict = repeat_result_example[dataset][metric_to_track]['model']
-            model, _, _, _ = import_model_from_path(model_path=model_dict['model_path'],
-                                                    validation_config=config['config']['VALIDATION'])
-
-            # FIXME: get this from config
-            metric_dict = {'roi_size': (64, 64, 8), 'sw_batch_size': 4, 'predictor': model, 'overlap': 0.6}
-            model.eval()
-
-            with (torch.no_grad()):
-                for batch_idx, batch_data in enumerate(
-                    tqdm(dataloader, desc='ENSEMBLE: Inference on dataloader samples, split "{}"'.format(split),
-                         position=0)):
-                    inference_results = {}
-
-                    # tqdm(repeat_results, desc='Inference on repeat', position=1, leave=False)
-                    for r, repeat_name in enumerate(repeat_results):
-
-                        sample_res = inference_sample(batch_data,
-                                                      model=model,
-                                                      metric_dict=metric_dict,
-                                                      device=device,
-                                                      auto_mixedprec=config['config']['TRAINING']['AMP'])
-
-                        # Add different repeats together so you can get the ensemble response
-                        inference_results = add_sample_results_to_ensemble_results(inf_res=deepcopy(inference_results),
-                                                                                   sample_res=sample_res)
-
-                    # We have now the inference output of each repeat in the "ensemble_results" and we can for example
-                    # get the average probabilities per pixel/voxel, or do majority voting
-                    # This contains the binary mask that you could actually use
-                    ensemble_stat_results = ensemble_repeats(inf_res=inference_results, config=config)
-
-                    # And let's compute the metrics from the ensembled prediction
-                    sample_ensemble_metrics = (
-                        get_inference_metrics(ensemble_stat_results=ensemble_stat_results,
-                                              y_pred=ensemble_stat_results['arrays']['mask'],
-                                              config=config,
-                                              batch_data=batch_data))
-
-                    # Collect the metrics for each sample so you can for example compute mean dice for the split
-                    split_metrics[dataset][metric_to_track] = \
-                        add_sample_metrics_to_split_results(sample_metrics=deepcopy(sample_ensemble_metrics),
-                                                            split_metrics_tmp=split_metrics[dataset][metric_to_track])
-
-            # Done with the dataloader here and you have metrics computed per each of the sample
-            # in the dataloader and you would like to probably have like mean Dice and stdev in Dice
-            # along with the individual values so you could plot some distribution and highlight the
-            # poorly performing samples
-            split_metrics_stat[dataset][metric_to_track] = (
-                compute_split_metric_stats(split_metrics_tmp=split_metrics[dataset][metric_to_track]))
-
-    return {'samples': split_metrics, 'stats': split_metrics_stat}
+    return ensemble_results
 
 
-def ensemble_repeats(inf_res: dict,
-                     config: dict,
-                     var_type_key: str = 'arrays',
-                     var_key: str = 'probs') -> dict:
+def collect_submodels_of_the_ensemble_archi(archi_results: dict):
+    """
+    Combine later with the collect_submodels_of_the_ensemble() that is basically the same
+    just with one more nesting level
+    """
 
-    input_data = inf_res[var_type_key][var_key]
-    ensemble_stats = compute_ensembled_response(input_data, config)
+    # Two ways of organizing the same saved models, deprecate the other later
+    model_paths = {}  # original nesting notation
+    ensemble_models_flat = {}  # more intuitive maybe, grouping models under the same ensemble name
+    n_submodels = 0
+    n_ensembles = 0
 
-    return ensemble_stats
+    for archi_name in archi_results:
+        model_paths[archi_name] = {}
+        for repeat_name in archi_results[archi_name]:
+            model_paths[archi_name][repeat_name] = {}
+            best_dict = archi_results[archi_name][repeat_name]['best_dict']
+            for ds in best_dict:
+                model_paths[archi_name][repeat_name][ds] = {}
+                for tracked_metric in best_dict[ds]:
 
+                    model_path = best_dict[ds][tracked_metric]['model']['model_path']
+                    model_paths[archi_name][repeat_name][ds][tracked_metric] = model_path
 
-def compute_ensembled_response(input_data: np.ndarray,
-                               config: dict) -> dict:
+                    ensemble_name = get_ensemble_name(dataset_validated=ds,
+                                                      metric_to_track=tracked_metric)
 
-    variable_stats = {}
-    variable_stats['scalars'] = {}
-    variable_stats['scalars']['n_samples'] = input_data.shape[0]  # i.e. number of repeats / submodels
+                    if ensemble_name not in ensemble_models_flat:
+                        ensemble_models_flat[ensemble_name] = {}
+                        n_ensembles += 1
 
-    variable_stats['arrays'] = {}
-    variable_stats['arrays']['mean'] = np.mean(input_data, axis = 0)  # i.e. number of repeats / submodels
-    variable_stats['arrays']['var'] = np.var(input_data, axis=0)  # i.e. number of repeats / submodels
-    variable_stats['arrays']['UQ_epistemic'] = np.nan
-    variable_stats['arrays']['UQ_aleatoric'] = np.nan
-    variable_stats['arrays']['entropy'] = np.nan
+                    submodel_name = '{}_{}'.format(archi_name, repeat_name)
+                    if submodel_name not in ensemble_models_flat[ensemble_name]:
+                        ensemble_models_flat[ensemble_name][submodel_name] = model_path
+                        n_submodels += 1
 
-    ensemble_from_mean = True  # quick'dirty placeholder, add later to config the options
-    mask_threshold = 0.5
-    if ensemble_from_mean:
-        variable_stats['arrays']['mask'] = (variable_stats['arrays']['mean'] > mask_threshold).astype('float32')
-    else:
-        a = 'majority_voting_here'
+    # Remember that you get more distinct ensembles if use more tracking metrics (e.g. track for best loss and for
+    # best Hausdorff distance), and if you validate for more subsets of the data instead of just having one
+    # "vanilla" validation splöit
+    logger.info('Collected a total of {} models, and {} distinct ensembles for ensemble inference'.
+                format(n_submodels, n_ensembles))
 
-    return variable_stats
-
-
-class ModelEnsemble(mlflow.pyfunc.PythonModel):
-  def __init__(self, ensemble_model_paths: dict):
-      self.ensemble_model_paths = ensemble_model_paths
-
-
-# ensemble = ModelEnsemble(ensemble_model_paths=ensemble_models_flat[ensemble_name])
-
+    return model_paths, ensemble_models_flat

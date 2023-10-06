@@ -189,10 +189,12 @@ def model_improved_script(best_dict: dict,
 
 
 def import_model_from_path(model_path: str,
-                           validation_config: dict):
+                           validation_config: dict,
+                           verbose: bool = False):
 
     if os.path.exists(model_path):
-        logger.debug('Import saved Pytorch model from "{}"'.format(model_path))
+        if verbose:
+            logger.debug('Import saved Pytorch model from "{}"'.format(model_path))
         if validation_config['SAVE_FULL_MODEL']:
             model_dict = torch.load(model_path)
             model = model_dict['model']

@@ -37,6 +37,8 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
                                           config_dir = CONFIG_DIR,
                                           base_config = base_config)
 
+    config = config_manual_fixes(config)
+
     # Add the input arguments as an extra subdict to the config
     # config['config']['ARGS'] = args
     config['ARGS'] = args
@@ -107,6 +109,13 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     return config
 
 
+def config_manual_fixes(config: dict):
+    """
+    Quick'n'dirty fixes for YAML import
+    """
+    return config
+
+
 def set_config_for_debug_mode(config):
     logger.warning('DEBUG MODE ON! Setting config, so that you train only for one epoch')
     config['config']['TRAINING']['NUM_EPOCHS'] = 1
@@ -137,7 +146,7 @@ def update_base_with_task_config(task_config_file: str, config_dir: str, base_co
     config, no_of_updates = update_config_dictionary(d = base_config, u = task_config)
     logger.info('Updated the base config with a total of {} changed keys from the task config', no_of_updates)
 
-    # TOADD: Hydra
+    # TOADD: Hydra?
     # https://www.sscardapane.it/tutorials/hydra-tutorial/#first-steps-manipulating-a-yaml-file
     # https://medium.com/pytorch/hydra-a-fresh-look-at-configuration-for-machine-learning-projects-50583186b710
     # https://github.com/khuyentran1401/Machine-learning-pipeline

@@ -36,6 +36,9 @@ def training_script(experim_dataloaders: dict,
         config['run']['repeat_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'repeats')
         config['run']['ensemble_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'ensemble')
 
+        # Quick'n'dirty placeholder to simulate diverse ensembles, i.e. when your submodels are not just
+        # different repeats (as in different random starting points) but different model architectures, e.g.
+        # 1) CNN, 2) Transformer, etc. (and each of these individual architectures can be repeated n times)
         fold_results[fold_name], ensembled_results[fold_name] = \
             train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
                                         config=config,
@@ -63,6 +66,49 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                 machine_config: dict,
                                 output_dir: str,
                                 fold_name: str):
+    """
+    Up to you decide if you consider what is really a different architecture within the ensemble
+    """
+    architecture_names = ['UNet']
+    archi_results, ensembled_results = {}, {}
+
+    for i, architecture_name in enumerate(architecture_names):
+        logger.info('Training architecture #{}/{}: {}'.format(i+1, len(architecture_names), architecture_name))
+        archi_results[architecture_name] = \
+            train_model_for_single_architecture(fold_dataloaders=fold_dataloaders,
+                                                config=config,
+                                                training_config=training_config,
+                                                model_config=model_config,
+                                                machine_config=machine_config,
+                                                output_dir=config['run']['fold_dir'][fold_name],
+                                                fold_name=fold_name)
+
+    # Ensemble the repeats (submodels)
+    if config['config']['ENSEMBLE']['enable']:
+        ensemble_results = reinference_dataloaders(input_dict=archi_results,
+                                                   dataloaders=fold_dataloaders,
+                                                   artifacts_output_dir=config['run']['ensemble_artifacts'][
+                                                       fold_name],
+                                                   config=config,
+                                                   device=machine_config['IN_USE']['device'],
+                                                   model_scheme='ensemble_from_repeats')
+        # Log inference
+        log_ensemble_results(ensemble_results, config=config, fold_name=fold_name)
+
+    else:
+        logger.info('Skip ENSEMBLING')
+        ensemble_results = None
+
+    return archi_results, ensembled_results
+
+
+def train_model_for_single_architecture(fold_dataloaders: dict,
+                                        config: dict,
+                                        training_config: dict,
+                                        model_config: dict,
+                                        machine_config: dict,
+                                        output_dir: str,
+                                        fold_name: str) -> dict:
 
     # Repeat n times the same data fold (i.e. you get n submodels for an inference)
     os.makedirs(output_dir, exist_ok=True)
@@ -92,22 +138,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                   dataloaders=fold_dataloaders,
                                   device=machine_config['IN_USE']['device'])
 
-    # Ensemble the repeats (submodels)
-    if config['config']['ENSEMBLE']['enable']:
-        ensemble_results = reinference_dataloaders(input_dict=repeat_results,
-                                                   dataloaders=fold_dataloaders,
-                                                   artifacts_output_dir=config['run']['ensemble_artifacts'][fold_name],
-                                                   config=config,
-                                                   device=machine_config['IN_USE']['device'],
-                                                   model_scheme='ensemble_from_repeats')
-        # Log inference
-        log_ensemble_results(ensemble_results, config=config, fold_name=fold_name)
-
-    else:
-        logger.info('Skip ENSEMBLING')
-        ensemble_results = None
-
-    return repeat_results, ensemble_results
+    return repeat_results
 
 
 def train_single_model(dataloaders: dict,
@@ -122,11 +153,12 @@ def train_single_model(dataloaders: dict,
                        output_dir: str) -> dict:
 
     os.makedirs(output_dir, exist_ok=True)
-    if training_config['AMP']:
+    if training_config['PRECISION'] == 'AMP':
         scaler = torch.cuda.amp.GradScaler()
     else:
         raise NotImplementedError('Check the train loop also for non-AMP operation')
 
+    # TODO! THIS SHOULD BE HAPPEN WITH THE ARCHITECTURE LOOP, NOT INSIDE THE REPEAT
     # Define the model to be used
     model = import_segmentation_model(model_config, device)
 
@@ -234,7 +266,7 @@ def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, 
     for batch_idx, batch_data in enumerate(train_loader):
         optimizer.zero_grad()
         loss = train_1_batch(model, device, batch_data, loss_function,
-                             amp_on= training_config['AMP'])
+                             amp_on=training_config['PRECISION']=='AMP')
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
