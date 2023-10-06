@@ -5,6 +5,7 @@ import mlflow
 import omegaconf
 from loguru import logger
 
+from src.inference.ensemble_utils import get_ensemble_name
 from src.log_ML.log_model_registry import log_ensembles_to_MLflow, log_ensembles_to_WANDB
 from src.log_ML.log_utils import write_config_as_yaml
 
@@ -57,7 +58,8 @@ def log_config_artifacts(log_name: str,
                                                        log_name=log_name,
                                                        wandb_run=wandb_run,
                                                        logging_services=logging_services,
-                                                       config=config)
+                                                       config=config,
+                                                       test_loading=True)
 
     return model_paths
 
@@ -66,7 +68,8 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
                                          log_name: str,
                                          wandb_run: wandb.sdk.wandb_run.Run,
                                          logging_services: list,
-                                         config: dict):
+                                         config: dict,
+                                         test_loading: bool = False):
 
     # Collect and simplify the submodel structure of the ensemble(s)
     model_paths, ensemble_models_flat = collect_submodels_of_the_ensemble(fold_results)
@@ -74,12 +77,14 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
     if 'WANDB' in logging_services:
         log_ensembles_to_WANDB(ensemble_models_flat=ensemble_models_flat,
                                config=config,
-                               wandb_run=wandb_run)
+                               wandb_run=wandb_run,
+                               test_loading=test_loading)
 
 
     if 'MLflow' in logging_services:
         log_ensembles_to_MLflow(ensemble_models_flat=ensemble_models_flat,
-                                config=config)
+                                config=config,
+                                test_loading=test_loading)
 
 
     return {'model_paths': model_paths, 'ensemble_models_flat': ensemble_models_flat}
@@ -105,7 +110,9 @@ def collect_submodels_of_the_ensemble(fold_results: dict):
                     model_path = best_dict[ds][tracked_metric]['model']['model_path']
                     model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
 
-                    ensemble_name = '{}{}'.format(tracked_metric, ds)
+                    ensemble_name = get_ensemble_name(dataset_validated=ds,
+                                                      metric_to_track=tracked_metric)
+
                     if ensemble_name not in ensemble_models_flat:
                         ensemble_models_flat[ensemble_name] = {}
                         n_ensembles += 1

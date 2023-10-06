@@ -1,6 +1,7 @@
 import os
 from copy import deepcopy
 
+import mlflow
 import numpy as np
 import torch
 from loguru import logger
@@ -8,7 +9,7 @@ from loguru import logger
 from tqdm import tqdm
 
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
-    compute_split_metric_stats
+    compute_split_metric_stats, get_ensemble_name
 from src.inference.inference_utils import inference_sample, inference_best_repeat, \
     get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
@@ -22,6 +23,8 @@ def reinference_dataloaders(input_dict: dict,
                             device,
                             model_scheme: str = 'ensemble_from_repeats',
                             debug_mode: bool = False):
+
+    # TODO! add from debug_mode, the done splits, as in the "debug" mode, we are now doing the TEST only
 
     os.makedirs(artifacts_output_dir, exist_ok=True)
     results_out = {}
@@ -55,11 +58,9 @@ def reinference_dataloaders(input_dict: dict,
                                                                    best_repeat_dicts=input_dict,
                                                                    config=config,
                                                                    device=device)
-
                     else:
                         raise NotImplementedError('Unknown or not yet implemented '
                                                   'model_scheme = "{}"'.format(model_scheme))
-
             else:
                 # TRAIN had no possibility to use multiple datasets (you could train for sure for multiple datasets,
                 # but in the end this dataloader has to contain the samples from all those different datasets)
@@ -69,7 +70,6 @@ def reinference_dataloaders(input_dict: dict,
                                                                split=split,
                                                                device=device,
                                                                config=config)
-
                 if model_scheme == 'ensemble_from_repeats':
                     results_out[split] = inference_ensemble_dataloader(dataloader=dataloader,
                                                                        split=split,
@@ -82,7 +82,6 @@ def reinference_dataloaders(input_dict: dict,
                                                                best_repeat_dicts=input_dict,
                                                                config=config,
                                                                device=device)
-
                 else:
                     raise NotImplementedError('Unknown or not yet implemented '
                                               'model_scheme = "{}"'.format(model_scheme))
@@ -115,6 +114,9 @@ def inference_ensemble_dataloader(dataloader,
         for m, metric_to_track in enumerate(repeat_result_example[dataset]):
             split_metrics[dataset][metric_to_track] = {}
             split_metrics_stat[dataset][metric_to_track] = {}
+
+            ensemble_name = get_ensemble_name(dataset_validated = dataset,
+                                              metric_to_track = metric_to_track)
 
             model_dict = repeat_result_example[dataset][metric_to_track]['model']
             model, _, _, _ = import_model_from_path(model_path=model_dict['model_path'],
@@ -204,4 +206,11 @@ def compute_ensembled_response(input_data: np.ndarray,
 
     return variable_stats
 
+
+class ModelEnsemble(mlflow.pyfunc.PythonModel):
+  def __init__(self, ensemble_model_paths: dict):
+      self.ensemble_model_paths = ensemble_model_paths
+
+
+# ensemble = ModelEnsemble(ensemble_model_paths=ensemble_models_flat[ensemble_name])
 

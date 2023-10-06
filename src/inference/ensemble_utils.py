@@ -102,3 +102,11 @@ def compute_stats_of_array_in_dict(input_data: np.ndarray) -> dict:
     stats_out['var'] = np.var(input_data)
 
     return stats_out
+
+
+def get_ensemble_name(dataset_validated: str,
+                      metric_to_track: str):
+
+    ensemble_name = '{}{}'.format(metric_to_track, dataset_validated)
+
+    return ensemble_name
