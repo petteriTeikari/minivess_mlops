@@ -7,7 +7,9 @@ import omegaconf
 from loguru import logger
 import wandb
 
+from src.log_ML.log_config import log_config_artifacts
 from src.log_ML.log_utils import get_number_of_steps_from_repeat_results, write_config_as_yaml
+from src.log_ML.mlflow_log import mlflow_cv_artifacts
 
 
 def log_wandb_repeat_results(fold_results: dict,
@@ -120,8 +122,10 @@ def log_wandb_ensemble_results(ensembled_results: dict,
         wandb_log_ensemble_per_fold(wandb_run, fold_name, log_name,
                                     results=ensembled_results[fold_name], config=config)
 
-        # Log the artifacts
+        # Log the artifacts, as in all the custom plots, .csv., .json you might have
+        # created during the training process
         dir_out = config['run']['ensemble_artifacts'][fold_name]
+        logger.info('Logging the ensemble output directory to WANDB: {}'.format(dir_out))
         artifact = wandb.Artifact(name=log_name, type='artifacts')
         artifact.add_dir(local_path=dir_out, name='ensemble_artifacts')
         wandb_run.log_artifact(artifact)
@@ -161,7 +165,8 @@ def log_cv_results(cv_results: dict,
                    config: dict,
                    logging_services: list,
                    output_dir: str,
-                   stat_keys_to_reject: tuple = ('n'),
+                   stat_keys_to_reject: tuple = ('n',),
+                   metrics_to_metadata: tuple = ('time_',), # quick n dirty method to keep times from metrics
                    var_types: tuple = ('scalars', 'metadata_scalars')):
 
     log_name = 'CV_averaged'
@@ -191,12 +196,10 @@ def log_cv_results(cv_results: dict,
                                         v = cv_results[dataset][tracked_metric][split][ds_eval][var_type][var][stat_key]
                                         metric_name = 'CV_{}/{}/{}_{}'.format(split, dataset, var, stat_key)
 
-                                        logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, v))
-                                        if 'WANDB' in logging_services:
-                                            wandb.log({metric_name: v}, step=0)
-
-                                        if 'MLflow' in logging_services:
-                                            mlflow.log_metric(metric_name, v)
+                                        log_cv_metric(logging_services = logging_services,
+                                                      metric_name = metric_name,
+                                                      value = v,
+                                                      metrics_to_metadata = metrics_to_metadata)
 
                                         # TOADD! Add the main metric definition here as well
                                         # NOTE!  ['MLflow', 'WANDB'] | "CV_VAL/MINIVESS/time_e , reject the timing?
@@ -204,13 +207,37 @@ def log_cv_results(cv_results: dict,
 
     # Log the artifact dir
     if 'WANDB' in logging_services:
+        logger.info('WANDB | Logging the directory {} as an artifact'.format(cv_dir_out))
         artifact = wandb.Artifact(name=log_name, type='artifacts')
         artifact.add_dir(local_path=cv_dir_out, name='CV_artifacts')
         wandb_run.log_artifact(artifact)
         wandb.finish()
 
     if 'MLflow' in logging_services:
-        a = 'placeholder for averaged CV artifacts'
+        mlflow_cv_artifacts(log_name=log_name, local_artifacts_dir=cv_dir_out)
+
+def log_cv_metric(logging_services: list, metric_name: str, value,
+                  metrics_to_metadata: tuple = None,
+                  log_this_metric: bool = True,
+                  reject_metadata: bool = True):
+
+    if metrics_to_metadata is not None:
+        for wildcard in metrics_to_metadata:
+            if wildcard in metric_name:
+                if reject_metadata:
+                    log_this_metric = False
+                else:
+                    metric_name = 'metadata_' + metric_name
+
+    if log_this_metric:
+        logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
+        if 'WANDB' in logging_services:
+            wandb.log({metric_name: value}, step=0)
+
+        if 'MLflow' in logging_services:
+            mlflow.log_metric(metric_name, value)
+    else:
+        logger.debug('SKIP THIS: {} | "{}": {:.3f}'.format(logging_services, metric_name, value))
 
 
 def log_cv_ensemble_results(cv_ensemble_results: dict,
@@ -234,6 +261,8 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
             raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
+    else:
+        wandb_run = None
 
     logger.info('ENSEMBLED Cross-Validation results | Metrics')
     for split in cv_ensemble_results:
@@ -248,97 +277,35 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                             value = stat_dict[stat_key2]
                             metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, dataset, metric, stat_key)
 
-                            logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
-                            if 'WANDB' in logging_services:
-                                wandb.log({metric_name: value}, step=0)
-
-                            if 'MLflow' in logging_services:
-                                mlflow.log_metric(metric_name, value)
+                            log_CV_ensemble_metric(logging_services=logging_services,
+                                                   metric_name=metric_name,
+                                                   value=value)
 
                             # TOADD! Add the main metric definition here as well
                             # NOTE! If only one fold, no need to log the stdev of 0
 
+    # Log the artifacts, config, log and the model(s) to Model Registry
+    model_paths = log_config_artifacts(log_name=log_name,
+                                       cv_dir_out=cv_dir_out,
+                                       output_dir=output_dir,
+                                       config=config,
+                                       fold_results=fold_results,
+                                       logging_services=logging_services,
+                                       wandb_run=wandb_run)
 
+    wandb.finish() # end of WANDB logging here
+
+    return model_paths
+
+
+def log_CV_ensemble_metric(logging_services: list, metric_name: str, value):
+
+    logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
     if 'WANDB' in logging_services:
-        model_paths = log_wandb_experiment_artifacts(log_name=log_name,
-                                                     cv_dir_out=cv_dir_out,
-                                                     output_dir=output_dir,
-                                                     config=config,
-                                                     fold_results=fold_results,
-                                                     wandb_run=wandb_run)
-    else:
-        model_paths = wandb_log_models_to_artifact_store_from_fold_results(fold_results=fold_results,
-                                                                           log_name=log_name,
-                                                                           log_wandb=False)
+        wandb.log({metric_name: value}, step=0)
 
     if 'MLflow' in logging_services:
-        a = 'placeholder for averaged CV artifacts'
-
-    return model_paths
-
-
-def log_wandb_experiment_artifacts(log_name: str, cv_dir_out: str, output_dir: str,
-                                   config: dict, fold_results: dict, wandb_run: wandb.sdk.wandb_run.Run):
-
-    # Log the artifact dir
-    logger.info('ENSEMBLED Cross-Validation results | Artifacts directory')
-    artifact_dir = wandb.Artifact(name=log_name, type='artifacts')
-    artifact_dir.add_dir(local_path=cv_dir_out, name='CV-ENSEMBLE_artifacts')
-    wandb_run.log_artifact(artifact_dir)
-
-    # Log all the models from all the folds and all the repeats to the Artifact Store
-    # and these are accessible to Model Registry as well
-    logger.info('ENSEMBLED Cross-Validation results | Models to Model Registry')
-    model_paths = wandb_log_models_to_artifact_store_from_fold_results(fold_results=fold_results,
-                                                                       log_name=log_name,
-                                                                       wandb_run=wandb_run)
-
-    # HERE, log the config as .yaml file back to disk
-    logger.info('ENSEMBLED Cross-Validation results | Config as YAML')
-    path_out = write_config_as_yaml(config=config, dir_out=output_dir)
-    artifact_cfg = wandb.Artifact(name='config', type='config')
-    artifact_cfg.add_file(path_out)
-    wandb_run.log_artifact(artifact_cfg)
-
-    logger.info('ENSEMBLED Cross-Validation results | Loguru log saved as .txt')
-    artifact_log = wandb.Artifact(name='log', type='log')
-    artifact_log.add_file(path_out)
-    wandb_run.log_artifact(artifact_log)
-
-    wandb.finish()
-
-    return model_paths
-
-
-def wandb_log_models_to_artifact_store_from_fold_results(fold_results: dict,
-                                                         log_name: str,
-                                                         wandb_run = None,
-                                                         log_wandb: bool = True):
-    model_paths = {}
-    n_models = 0
-
-    artifact_type = 'model'  # This is "reserved name", and if you want to use Model Registry, keep this naming
-
-    for fold_name in fold_results:
-        model_paths[fold_name] = {}
-        for repeat_name in fold_results[fold_name]:
-            model_paths[fold_name][repeat_name] = {}
-            best_dict = fold_results[fold_name][repeat_name]['best_dict']
-            for ds in best_dict:
-                model_paths[fold_name][repeat_name][ds] = {}
-                for tracked_metric in best_dict[ds]:
-                    model_path = best_dict[ds][tracked_metric]['model']['model_path']
-                    model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
-                    n_models += 1
-
-                    if log_wandb:
-                        artifact_name = '{}_{}'.format(fold_name, repeat_name)
-                        artifact_model = wandb.Artifact(name=artifact_name, type=artifact_type)
-                        artifact_model.add_file(model_path)
-                        wandb_run.log_artifact(artifact_model)
-
-
-    return model_paths
+        mlflow.log_metric(metric_name, value)
 
 
 def wandb_log_metrics_of_repeat(wandb_run, results):

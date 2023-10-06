@@ -196,3 +196,5 @@ def correct_key_for_main_result(metric_name: str, fold_name: str,
         metric_name = fold_name + '/' + metric_type + '_' + split
 
     return metric_name
+
+

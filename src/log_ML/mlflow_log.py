@@ -132,3 +132,16 @@ def mlflow_dicts_to_omegaconf_dict(experiment, active_run):
     mlflow_dict_out = {**experiment_out, **active_run.data.tags}
 
     return mlflow_dict_out
+
+
+def mlflow_cv_artifacts(log_name: str, local_artifacts_dir: str):
+    """
+    https://mlflow.org/docs/latest/python_api/mlflow.html#mlflow.log_artifact
+    """
+    logger.info('WANDB | Logging the directory {} as an artifact'.format(local_artifacts_dir))
+    mlflow.log_artifact(local_artifacts_dir)
+
+
+
+
+

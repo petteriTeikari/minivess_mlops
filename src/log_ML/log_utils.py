@@ -35,9 +35,16 @@ def compute_numpy_stats(value_array_in: np.ndarray):
     stats_dict = {}
     no_of_folds, no_of_repeats = value_array_in.shape
 
-    stats_dict['mean'] = np.mean(value_array_in)
-    stats_dict['stdev'] = np.std(value_array_in)
     stats_dict['n'] = value_array_in.size
+    stats_dict['mean'] = np.mean(value_array_in)
+    if stats_dict['n'] > 1:
+        stats_dict['stdev'] = np.std(value_array_in)
+    else:
+        # to keep the logs a bit cleaner with np.isnan filtering for examople for cases
+        # with just one sample (e.g. one fold) and distinguish this actually zero stdev
+        # (you could do the same filtering downstream with the 'n' though as well)
+        stats_dict['stdev'] = np.nan
+
 
     return stats_dict
 
@@ -79,9 +86,10 @@ def write_config_as_yaml(config: dict, dir_out: str):
             OmegaConf.save(config, path_out)
             # test that this is actually the same
             with open(path_out) as f:
-                x = yaml.unsafe_load(f)
-                assert config == x, ('The OmegaConf dictionary dumped to disk as .yaml is not the sane as used '
-                                     'for training, something funky happened during saving')
+                loaded_dict = yaml.unsafe_load(f)
+                assert config == loaded_dict, ('The OmegaConf dictionary dumped to disk as .yaml '
+                                               'is not the sane as used '
+                                               'for training, something funky happened during saving')
     else:
         logger.info('Dumping vanilla Python dictionary to disk as .yaml ({})'.format(path_out))
         try:
@@ -90,7 +98,7 @@ def write_config_as_yaml(config: dict, dir_out: str):
         except Exception as e:
             logger.warning('Problem writing the config to disk, e = {}'.format(e))
 
-    return path_out
+    return path_out, loaded_dict
 
 
 def get_used_services(logging_cfg: dict):
