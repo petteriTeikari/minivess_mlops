@@ -100,27 +100,28 @@ def collect_submodels_of_the_ensemble(fold_results: dict):
 
     for fold_name in fold_results:
         model_paths[fold_name] = {}
-        for repeat_name in fold_results[fold_name]:
-            model_paths[fold_name][repeat_name] = {}
-            best_dict = fold_results[fold_name][repeat_name]['best_dict']
-            for ds in best_dict:
-                model_paths[fold_name][repeat_name][ds] = {}
-                for tracked_metric in best_dict[ds]:
+        for archi_name in fold_results[fold_name]:
+            for repeat_name in fold_results[fold_name][archi_name]:
+                model_paths[fold_name][repeat_name] = {}
+                best_dict = fold_results[fold_name][archi_name][repeat_name]['best_dict']
+                for ds in best_dict:
+                    model_paths[fold_name][repeat_name][ds] = {}
+                    for tracked_metric in best_dict[ds]:
 
-                    model_path = best_dict[ds][tracked_metric]['model']['model_path']
-                    model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
+                        model_path = best_dict[ds][tracked_metric]['model']['model_path']
+                        model_paths[fold_name][repeat_name][ds][tracked_metric] = model_path
 
-                    ensemble_name = get_ensemble_name(dataset_validated=ds,
-                                                      metric_to_track=tracked_metric)
+                        ensemble_name = get_ensemble_name(dataset_validated=ds,
+                                                          metric_to_track=tracked_metric)
 
-                    if ensemble_name not in ensemble_models_flat:
-                        ensemble_models_flat[ensemble_name] = {}
-                        n_ensembles += 1
+                        if ensemble_name not in ensemble_models_flat:
+                            ensemble_models_flat[ensemble_name] = {}
+                            n_ensembles += 1
 
-                    submodel_name = '{}_{}'.format(fold_name, repeat_name)
-                    if submodel_name not in ensemble_models_flat[ensemble_name]:
-                        ensemble_models_flat[ensemble_name][submodel_name] = model_path
-                        n_submodels += 1
+                        submodel_name = '{}_{}'.format(fold_name, repeat_name)
+                        if submodel_name not in ensemble_models_flat[ensemble_name]:
+                            ensemble_models_flat[ensemble_name][submodel_name] = model_path
+                            n_submodels += 1
 
     # Remember that you get more distinct ensembles if use more tracking metrics (e.g. track for best loss and for
     # best Hausdorff distance), and if you validate for more subsets of the data instead of just having one

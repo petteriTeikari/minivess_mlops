@@ -33,7 +33,7 @@ def convert_value_to_numpy_array(value_in):
 def compute_numpy_stats(value_array_in: np.ndarray):
 
     stats_dict = {}
-    no_of_folds, no_of_repeats = value_array_in.shape
+    no_of_folds, no_of_architectures, no_of_repeats = value_array_in.shape
 
     stats_dict['n'] = value_array_in.size
     stats_dict['mean'] = np.mean(value_array_in)

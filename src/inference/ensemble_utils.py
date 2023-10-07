@@ -107,7 +107,10 @@ def compute_stats_of_array_in_dict(input_data: np.ndarray) -> dict:
 
 def get_ensemble_name(dataset_validated: str,
                       metric_to_track: str):
-
     ensemble_name = '{}-{}'.format(metric_to_track, dataset_validated)
-
     return ensemble_name
+
+
+def split_ensemble_name(ensemble_name):
+    dset, tracked_metric = ensemble_name.split('-')
+    return dset, tracked_metric

@@ -19,26 +19,27 @@ def log_wandb_repeat_results(fold_results: dict,
 
     logger.info('Logging repeat-wise results to WANDB (local_dir = {})'.format(output_dir))
     for f, fold_name in enumerate(fold_results):
-        for r, repeat_name in enumerate(fold_results[fold_name]):
+        for a, archi_name in enumerate(fold_results[fold_name]):
+            for r, repeat_name in enumerate(fold_results[fold_name][archi_name]):
 
-            # In theory, you could want to separate the fold and repeat, but there is
-            # no additional field in WANDB for this type of hierarchy
-            log_name = fold_name + '_' + repeat_name
-            try:
-                wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
-                                               name=log_name,
-                                               group=config['run']['hyperparam_name'],
-                                               job_type='repeat',
-                                               param_conf=config['config'],
-                                               dir=output_dir,
-                                               tags=['tag1', 'tag2'])
-            except Exception as e:
-                raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
+                # In theory, you could want to separate the fold and repeat, but there is
+                # no additional field in WANDB for this type of hierarchy
+                log_name = fold_name + '_' + archi_name + '_' + repeat_name
+                try:
+                    wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
+                                                   name=log_name,
+                                                   group=config['run']['hyperparam_name'],
+                                                   job_type='repeat',
+                                                   param_conf=config['config'],
+                                                   dir=output_dir,
+                                                   tags=['tag1', 'tag2'])
+                except Exception as e:
+                    raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
-            wandb_log_repeat(wandb_run, fold_name, repeat_name, log_name,
-                             results=fold_results[fold_name][repeat_name], config=config,
-                             log_models_with_repeat=log_models_with_repeat)
-            wandb.finish()
+                wandb_log_repeat(wandb_run, fold_name, repeat_name, log_name,
+                                 results=fold_results[fold_name][archi_name][repeat_name], config=config,
+                                 log_models_with_repeat=log_models_with_repeat)
+                wandb.finish()
 
 
 def wandb_log_repeat(wandb_run, fold_name: str, repeat_name: str, log_name: str,
@@ -293,7 +294,9 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                        logging_services=logging_services,
                                        wandb_run=wandb_run)
 
-    wandb.finish() # end of WANDB logging here
+    if 'WANDB' in logging_services:
+        wandb.finish() # end of WANDB logging here
+        logger.info('Done with the WANDB Logging!')
 
     return model_paths
 

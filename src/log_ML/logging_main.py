@@ -138,7 +138,7 @@ def log_crossvalidation_results(fold_results: dict,
     else:
         logged_model_paths = None
 
-    logger.info('Done with the WANDB Logging!')
+    # TODO! check if you even were running MLflow?
     mlflow.end_run()
     logger.info('Done with the MLflow Logging!')
 
