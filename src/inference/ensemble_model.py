@@ -19,7 +19,7 @@ def inference_ensemble_dataloader(models_of_ensemble: dict,
                                   device):
 
     # Create the ensembleModel class with all the submodels of the ensemble
-    ensembleModel = ModelEnsemble(models_of_ensemble=models_of_ensemble,
+    ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
                                   validation_config=config['config']['VALIDATION'],
                                   ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                   validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
@@ -27,13 +27,24 @@ def inference_ensemble_dataloader(models_of_ensemble: dict,
                                   eval_config=config['config']['VALIDATION_BEST'],
                                   precision=config['config']['TRAINING']['PRECISION'])
 
+    ensemble_results = inference_ensemble_with_dataloader(ensemble_model,
+                                                          dataloader=dataloader,
+                                                          split=split)
+
+    return ensemble_results
+
+
+def inference_ensemble_with_dataloader(ensemble_model,
+                                       dataloader,
+                                       split: str):
+
     with (torch.no_grad()):
         dataloader_metrics = {}
         for batch_idx, batch_data in enumerate(
                 tqdm(dataloader,
                      desc='ENSEMBLE: Inference on dataloader samples, split "{}"'.format(split),
                      position=0)):
-            sample_ensemble_metrics = ensembleModel.predict_batch(batch_data=batch_data)
+            sample_ensemble_metrics = ensemble_model.predict_batch(batch_data=batch_data)
 
             # Collect the metrics for each sample so you can for example compute mean dice for the split
             dataloader_metrics = \
@@ -57,21 +68,36 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
     """
     def __init__(self, models_of_ensemble: dict, validation_config: dict,
                  ensemble_params: dict, validation_params: dict,
-                      device, precision: str, eval_config: dict, mode: str = 'evaluate'):
-      self.ensemble_model_paths = models_of_ensemble
-      self.no_submodels = len(models_of_ensemble)
-      self.model_best_dicts = {}
-      self.models = {}
-      self.ensemble_params = ensemble_params
-      self.device = device
-      self.validation_params = validation_params
-      self.precision = precision
-      self.eval_config = eval_config
+                 device, precision: str, eval_config: dict, model_best_dicts: dict = None,
+                 models_from_paths: bool = True, mode: str = 'evaluate'):
+        self.models_of_ensemble = models_of_ensemble
+        self.no_submodels = len(models_of_ensemble)
+        if model_best_dicts is None:
+            self.model_best_dicts = {}
+        else:
+            self.model_best_dicts = model_best_dicts
+        self.models = {}
+        self.ensemble_params = ensemble_params
+        self.device = device
+        self.validation_params = validation_params
+        self.precision = precision
+        self.eval_config = eval_config
 
-      for submodel_name in models_of_ensemble:
-            self.models[submodel_name], self.model_best_dicts[submodel_name], _, _ = (
-                import_model_from_path(model_path=models_of_ensemble[submodel_name],
-                                     validation_config=validation_config))
+        for submodel_name in models_of_ensemble:
+
+            if models_from_paths:
+                # During training, you have the local model paths that you are loading the model from
+                self.models[submodel_name], self.model_best_dicts[submodel_name], _, _ = (
+                    import_model_from_path(model_path=models_of_ensemble[submodel_name],
+                                         validation_config=validation_config))
+            else:
+                # you already have the models loaded as in the case with MLflow model registry fetch
+                self.models[submodel_name] = models_of_ensemble[submodel_name]
+                if len(self.model_best_dicts) == 0:
+                    raise IOError('Your best_dicts is empty, refactor this to be smarter,'
+                                  'as with MLflow registry load, you provide this and do not load'
+                                  'from the saved model')
+
             if mode == 'evaluate':
                 self.models[submodel_name].eval()
             else:

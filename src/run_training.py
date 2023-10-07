@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is
 # TOEXPLORE! MLflow uses pydantic and it throws: Field "model_server_url" has conflict with protected namespace "model_".
 #  Field "model_server_url" has conflict with protected namespace "model_".
 
-# Control logger level here, make it nicer later
+# Control logger level here, make it nicer later, include the level as an input argument to the script
 # https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574
 from loguru import logger
 LOG_MIN_LEVEL = "DEBUG"

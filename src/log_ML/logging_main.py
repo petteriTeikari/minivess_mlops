@@ -85,7 +85,12 @@ def log_best_repeats(best_repeat_dicts: dict, config: dict,
                             logger.info('{} | "{}": {:.3f}'.format(service, metric_name, metric_value))
 
                             if service == 'MLflow':
-                                mlflow.log_metric(metric_name, metric_value)
+                                try:
+                                    mlflow.log_metric(metric_name, metric_value)
+                                except Exception as e:
+                                    raise IOError('Problem with the MLflow logging, e = {},\n'
+                                                  'Why one gets this "repo not associated with run" a bit stochastically '
+                                                  'and not every time?'.format(e))
                             else:
                                 raise NotImplementedError('Unknown Experiment Tracking service = "{}"'.format(service))
 
@@ -103,6 +108,7 @@ def log_best_repeats(best_repeat_dicts: dict, config: dict,
 
 def log_crossvalidation_results(fold_results: dict,
                                 ensembled_results: dict,
+                                experim_dataloaders: dict,
                                 config: dict,
                                 output_dir: str):
 
@@ -114,7 +120,7 @@ def log_crossvalidation_results(fold_results: dict,
     ensembled_results_reordered = reorder_ensemble_crossvalidation_results(ensembled_results)
     if ensembled_results_reordered is not None:
         cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
-        sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
+        # sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
 
     if config['config']['LOGGING']['WANDB']['enable']:
         log_wandb_repeat_results(fold_results=fold_results,
@@ -130,7 +136,9 @@ def log_crossvalidation_results(fold_results: dict,
 
         logged_model_paths = log_cv_results(cv_results=cv_results,
                                             cv_ensemble_results=cv_ensemble_results,
+                                            ensembled_results=ensembled_results,
                                             fold_results=fold_results,
+                                            experim_dataloaders=experim_dataloaders,
                                             config=config,
                                             output_dir=config['run']['output_base_dir'],
                                             cv_averaged_output_dir=config['run']['cross_validation_averaged'],

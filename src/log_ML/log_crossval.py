@@ -13,7 +13,9 @@ from src.log_ML.wandb_log import log_crossval_res
 
 def log_cv_results(cv_results: dict,
                    cv_ensemble_results: dict,
+                   ensembled_results: dict,
                    fold_results: dict,
+                   experim_dataloaders: dict,
                    config: dict,
                    output_dir: str,
                    cv_averaged_output_dir: str,
@@ -31,13 +33,15 @@ def log_cv_results(cv_results: dict,
                               cv_ensembled_output_dir=cv_ensembled_output_dir)
 
     model_paths = log_crossval_res(cv_results=cv_results,
-                                     cv_ensemble_results=cv_ensemble_results,
-                                     fold_results=fold_results,
-                                     cv_averaged_output_dir=cv_averaged_output_dir,
-                                     cv_ensembled_output_dir=cv_ensembled_output_dir,
-                                     output_dir=output_dir,
-                                     logging_services=logging_services,
-                                     config=config)
+                                   cv_ensemble_results=cv_ensemble_results,
+                                   ensembled_results=ensembled_results,
+                                   fold_results=fold_results,
+                                   experim_dataloaders=experim_dataloaders,
+                                   cv_averaged_output_dir=cv_averaged_output_dir,
+                                   cv_ensembled_output_dir=cv_ensembled_output_dir,
+                                   output_dir=output_dir,
+                                   logging_services=logging_services,
+                                   config=config)
 
     return model_paths
 

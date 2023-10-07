@@ -267,9 +267,20 @@ config:
     TENSORBOARD:
       placeholder: 1
     MLFLOW:
+      # Could this be configured slightly different, using compositionality so that you don't have
+      # very environment-specific parameter among with more static parameters?
       server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'
       TRACKING:
         enable: True
+      MODEL_REGISTRY:
+        placeholder: 1
+      # Params for testing that you can load models from model registry, and the metrics match
+      # those obtained during training
+      TEST_LOGGING:
+        split: 'TEST'
+        split_subset: 'MINIVESS'
+        repeat_level: False
+        ensemble_level: True
     WANDB:
       enable: True
       s3: null

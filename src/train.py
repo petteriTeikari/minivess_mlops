@@ -53,6 +53,7 @@ def training_script(experim_dataloaders: dict,
     config['run']['logged_model_paths'] = (
         log_crossvalidation_results(fold_results=fold_results,
                                     ensembled_results=ensembled_results,
+                                    experim_dataloaders=experim_dataloaders,
                                     config=config,
                                     output_dir=output_dir))
 
@@ -69,8 +70,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
     """
     Up to you decide if you consider what is really a different architecture within the ensemble
     """
-    architecture_names = ['UNet']
-    archi_results, ensembled_results = {}, {}
+    architecture_names = ['UNet', 'Unet2'] # quick n dirty testing of the looping mechanics
+    archi_results = {}
 
     for i, architecture_name in enumerate(architecture_names):
         logger.info('Training architecture #{}/{}: {}'.format(i+1, len(architecture_names), architecture_name))
@@ -99,7 +100,7 @@ def train_model_for_single_fold(fold_dataloaders: dict,
         logger.info('Skip ENSEMBLING')
         ensemble_results = None
 
-    return archi_results, ensembled_results
+    return archi_results, ensemble_results
 
 
 def train_model_for_single_architecture(fold_dataloaders: dict,

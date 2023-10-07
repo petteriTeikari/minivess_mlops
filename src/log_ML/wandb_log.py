@@ -24,6 +24,7 @@ def log_wandb_repeat_results(fold_results: dict,
 
                 # In theory, you could want to separate the fold and repeat, but there is
                 # no additional field in WANDB for this type of hierarchy
+                # use ensemble_name function?
                 log_name = fold_name + '_' + archi_name + '_' + repeat_name
                 try:
                     wandb_run = wandb_init_wrapper(project=config['ARGS']['project_name'],
@@ -136,7 +137,9 @@ def log_wandb_ensemble_results(ensembled_results: dict,
 
 def log_crossval_res(cv_results: dict,
                      cv_ensemble_results: dict,
+                     ensembled_results: dict,
                      fold_results: dict,
+                     experim_dataloaders: dict,
                      cv_averaged_output_dir: str,
                      cv_ensembled_output_dir: str,
                      output_dir: str,
@@ -152,8 +155,10 @@ def log_crossval_res(cv_results: dict,
 
     logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
     model_paths = log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
+                                          ensembled_results=ensembled_results,
                                           cv_dir_out=cv_ensembled_output_dir,
                                           fold_results=fold_results,
+                                          experim_dataloaders=experim_dataloaders,
                                           config=config,
                                           logging_services=logging_services,
                                           output_dir=output_dir)
@@ -242,8 +247,10 @@ def log_cv_metric(logging_services: list, metric_name: str, value,
 
 
 def log_cv_ensemble_results(cv_ensemble_results: dict,
+                            ensembled_results: dict,
                             cv_dir_out: str,
                             fold_results: dict,
+                            experim_dataloaders: dict,
                             config: dict,
                             logging_services: list,
                             output_dir: str,
@@ -267,23 +274,22 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
 
     logger.info('ENSEMBLED Cross-Validation results | Metrics')
     for split in cv_ensemble_results:
-        for dataset in cv_ensemble_results[split]:
-            for tracked_metric in cv_ensemble_results[split][dataset]:
-                for metric in cv_ensemble_results[split][dataset][tracked_metric]:
-                    for stat_key in cv_ensemble_results[split][dataset][tracked_metric][metric]:
-                        if stat_key not in stat_keys_to_reject:
+        for ensemble_name in cv_ensemble_results[split]:
+            for metric in cv_ensemble_results[split][ensemble_name]:
+                for stat_key in cv_ensemble_results[split][ensemble_name][metric]:
+                    if stat_key not in stat_keys_to_reject:
 
-                            # CHECK THIS, IF THIS GOES CORRECTLY?
-                            stat_dict = cv_ensemble_results[split][dataset][tracked_metric][metric][stat_key]
-                            value = stat_dict[stat_key2]
-                            metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, dataset, metric, stat_key)
+                        # CHECK THIS, IF THIS GOES CORRECTLY?
+                        stat_dict = cv_ensemble_results[split][ensemble_name][metric][stat_key]
+                        value = stat_dict[stat_key2]
+                        metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, ensemble_name, metric, stat_key)
+                        logger.info('WANDB | "{}": {:.3f}'.format(metric_name, value))
+                        log_CV_ensemble_metric(logging_services=logging_services,
+                                               metric_name=metric_name,
+                                               value=value)
 
-                            log_CV_ensemble_metric(logging_services=logging_services,
-                                                   metric_name=metric_name,
-                                                   value=value)
-
-                            # TOADD! Add the main metric definition here as well
-                            # NOTE! If only one fold, no need to log the stdev of 0
+                        # TOADD! Add the main metric definition here as well
+                        # NOTE! If only one fold, no need to log the stdev of 0
 
     # Log the artifacts, config, log and the model(s) to Model Registry
     model_paths = log_config_artifacts(log_name=log_name,
@@ -291,6 +297,9 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                        output_dir=output_dir,
                                        config=config,
                                        fold_results=fold_results,
+                                       ensembled_results=ensembled_results,
+                                       cv_ensemble_results=cv_ensemble_results,
+                                       experim_dataloaders=experim_dataloaders,
                                        logging_services=logging_services,
                                        wandb_run=wandb_run)
 
@@ -353,14 +362,15 @@ def wandb_log_ensemble_per_fold(wandb_run, fold_name: str, log_name: str,
                                 var_keys: tuple = ('mean', 'var')):
 
     for split in results:
-        for dataset in results[split][stats_key]:
-            for tracked_metric in results[split][stats_key][dataset]:
-                for metric in results[split][stats_key][dataset][tracked_metric][metrics_key]:
-                    value_dict = results[split][stats_key][dataset][tracked_metric][metrics_key][metric]
-                    for var_key in value_dict:
-                        if var_key in var_keys:
-                            value = value_dict[var_key]
-                            metric_name = 'ENSEMBLE_{}/{}/{}_{}'.format(split, dataset, metric, var_key)
-                            # print(split, dataset, tracked_metric, metric, var_key, value, metric_name)
-                            wandb.log({metric_name: value}, step=0)
+        for ensemble_name in results[split]:
+            ensemble_stats = results[split][ensemble_name][stats_key]
+            ensemble_metrics = results[split][ensemble_name][stats_key][metrics_key]
+            for metric in ensemble_metrics:
+                value_dict = ensemble_metrics[metric]
+                for var_key in value_dict:
+                    if var_key in var_keys:
+                        value = value_dict[var_key]
+                        metric_name = 'ENSEMBLE_{}/{}/{}_{}'.format(split, ensemble_name, metric, var_key)
+                        logger.info('WANDB | "{}": {:.3f}'.format(metric_name, value))
+                        wandb.log({metric_name: value}, step=0)
 

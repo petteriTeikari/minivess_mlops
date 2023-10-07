@@ -142,6 +142,9 @@ def mlflow_cv_artifacts(log_name: str, local_artifacts_dir: str):
     mlflow.log_artifact(local_artifacts_dir)
 
 
+def define_mlflow_model_uri() -> str:
+    return f"runs:/{mlflow.active_run().info.run_id}/model"
 
 
-
+def define_artifact_name(ensemble_name: str, submodel_name: str, hyperparam_name: str) -> str:
+    return '{}__{}__{}'.format(hyperparam_name, ensemble_name, submodel_name)

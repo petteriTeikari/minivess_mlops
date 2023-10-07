@@ -178,20 +178,18 @@ def compute_crossval_ensemble_stats(ensembled_results_reordered: dict):
     stats_out = {}
     for s, split in enumerate(ensembled_results_reordered):
         stats_out[split] = {}
-        for d, dataset in enumerate(ensembled_results_reordered[split]):
-            stats_out[split][dataset] = {}
-            for m, tracked_metric in enumerate(ensembled_results_reordered[split][dataset]):
-                stats_out[split][dataset][tracked_metric] = {}
-                for m_e, metric in enumerate(ensembled_results_reordered[split][dataset][tracked_metric]):
-                    stats_out[split][dataset][tracked_metric][metric] = {}
-                    for s, stat in enumerate(ensembled_results_reordered[split][dataset][tracked_metric][metric]):
-                        # the results might be confusing at first, as easiest just to loop with the same operations
-                        # you get mean of n for example that might be quite useless. And mean of mean with dice just
-                        # means that "1st mean" came from all the samples in the dataloader, and the "2nd mean" is
-                        # the mean of all the folds
-                        values = ensembled_results_reordered[split][dataset][tracked_metric][metric][stat]
-                        stats_dict = compute_stats_of_array_in_dict(values)
-                        stats_out[split][dataset][tracked_metric][metric][stat] = stats_dict
+        for ens, ensemble_name in enumerate(ensembled_results_reordered[split]):
+            stats_out[split][ensemble_name] = {}
+            for m_e, metric in enumerate(ensembled_results_reordered[split][ensemble_name]):
+                stats_out[split][ensemble_name][metric] = {}
+                for s, stat in enumerate(ensembled_results_reordered[split][ensemble_name][metric]):
+                    # the results might be confusing at first, as easiest just to loop with the same operations
+                    # you get mean of n for example that might be quite useless. And mean of mean with dice just
+                    # means that "1st mean" came from all the samples in the dataloader, and the "2nd mean" is
+                    # the mean of all the folds
+                    values = ensembled_results_reordered[split][ensemble_name][metric][stat]
+                    stats_dict = compute_stats_of_array_in_dict(values)
+                    stats_out[split][ensemble_name][metric][stat] = stats_dict
 
     return stats_out
 
@@ -199,37 +197,34 @@ def compute_crossval_ensemble_stats(ensembled_results_reordered: dict):
 def reorder_ensemble_crossvalidation_results(ensembled_results,
                                              ensemble_stats_key: str = 'stats'):
 
-    # ensembled_results['fold1'] = ensembled_results['fold0']  # debug extra fold
-    no_of_folds = len(ensembled_results)
     stats_out = {}
-
     for f, fold_key in enumerate(ensembled_results):
         if ensembled_results[fold_key] is not None:
             for s, split_name in enumerate(ensembled_results[fold_key]):
                 if split_name not in stats_out:
                     stats_out[split_name] = {}
-                stats_per_fold = ensembled_results[fold_key][split_name][ensemble_stats_key]
 
-                for d, ds_name in enumerate(stats_per_fold):
-                    if ds_name not in stats_out[split_name]:
-                        stats_out[split_name][ds_name] = {}
-                    for m, tracked_metric in enumerate(stats_per_fold[ds_name]):
-                        if tracked_metric not in stats_out[split_name][ds_name]:
-                            stats_out[split_name][ds_name][tracked_metric] = {}
-                        metrics_per_tracked_metric = stats_per_fold[ds_name][tracked_metric]['metrics']
+                for ens, ensemble_name in enumerate(ensembled_results[fold_key][split_name]):
+                    if ensemble_name not in stats_out[split_name]:
+                        stats_out[split_name][ensemble_name] = {}
 
-                        for m_e, metric in enumerate(metrics_per_tracked_metric):
-                            if metric not in stats_out[split_name][ds_name][tracked_metric]:
-                                stats_out[split_name][ds_name][tracked_metric][metric] = {}
-                            for s, stat_key in enumerate(metrics_per_tracked_metric[metric]):
-                                stat_value = metrics_per_tracked_metric[metric][stat_key]
-                                stat_array = np.expand_dims(np.array(stat_value), axis=0)
-                                if stat_key not in stats_out[split_name][ds_name][tracked_metric][metric]:
-                                    stats_out[split_name][ds_name][tracked_metric][metric][stat_key] = stat_array
-                                else:
-                                    stats_out[split_name][ds_name][tracked_metric][metric][stat_key] = (
-                                        np.concatenate((stats_out[split_name][ds_name][tracked_metric][metric][stat_key],
-                                                       stat_array), axis=0))
+                    ensemble_stats = ensembled_results[fold_key][split_name][ensemble_name][ensemble_stats_key]
+                    ensemble_metrics = ensemble_stats['metrics']
+
+                    for m_e, metric in enumerate(ensemble_metrics):
+                        if metric not in stats_out[split_name][ensemble_name]:
+                            stats_out[split_name][ensemble_name][metric] = {}
+                        metric_stats_dict = ensemble_metrics[metric]
+
+                        for s, stat_key in enumerate(metric_stats_dict):
+                            stat_value = metric_stats_dict[stat_key]
+                            stat_array = np.expand_dims(np.array(stat_value), axis=0)
+                            if stat_key not in stats_out[split_name][ensemble_name][metric]:
+                                stats_out[split_name][ensemble_name][metric][stat_key] = stat_array
+                            else:
+                                stats_out[split_name][ensemble_name][metric][stat_key] = (
+                                    np.concatenate((stats_out[split_name][ensemble_name][metric][stat_key],
+                                                   stat_array), axis=0))
 
         else:
             stats_out = None

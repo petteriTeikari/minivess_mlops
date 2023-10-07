@@ -15,6 +15,9 @@ def log_config_artifacts(log_name: str,
                          output_dir: str,
                          config: dict,
                          fold_results: dict,
+                         ensembled_results: dict,
+                         cv_ensemble_results: dict,
+                         experim_dataloaders: dict,
                          logging_services: list,
                          wandb_run: wandb.sdk.wandb_run.Run):
     """
@@ -30,6 +33,19 @@ def log_config_artifacts(log_name: str,
         wandb_run.log_artifact(artifact_dir)
     if 'MLflow' in logging_services:
         mlflow.log_artifact(cv_dir_out)
+
+    # Log all the models from all the folds and all the repeats to the Artifact Store
+    # and these are accessible to Model Registry as well
+    logger.info('{} | ENSEMBLED Cross-Validation results | Models to Model Registry'.format(logging_services))
+    model_paths = log_model_ensemble_to_model_registry(fold_results=fold_results,
+                                                       ensembled_results=ensembled_results,
+                                                       cv_ensemble_results=cv_ensemble_results,
+                                                       experim_dataloaders=experim_dataloaders,
+                                                       log_name=log_name,
+                                                       wandb_run=wandb_run,
+                                                       logging_services=logging_services,
+                                                       config=config,
+                                                       test_loading=True)  # GET FROM CONFIG
 
     # HERE, log the config as .yaml file back to disk
     logger.info('{} | ENSEMBLED Cross-Validation results | Config as YAML'.format(logging_services))
@@ -51,20 +67,15 @@ def log_config_artifacts(log_name: str,
     if 'MLflow' in logging_services:
         mlflow.log_artifact(path_out)
 
-    # Log all the models from all the folds and all the repeats to the Artifact Store
-    # and these are accessible to Model Registry as well
-    logger.info('{} | ENSEMBLED Cross-Validation results | Models to Model Registry'.format(logging_services))
-    model_paths = log_model_ensemble_to_model_registry(fold_results=fold_results,
-                                                       log_name=log_name,
-                                                       wandb_run=wandb_run,
-                                                       logging_services=logging_services,
-                                                       config=config,
-                                                       test_loading=True)
+
 
     return model_paths
 
 
 def log_model_ensemble_to_model_registry(fold_results: dict,
+                                         ensembled_results: dict,
+                                         cv_ensemble_results: dict,
+                                         experim_dataloaders: dict,
                                          log_name: str,
                                          wandb_run: wandb.sdk.wandb_run.Run,
                                          logging_services: list,
@@ -83,6 +94,9 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
 
     if 'MLflow' in logging_services:
         log_ensembles_to_MLflow(ensemble_models_flat=ensemble_models_flat,
+                                experim_dataloaders=experim_dataloaders,
+                                ensembled_results=ensembled_results,
+                                cv_ensemble_results=cv_ensemble_results,
                                 config=config,
                                 test_loading=test_loading)
 
