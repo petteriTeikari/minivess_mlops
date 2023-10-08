@@ -1,3 +1,5 @@
+import numpy as np
+import torch
 from loguru import logger
 
 from monai.networks.nets import SegResNet, UNet
@@ -38,3 +40,78 @@ def import_segmentation_model(model_config: dict, device):
         logger.info(' {} = {}'.format(param_key, params_cfg[param_key]))
 
     return model
+
+
+def get_nested_layers(model):
+    # https://stackoverflow.com/a/65112132
+    children = list(model.children())
+    flatt_children = []
+    if children == []:
+        # if model has no children; model is last child! :O
+        return model
+    else:
+        # look for children from children... to the last child!
+        for child in children:
+            try:
+                flatt_children.extend(get_nested_layers(child))
+            except TypeError:
+                flatt_children.append(get_nested_layers(child))
+    return flatt_children
+
+
+def filter_layer_names(layers, layer_name_wildcard: str):
+
+    layers_out = []
+    for layer in layers:
+        layer_name = layer.__class__.__name__
+        if layer_name_wildcard in layer_name.lower():
+            layers_out.append(layer)
+
+    return layers_out
+
+
+def get_layer_names_as_list(layers: list) -> list:
+    layer_names = []
+    for i, layer in enumerate(layers):
+        layer_names.append(layer.__class__.__name__)
+    return layer_names
+
+
+def print_layer_names(layers: list):
+    for i, layer in enumerate(layers):
+        logger.debug(' {}/{}: {}'.format(i+1, len(layers), layer.__class__.__name__))
+
+
+def get_last_layer_weights_of_model(model,
+                                    p_weights: float = 1.00,
+                                    layer_name_wildcard: str = 'conv'):
+
+    # Get the last layer of the model with the wildcard
+    weights = None
+    layers = get_nested_layers(model)
+    layers2 = filter_layer_names(layers, layer_name_wildcard=layer_name_wildcard)
+    if len(layers2) > 0:
+        last_layer = layers2[-1]
+    else:
+        logger.warning('Problem getting the last layer with wildcard "{}", layer names:'.
+                       format(layer_name_wildcard))
+        print_layer_names(layers)
+        last_layer = None
+
+    # Get the weights of the obtained last layer
+    if last_layer is not None:
+        try:
+            weights_tensor = torch.squeeze(last_layer.weight.data[0])
+            weights = np.copy(weights_tensor.detach().cpu().numpy())
+        except Exception as e:
+            # if you start having some more exotic models?
+            raise IOError('Problem extracting the weights from the layer, e = {}'.format(e))
+
+    # If you a lot features here, you might want to return only a subset of this
+    # as these are atm used for ML testing purposes to check that you get the same
+    # weights when loading models from disk / Model Registry as you got during the training
+    if p_weights < 1:
+        logger.warning('feature subset not implemented yet, '
+                       'returning all the {} weights'.format(len(weights)))
+
+    return weights

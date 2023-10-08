@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_dataloader
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
-    compute_split_metric_stats, get_ensemble_name
+    compute_split_metric_stats, get_ensemble_name, get_submodel_name
 from src.inference.inference_utils import inference_sample, inference_best_repeat, \
     get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
@@ -120,7 +120,9 @@ def inference_ensembles_dataloader(dataloader,
     _, ensemble_models_flat = collect_submodels_of_the_ensemble_archi(archi_results)
 
     ensemble_results = {}
-    for ensemble_name in ensemble_models_flat:
+    for i, ensemble_name in enumerate(ensemble_models_flat):
+        logger.info('Inference on ensemble_name = "{}" (#{}/{})'.
+                    format(ensemble_name, i+1, len(ensemble_models_flat)))
         ensemble_results[ensemble_name] = (
             inference_ensemble_dataloader(models_of_ensemble=ensemble_models_flat[ensemble_name],
                                           config=config,
@@ -162,7 +164,9 @@ def collect_submodels_of_the_ensemble_archi(archi_results: dict):
                         ensemble_models_flat[ensemble_name] = {}
                         n_ensembles += 1
 
-                    submodel_name = '{}_{}'.format(archi_name, repeat_name)
+                    submodel_name = get_submodel_name(archi_name=archi_name,
+                                                      repeat_name=repeat_name)
+
                     if submodel_name not in ensemble_models_flat[ensemble_name]:
                         ensemble_models_flat[ensemble_name][submodel_name] = model_path
                         n_submodels += 1

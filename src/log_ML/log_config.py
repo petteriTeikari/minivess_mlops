@@ -5,7 +5,7 @@ import mlflow
 import omegaconf
 from loguru import logger
 
-from src.inference.ensemble_utils import get_ensemble_name
+from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
 from src.log_ML.log_model_registry import log_ensembles_to_MLflow, log_ensembles_to_WANDB
 from src.log_ML.log_utils import write_config_as_yaml
 
@@ -132,7 +132,10 @@ def collect_submodels_of_the_ensemble(fold_results: dict):
                             ensemble_models_flat[ensemble_name] = {}
                             n_ensembles += 1
 
-                        submodel_name = '{}_{}'.format(fold_name, repeat_name)
+                        submodel_name = get_submodel_name(archi_name=archi_name,
+                                                          fold_name=fold_name,
+                                                          repeat_name=repeat_name)
+
                         if submodel_name not in ensemble_models_flat[ensemble_name]:
                             ensemble_models_flat[ensemble_name][submodel_name] = model_path
                             n_submodels += 1

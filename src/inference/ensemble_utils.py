@@ -106,7 +106,7 @@ def compute_stats_of_array_in_dict(input_data: np.ndarray) -> dict:
 
 
 def get_ensemble_name(dataset_validated: str,
-                      metric_to_track: str):
+                      metric_to_track: str) -> str:
     ensemble_name = '{}-{}'.format(metric_to_track, dataset_validated)
     return ensemble_name
 
@@ -114,3 +114,10 @@ def get_ensemble_name(dataset_validated: str,
 def split_ensemble_name(ensemble_name):
     dset, tracked_metric = ensemble_name.split('-')
     return dset, tracked_metric
+
+
+def get_submodel_name(repeat_name: str, archi_name: str = None, fold_name: str = None) -> str:
+    if fold_name is None:
+        return '{}_{}'.format(archi_name, repeat_name)
+    else:
+        return '{}_{}_{}'.format(fold_name, archi_name, repeat_name)

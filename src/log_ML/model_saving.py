@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from loguru import logger
 
+from src.utils.model_utils import get_last_layer_weights_of_model
+
 
 def save_models_if_improved(best_dicts, epoch,
                             model, optimizer, lr_scheduler,
@@ -35,7 +37,7 @@ def save_models_if_improved(best_dicts, epoch,
                                                              split_key=split_key, results_type=results_type)
 
                     # Run the model saving script (and any other stuff that you might want to do)
-                    best_dicts_out[dataset][metric]['model'] = (
+                    model_dict = (
                         model_improved_script(best_dict=best_dicts_out[dataset][metric],
                                               current_value=current_value,
                                               best_value_so_far=np.nan,
@@ -44,6 +46,7 @@ def save_models_if_improved(best_dicts, epoch,
                                               dataset=dataset, metric=metric,
                                               validation_config=validation_config,
                                               fold_name=fold_name, repeat_name=repeat_name))
+                    best_dicts_out[dataset][metric] = {**best_dicts_out[dataset][metric], **model_dict}
 
                 # After 1st epoch, when you have something on your best dict
                 else:
@@ -64,7 +67,7 @@ def save_models_if_improved(best_dicts, epoch,
                             get_best_dict_from_current_epoch_results(eval_epoch_results, train_epoch_results)
 
                         # Run the model saving script (and any other stuff that you might want to do)
-                        best_dicts_out[dataset][metric]['model'] = (
+                        model_dict = (
                             model_improved_script(best_dict=best_dict,
                                                   current_value=current_value, best_value_so_far=best_value_so_far,
                                                   model=model, optimizer=optimizer, lr_scheduler=lr_scheduler,
@@ -72,6 +75,7 @@ def save_models_if_improved(best_dicts, epoch,
                                                   dataset=dataset, metric=metric,
                                                   validation_config=validation_config,
                                                   fold_name=fold_name, repeat_name=repeat_name))
+                        best_dicts_out[dataset][metric] = {**best_dicts_out[dataset][metric], **model_dict}
 
                     else:
 
@@ -152,6 +156,12 @@ def model_improved_script(best_dict: dict,
     :return:
     """
 
+    # get weights from the last layer, later to be used to test whether the model is
+    # is saved and loaded back correctly
+    best_dict['weights_vector'] = get_last_layer_weights_of_model(model,
+                                                                  p_weights=1.00,
+                                                                  layer_name_wildcard='conv')
+
     model_fname_base = "bestModel__{}__{}__{}__{}".format(dataset, metric, fold_name, repeat_name)
     if validation_config['SAVE_FULL_MODEL']:
         checkpoint = dict(
@@ -185,7 +195,11 @@ def model_improved_script(best_dict: dict,
                  '-> saving this to disk (model size = {:.1f} MB)'.
                  format(epoch+1, metric, best_value_so_far, current_value, dataset,filesize))
 
-    return {'model_path': path_out}
+    dict_out = {}
+    dict_out['model'] = {'model_path': path_out,
+                         'test_weights_vector': best_dict['weights_vector']}
+
+    return dict_out
 
 
 def import_model_from_path(model_path: str,
@@ -226,3 +240,10 @@ def get_best_dict_from_current_epoch_results(eval_epoch_results: dict, train_epo
     return result_dicts
 
 
+def get_weight_vectors_from_best_dicts(best_dicts: dict) -> list:
+
+    weight_vectors = []
+    for ensemble_name in best_dicts:
+        weight_vectors.append(best_dicts[ensemble_name]['weights_vector'])
+
+    return weight_vectors

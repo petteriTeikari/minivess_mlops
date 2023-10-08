@@ -7,6 +7,7 @@ from loguru import logger
 
 from src.inference.ensemble_main import reinference_dataloaders
 from src.eval import evaluate_datasets_per_epoch
+from src.inference.ensemble_utils import get_submodel_name
 from src.log_ML.log_ensemble import log_ensemble_results
 from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, \
     log_crossvalidation_results, log_averaged_and_best_repeats
@@ -33,7 +34,7 @@ def training_script(experim_dataloaders: dict,
     for f, fold_name in enumerate(list(experim_dataloaders.keys())):
         logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
         config['run']['fold_dir'][fold_name] = os.path.join(output_dir, fold_name)
-        config['run']['repeat_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'repeats')
+        # config['run']['repeat_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'repeats')
         config['run']['ensemble_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'ensemble')
 
         # Quick'n'dirty placeholder to simulate diverse ensembles, i.e. when your submodels are not just
@@ -70,8 +71,10 @@ def train_model_for_single_fold(fold_dataloaders: dict,
     """
     Up to you decide if you consider what is really a different architecture within the ensemble
     """
-    architecture_names = ['UNet', 'Unet2'] # quick n dirty testing of the looping mechanics
+    architecture_names = ['Unet3'] # quick n dirty testing of the looping mechanics
     archi_results = {}
+    output_dir = os.path.join(output_dir, 'submodels')
+    os.makedirs(output_dir, exist_ok=True)
 
     for i, architecture_name in enumerate(architecture_names):
         logger.info('Training architecture #{}/{}: {}'.format(i+1, len(architecture_names), architecture_name))
@@ -81,7 +84,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
                                                 training_config=training_config,
                                                 model_config=model_config,
                                                 machine_config=machine_config,
-                                                output_dir=config['run']['fold_dir'][fold_name],
+                                                output_dir=output_dir,
+                                                archi_name=architecture_name,
                                                 fold_name=fold_name)
 
     # Ensemble the repeats (submodels)
@@ -109,6 +113,7 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
                                         model_config: dict,
                                         machine_config: dict,
                                         output_dir: str,
+                                        archi_name: str,
                                         fold_name: str) -> dict:
 
     # Repeat n times the same data fold (i.e. you get n submodels for an inference)
@@ -118,6 +123,7 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
     for repeat_idx in range(training_config['NO_REPEATS']):
         logger.info('Training repeat #{}/{}'.format(repeat_idx + 1, training_config['NO_REPEATS']))
         repeat_name = 'repeat{}'.format(str(repeat_idx+1).zfill(2))
+        submodel_name = get_submodel_name(repeat_name=repeat_name, archi_name=archi_name)
         repeat_results[repeat_name] = \
             train_single_model(dataloaders=fold_dataloaders,
                                config=config,
@@ -127,7 +133,8 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
                                repeat_idx=repeat_idx,
                                repeat_name=repeat_name,
                                device=machine_config['IN_USE']['device'],
-                               output_dir=os.path.join(config['run']['repeat_artifacts'][fold_name], repeat_name),
+                               # output_dir=os.path.join(output_dir, archi_name, repeat_name),
+                               output_dir=os.path.join(output_dir, submodel_name),
                                fold_name=fold_name)
 
     logger.info('Done training all the {} repeats of "{}"'.format(training_config['NO_REPEATS'], fold_name))
