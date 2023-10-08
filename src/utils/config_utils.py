@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -94,8 +95,13 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         raise IOError('Problem initializing the log file to the artifacts output, have you created one? '
                       'do you have the permissions correct? See README.md for the "minivess_mlops_artifacts" creation'
                       'with symlink to /mnt \n error msg = {}'.format(e))
+    logger.info('Log (loguru) will be saved to disk to "{}"'.format(config['run']['output_log_path']))
 
-    logger.info('Log will be saved to disk to "{}"'.format(config['run']['output_log_path']))
+    log_file = 'stdout_{}.txt'.format(hyperparam_name)
+    config['run']['stdout_log_path'] = os.path.join(config['run']['output_experiment_dir'], log_file)
+    logger.info('Stdout will be saved to disk to "{}"'.format(config['run']['stdout_log_path']))
+    sys.stdout = open(config['run']['stdout_log_path'], 'w')
+    sys.stderr = sys.stdout
 
     # Initialize ML logging (experiment tracking)
     config['run']['mlflow'], mlflow_dict =  init_mlflow_logging(config=config,
