@@ -279,8 +279,18 @@ config:
       TEST_LOGGING:
         split: 'TEST'
         split_subset: 'MINIVESS'
-        repeat_level: False
-        ensemble_level: True
+        # Test that the output (i.e. metrics) are the same between the ones obtained
+        # during the training, and the ones inferenced from MLflow registered models
+        # Note! that this can be problematic with the segmentation inference as the
+        #  inference in MONAI is not deterministic?
+        CHECK_OUTPUT:
+          repeat_level_output: False
+          ensemble_level_output: True
+        # Check that the layer weights match between the locally stored
+        # model (and the classifier layer weights saved during the training)
+        CHECK_WEIGHTS:
+          ensemble_weights_check_local: True
+          ensemble_weights_check: True
     WANDB:
-      enable: True
+      enable: False
       s3: null

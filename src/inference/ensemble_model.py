@@ -10,6 +10,7 @@ from src.inference.ensemble_utils import add_sample_results_to_ensemble_results,
     compute_split_metric_stats
 from src.inference.inference_utils import inference_sample, get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
+from src.utils.model_utils import get_last_layer_weights_of_model
 
 
 def inference_ensemble_dataloader(models_of_ensemble: dict,
@@ -174,3 +175,16 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
                                   batch_data=batch_data))
 
         return sample_ensemble_metrics
+
+
+    def get_model_weights(self):
+
+        ensemble_weights = []
+        for ensemble_name in self.models:
+            model = self.models[ensemble_name]
+            weights = get_last_layer_weights_of_model(model,
+                                                      p_weights=1.00,
+                                                      layer_name_wildcard='conv')
+            ensemble_weights.append(weights)
+
+        return ensemble_weights
