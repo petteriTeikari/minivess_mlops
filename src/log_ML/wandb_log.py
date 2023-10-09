@@ -283,7 +283,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                         stat_dict = cv_ensemble_results[split][ensemble_name][metric][stat_key]
                         value = stat_dict[stat_key2]
                         metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, ensemble_name, metric, stat_key)
-                        logger.info('WANDB | "{}": {:.3f}'.format(metric_name, value))
+
                         log_CV_ensemble_metric(logging_services=logging_services,
                                                metric_name=metric_name,
                                                value=value)

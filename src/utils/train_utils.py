@@ -14,19 +14,12 @@ from src.utils.general_utils import check_if_key_in_dict
 
 
 def choose_loss_function(training_config: dict, loss_config: dict):
-    loss_name = training_config['LOSS']['NAME']
+    loss_name = list(loss_config.keys())[0]
     if check_if_key_in_dict(loss_config, loss_name):
         # FIXME parse names to match any MONAI loss
         loss_params = loss_config[loss_name]  # FIXME autouse these in the function call
         if loss_name == 'DiceFocalLoss':
-            loss_function = DiceFocalLoss(
-                smooth_nr=1e-5,
-                smooth_dr=1e-5,
-                squared_pred=True,
-                to_onehot_y=False,
-                sigmoid=True,
-                batch=True,
-            )
+            loss_function = DiceFocalLoss(**loss_params)
         else:
             raise NotImplementedError('Unsupported loss_name = "{}"'.format(loss_name))
     else:
@@ -36,7 +29,7 @@ def choose_loss_function(training_config: dict, loss_config: dict):
 
 
 def choose_optimizer(model, training_config: dict, optimizer_config: dict):
-    optimizer_name = training_config['OPTIMIZER']['NAME']
+    optimizer_name = list(optimizer_config.keys())[0]
     if check_if_key_in_dict(optimizer_config, optimizer_name):
         # FIXME parse names to match any MONAI/PyTorch optimizer
         optimizer_params = optimizer_config[optimizer_name]  # FIXME autouse these in the function call
@@ -51,7 +44,7 @@ def choose_optimizer(model, training_config: dict, optimizer_config: dict):
 
 
 def choose_lr_scheduler(optimizer, training_config: dict, scheduler_config: dict):
-    scheduler_name = training_config['SCHEDULER']['NAME']
+    scheduler_name = list(scheduler_config.keys())[0]
     if check_if_key_in_dict(scheduler_config, scheduler_name):
         # FIXME parse names to match any MONAI/Pytorch Scheduler
         scheduler_params = scheduler_config[scheduler_name]  # FIXME autouse these in the function call
@@ -68,16 +61,17 @@ def choose_lr_scheduler(optimizer, training_config: dict, scheduler_config: dict
 
 def set_model_training_params(model, device, scaler, training_config: dict, config: dict):
 
+    # TODO! You could makle one function to replace these all?
     loss_function = choose_loss_function(training_config=training_config,
-                                         loss_config=config['config']['LOSS_FUNCTIONS'])
+                                         loss_config=training_config['LOSS'])
 
     optimizer = choose_optimizer(model=model,
                                  training_config=training_config,
-                                 optimizer_config=config['config']['OPTIMIZERS'])
+                                 optimizer_config=training_config['OPTIMIZER'])
 
     lr_scheduler = choose_lr_scheduler(optimizer=optimizer,
                                        training_config=training_config,
-                                       scheduler_config=config['config']['SCHEDULERS'])
+                                       scheduler_config=training_config['SCHEDULER'])
 
     return loss_function, optimizer, lr_scheduler
 

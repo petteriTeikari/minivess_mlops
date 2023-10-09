@@ -21,3 +21,15 @@ def get_subdicts_from_mlflow_model_log(mlflow_model_log: dict, key_str: str):
         subdicts[submodel_name] = mlflow_model_log[submodel_name][key_str]
 
     return subdicts
+
+
+def get_mlflow_model_signature(model_in,
+                               input_batch,
+                               gt_batch):
+    """
+    https://mlflow.org/docs/latest/python_api/mlflow.models.html#mlflow.models.ModelSignature
+    """
+
+    a = 1
+
+    return None

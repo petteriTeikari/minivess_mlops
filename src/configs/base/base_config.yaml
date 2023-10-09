@@ -89,25 +89,34 @@ config:
   # ----------------------------------------------------------------------------------- #
   # MODEL
   # ----------------------------------------------------------------------------------- #
+  # Every model is now defined as an ensemble of models, and if you want to do a single
+  # architecture with single repeat, it is just a special case on this ensemble
   MODEL:
-    # default model. User can define their own model and use that instead.
-    MODEL_NAME: 'SegResNet'
+    # Think of how to configure this in practice the most efficiently. The idea would be to have
+    # the freedom to define your submodel as you would wish, as you would a "normal single model"
+    # e.g. (https://arxiv.org/abs/2007.04206)
+    #         does different augmentation for each submodel
+    #      (https://proceedings.neurips.cc//paper/2020/file/b86e8d03fe992d1b0e19656875ee557c-Paper.pdf)
+    #         use different model architecture for each submodel
+    META_MODEL:
+      - 'Unet'
+      - 'SegResNet'
+    # https://docs.monai.io/en/stable/networks.html#unet
+    # These are your default setting for different architectures implemented to the pipeline
+    # You could separate this into a different config file like "architectures.yaml" or something
     Unet:
       spatial_dims: 3
       in_channels: 1
       out_channels: 1
       channels:
+        - 4
+        - 8
         - 16
-        - 32
-        - 64
-        - 128
-        - 256
       strides:
         - 2
         - 2
-        - 2
-        - 2
       num_res_units: 2
+    # https://docs.monai.io/en/stable/networks.html#segresnet
     SegResNet:
       spatial_dims: 3
       # Strictly speaking these depend on the dataset more than your model, so derive these from
@@ -123,9 +132,9 @@ config:
   TRANSFORMS:
     BASIC_AUG:
       param1: 'placeholder'
+    # For Test/Validation splits:
     NO_AUG:
       param1: 'placeholder'
-
 
   # ----------------------------------------------------------------------------------- #
   # TRAINING
@@ -133,20 +142,56 @@ config:
   TRAINING:
     # Have a look on the float16 vs bfloat16, and whether to for example include
     # HuggingFace's accelerate here, or what is the easiest?
-    PRECISION: 'AMP'
-    NO_REPEATS: 2
-    NUM_EPOCHS: 2
-    LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
-    LOSS:
-      NAME: 'DiceFocalLoss'
-    OPTIMIZER:
-      NAME: 'Novograd'
-    SCHEDULER:
-      NAME: 'CosineAnnealingLR'
-    METRICS:
-      NAMES:
-        - 'DiceMetric'
-        - 'compute_hausdorff_distance'
+    Unet:
+      PRECISION: 'AMP'
+      NO_REPEATS: 1
+      NUM_EPOCHS: 2
+      LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
+      LOSS:
+        NAME: 'DiceFocalLoss'
+      OPTIMIZER:
+        NAME: 'Novograd'
+      SCHEDULER:
+        NAME: 'CosineAnnealingLR'
+      #      AUGMENTATION:
+      #        # Not sure how to implement the best, if you would like to use specific parameters,
+      #        # i.e. just specific for Minivess that would be different from standard "BASIC_AUG"
+      #        # e.g. different blur, rotation, spatial transformation strengths
+      #        TRAIN: 'BASIC_AUG'
+      #        VAL: 'NO_AUG'
+      #        TEST: 'NO_AUG'
+    SegResNet:
+      PRECISION: 'AMP'
+      NO_REPEATS: 1
+      NUM_EPOCHS: 2
+      LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
+      LOSS:
+        NAME: 'DiceFocalLoss'
+      OPTIMIZER:
+        NAME: 'Novograd'
+      SCHEDULER:
+        NAME: 'CosineAnnealingLR'
+      # NOTE! These go to the dataloader definition, so you would have to dataloader
+      #  per model architecture as well for this, TODO!
+      #  atm using the static augmentation definition by the dataset
+      #      AUGMENTATION:
+      #        # Not sure how to implement the best, if you would like to use specific parameters,
+      #        # i.e. just specific for Minivess that would be different from standard "BASIC_AUG"
+      #        # e.g. different blur, rotation, spatial transformation strengths
+      #        TRAIN: 'BASIC_AUG'
+      #        VAL: 'NO_AUG'
+      #        TEST: 'NO_AUG'
+
+
+  # ----------------------------------------------------------------------------------- #
+  # TRAINING (global)
+  # ----------------------------------------------------------------------------------- #
+  #  TRAINING_GLOBAL:
+  #    METRICS:
+  #      NAMES:
+  #        - 'DiceMetric'
+  #        - 'compute_hausdorff_distance'
+
 
   # ----------------------------------------------------------------------------------- #
   # VALIDATION
@@ -177,6 +222,7 @@ config:
         - 8
       sw_batch_size: 4
       overlap: 0.6
+
 
   # ----------------------------------------------------------------------------------- #
   # VALIDATION_BEST
@@ -225,7 +271,7 @@ config:
   # ----------------------------------------------------------------------------------- #
   # LOSS FUNCTIONS
   # ----------------------------------------------------------------------------------- #
-  LOSS_FUNCTIONS:
+  LOSS:
     # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/distributed_training/brats_training_ddp.py
     DiceFocalLoss:
       smooth_nr: 0.00001 # 1e-5 FIXME! Parse scientifc notations from .yaml correctly
@@ -238,14 +284,14 @@ config:
   # ----------------------------------------------------------------------------------- #
   # OPTIMIZERS
   # ----------------------------------------------------------------------------------- #
-  OPTIMIZERS:
+  OPTIMIZER:
     Novograd:
       PLACEHOLDER: 1
 
   # ----------------------------------------------------------------------------------- #
   # SCHEDULERS
   # ----------------------------------------------------------------------------------- #
-  SCHEDULERS:
+  SCHEDULER:
     CosineAnnealingLR:
       PLACEHOLDER: 1
 
@@ -283,14 +329,14 @@ config:
         # during the training, and the ones inferenced from MLflow registered models
         # Note! that this can be problematic with the segmentation inference as the
         #  inference in MONAI is not deterministic?
-        CHECK_OUTPUT:
+        CHECK_LOCAL:
+          check_weights: True
+        CHECK_MLFLOW_MODELS:
+          check_weights: True
           repeat_level_output: False
           ensemble_level_output: True
-        # Check that the layer weights match between the locally stored
-        # model (and the classifier layer weights saved during the training)
-        CHECK_WEIGHTS:
-          ensemble_weights_check_local: True
-          ensemble_weights_check: True
+        CHECK_MLFLOW_MODEL_REGISTRY:
+          placeholder: null
     WANDB:
       enable: False
       s3: null

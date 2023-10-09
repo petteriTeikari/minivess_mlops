@@ -72,7 +72,8 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     # Get a predefined smaller subset to be logged as MLflow/WANDB columns/hyperparameters
     # to make the dashboards cleaner, or alternatively you can just dump the whole config['config']
     config['hyperparameters'] = define_hyperparam_run_params(config)
-    config['hyperparameters_flat'] = flatten_nested_dictionary(dict_in=config['hyperparameters'])
+    # TODO! Fix this with the updated nesting, with some nicer recursive function for undefined depth
+    config['hyperparameters_flat'] = None # flatten_nested_dictionary(dict_in=config['hyperparameters'])
 
     if config['config']['LOGGING']['unique_hyperparam_name_with_hash'] == 1:
         # i.e. whether you want a tiny change in dictionary content make this training to be grouped with
@@ -265,37 +266,38 @@ def define_hyperparam_run_params(config: dict) -> dict:
     hyperparams['datasets'] = cfg['DATA']['DATA_SOURCE']['DATASET_NAME']
 
     # What model and architecture hyperparams you used
-    hyperparams['model'] = {}
-    # Well maybe you would not want all these to be logged either?
-    model_name = cfg['MODEL']['MODEL_NAME']
-    hyperparams['model'] = cfg['MODEL'][model_name]   # these are not all maybe wanted/needed
-    hyperparams['model']['name'] = model_name
+    hyperparams['models'] = {}
+    model_names = cfg['MODEL']['META_MODEL']
+    for model_name in model_names:
+        hyperparams['models'][model_name] = {}
+        hyperparams['models'][model_name]['architecture'] = cfg['MODEL'][model_name]
 
-    # Training params
-    training_tmp = deepcopy(cfg['TRAINING'])
-    training_tmp.pop('METRICS', 'training_tmp')
-    hyperparams['training'] = training_tmp
-
-    setting_name = 'LOSS'
-    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
-                                                                   settings_key='LOSS_FUNCTIONS')
-    setting_name = 'OPTIMIZER'
-    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
-                                                                   settings_key='OPTIMIZERS')
-    setting_name = 'SCHEDULER'
-    hyperparams['training'][setting_name] = parse_settings_by_name(cfg=cfg, setting_name=setting_name,
-                                                                   settings_key='SCHEDULERS')
+    hyperparams = parse_training_params(model_names, hyperparams, cfg)
 
     return hyperparams
 
 
-def parse_settings_by_name(cfg: dict, setting_name: str, settings_key: str) -> dict:
+def parse_training_params(model_names, hyperparams, cfg):
+
+    # Training params
+    training_tmp = deepcopy(cfg['TRAINING'])
+    setting_names = ['LOSS', 'OPTIMIZER', 'SCHEDULER']
+    for model_name in model_names:
+        hyperparams['models'][model_name]['training'] = training_tmp[model_name]
+        for setting_name in setting_names:
+            settings, param_name = parse_settings_by_name(cfg=cfg, setting_name=setting_name, settings_key=setting_name)
+            hyperparams['models'][model_name]['training'][setting_name] = {}
+            hyperparams['models'][model_name]['training'][setting_name][param_name] = settings
+
+    return hyperparams
+
+
+def parse_settings_by_name(cfg: dict, setting_name: str, settings_key: str):
     settings_tmp = cfg[settings_key]
     # remove one nesting level
-    name = list(settings_tmp.keys())[0]
-    settings = settings_tmp[name]  # similarly here, you would like to have manual LUT for "main params"
-    settings['name'] = name
-    return settings
+    param_name = list(settings_tmp.keys())[0]
+    settings = settings_tmp[param_name]
+    return settings, param_name
 
 
 def flatten_nested_dictionary(dict_in: dict, delim: str = '__') -> dict:

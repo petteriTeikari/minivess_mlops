@@ -1,6 +1,14 @@
+import os
+from copy import deepcopy
+
+import mlflow
 import numpy as np
+import torch
 from loguru import logger
+# from mlflow import MlflowClient
+
 # from mlflow.entities.model_registry import ModelVersion
+
 
 from src.inference.ensemble_model import inference_ensemble_with_dataloader, ModelEnsemble
 from src.log_ML.mlflow_log import define_artifact_name
@@ -47,7 +55,8 @@ def pick_test_dataloader(experim_dataloaders: dict,
     return dataloader_reference, ensembled_results_reference
 
 
-def test_mlflow_model_registry_load(ensemble_submodels: dict,
+def test_mlflow_Models_reproduction(ensemble_filepaths: dict,
+                                    ensemble_model,
                                     mlflow_model_log: dict,
                                     ensembled_results: dict,
                                     cv_ensemble_results: dict,
@@ -56,54 +65,90 @@ def test_mlflow_model_registry_load(ensemble_submodels: dict,
                                     test_config: dict,
                                     config: dict):
 
-    best_dicts = get_subdicts_from_mlflow_model_log(mlflow_model_log, key_str = 'best_dict')
+    test_results = {}
+    if 'CHECK_LOCAL' in test_config:
+        test_results['local_models'] = local_model_tests(test_config=test_config,
+                                                         ensemble_model=ensemble_model,
+                                                         config=config,
+                                                         model_paths=ensemble_filepaths)
+    else:
+        test_results['local'] = None
 
-    if test_config['CHECK_WEIGHTS']['ensemble_weights_check_local']:
-        # TODO! refactor so that local vs. mlflow split is done first, so that there
-        #  is no need to fetch the models multiple times
+    if 'CHECK_MLFLOW_MODELS' in test_config:
+        test_results['MLflow_Models'] = mlflow_Models_tests(model_info=mlflow_model_log['log_model'],
+                                                            test_config=test_config,
+                                                            ensemble_name=ensemble_name,
+                                                            experim_dataloaders=experim_dataloaders,
+                                                            ensembled_results=ensembled_results)
+    else:
+        test_results['MLflow_Models'] = None
 
-        # check the weights from the locally saved models first,
-        # to inspect whether the problem is not related to Model Registry at all
-        model_paths = ensemble_submodels
+
+    return test_results
+
+
+def local_model_tests(ensemble_model: ModelEnsemble,
+                      test_config: dict,
+                      config: dict,
+                      model_paths: dict):
+
+    """
+    As in the first check that the models that you saved to disk make sense when loaded back
+    before trying to see if something funky happened in mlflow.log_model and load_model
+    """
+    results = {}
+    test_name = 'check_weights'
+    if test_config['CHECK_LOCAL'][test_name]:
+
         ensemble_model_local = ModelEnsemble(models_of_ensemble=model_paths,
-                                             model_best_dicts=best_dicts,
                                              models_from_paths=True,
                                              validation_config=config['config']['VALIDATION'],
                                              ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                              validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                                              device=config['config']['MACHINE']['IN_USE']['device'],
                                              eval_config=config['config']['VALIDATION_BEST'],
-                                             precision=config['config']['TRAINING']['PRECISION'])
+                                             # TODO! need to make this adaptive based on submodel
+                                             precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 
         ensemble_weights = ensemble_model_local.get_model_weights()
-        reference_weights = get_weight_vectors_from_best_dicts(best_dicts)
-        weights_ok_local = test_compare_weights(test=ensemble_weights,
-                                                reference=reference_weights,
-                                                compare_name='local_weight_check')
+        reference_weights = get_weight_vectors_from_best_dicts(best_dicts=ensemble_model.model_best_dicts)
+        results[test_name] = test_compare_weights(test=ensemble_weights,
+                                                  reference=reference_weights,
+                                                  compare_name=test_name)
 
-    if test_config['CHECK_WEIGHTS']['ensemble_weights_check']:
+    else:
+        results[test_name] = None
 
-        reg_models = get_subdicts_from_mlflow_model_log(mlflow_model_log, key_str='reg_model')
-        ensemble_model = create_model_ensemble_from_mlflow_model_registry(ensemble_submodels=ensemble_submodels,
-                                                                          ensemble_name=ensemble_name,
-                                                                          config=config,
-                                                                          reg_models=reg_models,
-                                                                          best_dicts=best_dicts)
+    return results
 
+
+def mlflow_Models_tests(model_info: mlflow.models.model.ModelInfo,
+                        test_config: dict,
+                        ensemble_name: str,
+                        experim_dataloaders: dict,
+                        ensembled_results: dict,
+                        test_type: str = 'CHECK_MLFLOW_MODELS'):
+
+    results = {}
+
+    # Fetch only once the ensemble from MLflow Models
+    model_uri = model_info.model_uri
+    metamodel_name = os.path.split(model_uri)[1]
+    ensemble_model = create_model_ensemble_from_mlflow_models(metamodel_name=metamodel_name,
+                                                              model_uri=model_uri)
+
+    test_name = 'check_weights'
+    if test_config[test_type][test_name]:
         ensemble_weights = ensemble_model.get_model_weights()
-        reference_weights = get_weight_vectors_from_best_dicts(best_dicts)
-        weights_ok_mlflow = test_compare_weights(test = ensemble_weights,
-                                                 reference = reference_weights,
+        reference_weights = get_weight_vectors_from_best_dicts(best_dicts=ensemble_model.model_best_dicts)
+        results[test_name] = test_compare_weights(test=ensemble_weights,
+                                                 reference=reference_weights,
                                                  compare_name='mlflow_weight_check')
+    else:
+        results[test_name] = None
 
-    if test_config['CHECK_OUTPUT']['ensemble_level_output']:
-
-        logger.info('MLflow | Test logged models for inference at an ensemble level')
-        ensemble_model = create_model_ensemble_from_mlflow_model_registry(ensemble_submodels=ensemble_submodels,
-                                                                          ensemble_name=ensemble_name,
-                                                                          config=config,
-                                                                          reg_models=reg_models,
-                                                                          best_dicts=best_dicts)
+    test_name = 'ensemble_level_output'
+    if test_config[test_type][test_name]:
 
         # Get ensembled response from the MLflow logged models
         ensembled_results_test, ensemble_results_reference = (
@@ -115,50 +160,57 @@ def test_mlflow_model_registry_load(ensemble_submodels: dict,
 
         # Compare the obtained "test ensembled_results" to the ensembled_results
         # obtained during the training. These should match
-        test_compare_outputs(test=ensembled_results_test,
-                             reference=ensemble_results_reference)
+        results[test_name], metrics = test_compare_outputs(test=ensembled_results_test,
+                                                           ref=ensemble_results_reference)
 
     else:
-        logger.info('MLflow | SKIP testing logged models for inference at an ensemble level')
+        results[test_name] = None
 
-    # if test_config['CHECK_OUTPUT']['repeat_level']:
-    #     raise NotImplementedError('You could do repeat-level test as well')
-
-    logger.info('MLflow | Done testing logged models for inference')
+    return results
 
 
-def create_model_ensemble_from_mlflow_model_registry(ensemble_submodels: dict,
-                                                     ensemble_name: str,
-                                                     config: dict,
-                                                     reg_models: dict,
-                                                     best_dicts: dict):
+def create_model_ensemble_from_mlflow_models(metamodel_name: str,
+                                             model_uri: str):
+    """
+    https://python.plainenglish.io/how-to-create-meta-model-using-mlflow-166aeb8666a8
+    """
+    # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
+    loaded_meta_model = mlflow.pyfunc.load_model(model_uri)
+    # type(loaded_meta_model)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
+    unwrapped_meta_model = loaded_meta_model.unwrap_python_model()
+    # type(unwrapped_model) # <class 'src.inference.ensemble_model.ModelEnsemble'>
 
-    # Define the models of the ensemble needed for the ModelEnsemble class
-    models_of_ensemble = {}
-    for j, submodel_name in enumerate(ensemble_submodels):
-        artifact_name = define_artifact_name(ensemble_name, submodel_name,
-                                             hyperparam_name=config['run']['hyperparam_name'])
-        model_uri_models = f"models:/{artifact_name}/{reg_models[submodel_name].version}"
-        models_of_ensemble[submodel_name] = (
-            get_model_from_mlflow_model_registry(model_uri=model_uri_models))
-
-    # Create the ensembleModel class with all the submodels of the ensemble
-    ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
-                                   model_best_dicts=best_dicts,
-                                   models_from_paths=False,
-                                   validation_config=config['config']['VALIDATION'],
-                                   ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                   validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
-                                   device=config['config']['MACHINE']['IN_USE']['device'],
-                                   eval_config=config['config']['VALIDATION_BEST'],
-                                   precision=config['config']['TRAINING']['PRECISION'])
-
-    return ensemble_model
+    return unwrapped_meta_model
 
 
-def test_compare_outputs(test: dict, reference: dict) -> bool:
+def test_compare_outputs(test: dict, ref: dict,
+                         stat_key: str = 'mean'):
 
-    a = 'placeholder'
+    all_good = True
+    metric_checks = {}
+    for i, (test_metric, ref_metric) in enumerate(zip(test['stats']['metrics'],
+                                                      ref['stats']['metrics'])):
+        assert test_metric == ref_metric, ('Metrics should be the same both in test ({}, '
+                                           'and ref ({})'.format(test_metric, ref_metric))
+
+        test_value = test['stats']['metrics'][test_metric][stat_key]
+        ref_value = ref['stats']['metrics'][ref_metric][stat_key]
+
+        if ref_value != test_value:
+            metric_checks[test_metric] = False
+            all_good = False
+            logger.debug('Values ("{}") of test (from MLflow Models, {:.5f}) '
+                         'and ref metric "{}" (obtained during training, {:.5f}) are not the same'.
+                         format(stat_key, test_value, test_metric, ref_value))
+        else:
+            metric_checks[test_metric] = True
+
+    if all_good:
+        logger.info('MLflow | MLflow Models output test OK)')
+        return True, metric_checks
+    else:
+        logger.warning('MLflow | MLflow Models output test OK')
+        return False, metric_checks
 
 
 def test_compare_weights(test: list, reference: list,

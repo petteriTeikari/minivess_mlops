@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_dataloader
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
-    compute_split_metric_stats, get_ensemble_name, get_submodel_name
+    compute_split_metric_stats, get_ensemble_name, get_submodel_name, get_architecture_from_submodel_name
 from src.inference.inference_utils import inference_sample, inference_best_repeat, \
     get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path

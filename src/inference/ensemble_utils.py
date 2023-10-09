@@ -121,3 +121,8 @@ def get_submodel_name(repeat_name: str, archi_name: str = None, fold_name: str =
         return '{}_{}'.format(archi_name, repeat_name)
     else:
         return '{}_{}_{}'.format(fold_name, archi_name, repeat_name)
+
+
+def get_architecture_from_submodel_name(submodel_name: str):
+    architecture_name = submodel_name.split('_')[0]
+    return architecture_name

@@ -130,9 +130,10 @@ def log_crossvalidation_results(fold_results: dict,
         logger.info('Skipping repeat-level WANDB Logging!')
 
     if ensembled_results_reordered is not None:
-        log_wandb_ensemble_results(ensembled_results=ensembled_results,
-                                   output_dir=config['run']['output_base_dir'],
-                                   config=config)
+        if config['config']['LOGGING']['WANDB']['enable']:
+            log_wandb_ensemble_results(ensembled_results=ensembled_results,
+                                       output_dir=config['run']['output_base_dir'],
+                                       config=config)
 
         logged_model_paths = log_cv_results(cv_results=cv_results,
                                             cv_ensemble_results=cv_ensemble_results,

@@ -7,8 +7,9 @@ import torch
 import wandb
 
 from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_with_dataloader
-from src.log_ML.mlflow_log import define_mlflow_model_uri, define_artifact_name
-from src.log_ML.mlflow_tests import test_mlflow_model_registry_load
+from src.log_ML.mlflow_log import define_mlflow_model_uri, define_artifact_name, define_metamodel_name
+from src.log_ML.mlflow_tests import test_mlflow_Models_reproduction
+from src.log_ML.mlflow_utils import get_mlflow_model_signature
 
 
 def log_ensembles_to_MLflow(ensemble_models_flat: dict,
@@ -27,85 +28,133 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
     logger.info('MLflow | Model Registry model_uri = "{}"'.format(model_uri))
 
     mlflow_model_log = {}
+    ensemble_models = {}
+
     for i, ensemble_name in enumerate(ensemble_models_flat):
-        logger.info('Ensemble #{}/{} | ensemble_name = {}'.
-                    format(i + 1, len(ensemble_models_flat), ensemble_name))
+        if i == 0:
+            logger.info('Ensemble #{}/{} | ensemble_name = {}'.
+                        format(i + 1, len(ensemble_models_flat), ensemble_name))
 
-        no_submodels_per_ensemble = len(ensemble_models_flat[ensemble_name])
-        mlflow_model_log[ensemble_name] = {}
+            # best_dicts = get_subdicts_from_mlflow_model_log(mlflow_model_log, key_str = 'best_dict')
+            ensemble_models[ensemble_name] = (
+                ModelEnsemble(models_of_ensemble=ensemble_models_flat[ensemble_name],
+                              models_from_paths=True,
+                              validation_config=config['config']['VALIDATION'],
+                              ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
+                              validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
+                              device=config['config']['MACHINE']['IN_USE']['device'],
+                              eval_config=config['config']['VALIDATION_BEST'],
+                              # TODO! need to make this adaptive based on submodel
+                              precision='AMP'))  # config['config']['TRAINING']['PRECISION'])
 
-        for j, submodel_name in enumerate(ensemble_models_flat[ensemble_name]):
-            mlflow_model_log[ensemble_name][submodel_name] = {}
+            # get_mlflow_model_signature(model_in=ensemble_models[ensemble_name])
 
-            model_path = ensemble_models_flat[ensemble_name][submodel_name]
-            logger.info('Submodel #{}/{} | local_path = {}'.format(j+1, no_submodels_per_ensemble, model_path))
+            # Log the model to Models (and register it to Model Registry)
+            mlflow_model_log[ensemble_name] = (
+                mlflow_metamodel_logging(ensemble_model=ensemble_models[ensemble_name],
+                                         model_paths=ensemble_models_flat[ensemble_name],
+                                         run_params_dict=config['run'],
+                                         model_uri=model_uri,
+                                         ensemble_name=ensemble_name,
+                                         config=config))
 
-            # Load the model
-            model_dict = torch.load(model_path)
-            model = deepcopy(model_dict['model'])
-            best_dict = model_dict['best_dict']
+            if test_loading:
+                # Test that you can download the models from the Model Registry, and that the performance
+                # is exactly the same as you obtained during the training (assuming that there is no
+                # stochasticity in your dataloader, like some test-time augmentation)
+                logger.info('MLflow | Test that you can download model from the '
+                            'Model Registry and that they are reproducible')
+                test_results = (
+                    test_mlflow_Models_reproduction(ensemble_filepaths=ensemble_models_flat[ensemble_name],
+                                                    ensemble_model=ensemble_models[ensemble_name],
+                                                    mlflow_model_log=mlflow_model_log[ensemble_name],
+                                                    ensembled_results=ensembled_results,
+                                                    cv_ensemble_results=cv_ensemble_results,
+                                                    experim_dataloaders=experim_dataloaders,
+                                                    ensemble_name=ensemble_name,
+                                                    test_config=config['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
+                                                    config=config))
+            else:
+                test_results = None
+                logger.warning('MLflow | Skipping the model loading back from MLflow, are you sure?\n'
+                               'Meant as a reproducabiloity check so that you can test that the models are loaded OK,'
+                               'and give the same performance metrics as seen during the training')
 
-            # Log the model (and register it to Model Registry)
-            mlflow_model_log[ensemble_name][submodel_name] = (
-                mlflow_model_logging(model=model,
-                                     best_dict=best_dict,
-                                     model_uri=model_uri,
-                                     mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                     run_params_dict=config['run'],
-                                     ensemble_name=ensemble_name,
-                                     submodel_name=submodel_name))
-
-            mlflow_model_log[ensemble_name][submodel_name]['best_dict'] = best_dict
-
-
-        if test_loading:
-            # Test that you can download the models from the Model Registry, and that the performance
-            # is exactly the same as you obtained during the training (assuming that there is no
-            # stochasticity in your dataloader, like some test-time augmentation)
-            logger.info('MLflow | Test that you can download model from the '
-                        'Model Registry and that they are reproducible')
-            test_mlflow_model_registry_load(ensemble_submodels=ensemble_models_flat[ensemble_name],
-                                            mlflow_model_log=mlflow_model_log[ensemble_name],
-                                            ensembled_results=ensembled_results,
-                                            cv_ensemble_results=cv_ensemble_results,
-                                            experim_dataloaders=experim_dataloaders,
-                                            ensemble_name=ensemble_name,
-                                            test_config=config['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
-                                            config=config)
         else:
-            logger.warning('MLflow | Skipping the model loading back from MLflow, are you sure?\n'
-                           'Meant as a reproducabiloity check so that you can test that the models are loaded OK,'
-                           'and give the same performance metrics as seen during the training')
+            logger.warning('At the moment the Model Registry is working only for single metamodel per run\n'
+                           'implement something later if you have multiple validation datasets and/or'
+                           'multiple metrics. And would you only want to register the "best model" out of these?\n'
+                           'The metrics for each ensemble is either way logged to mlflow UI')
+
+    # 'mlflow_model_log': mlflow_model_log
+    return {'test_results': test_results}
 
 
-def mlflow_model_logging(model, best_dict: dict, model_uri: str,
-                         mlflow_config: dict, run_params_dict: dict,
-                         ensemble_name: str, submodel_name: str):
-
+def mlflow_metamodel_logging(ensemble_model,
+                             model_paths: dict,
+                             run_params_dict: dict,
+                             model_uri: str,
+                             ensemble_name: str,
+                             config: dict,
+                             autoregister_models: bool = False,
+                             immediate_load_test: bool = False):
+    """
+    https://python.plainenglish.io/how-to-create-meta-model-using-mlflow-166aeb8666a8
+    """
     mlflow_model_log = {}
     t0 = time.time()
-    artifact_name = define_artifact_name(ensemble_name, submodel_name,
-                                         hyperparam_name = run_params_dict['hyperparam_name'])
-    logger.info('MLflow | Logging model file to registry: {}'.format(artifact_name))
+    metamodel_name = define_metamodel_name(ensemble_name, hyperparam_name = run_params_dict['hyperparam_name'])
 
     # Log model
     # https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.log_model
     # TODO! Add requirements.txt, etc. stuff around here (get requirements.txt from Dockerfile? as we have
     #  Poetry environment here
-    mlflow_model_log['model_info'] = (
-        mlflow.pytorch.log_model(pytorch_model=model,
-                                 # registered_model_name = artifact_name,
-                                 metadata={'artifact_name': artifact_name},
-                                 artifact_path="model")) # Setuptools is replacing distutils.
+    # TODO! Get signature
+    logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
+                format(ensemble_name, metamodel_name))
+    mlflow_model_log['log_model'] = (
+        mlflow.pyfunc.log_model(artifact_path=metamodel_name,
+                                python_model=ModelEnsemble(models_of_ensemble=model_paths,
+                                                           models_from_paths=True,
+                                                           validation_config=config['config']['VALIDATION'],
+                                                           ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
+                                                           validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
+                                                           device=config['config']['MACHINE']['IN_USE']['device'],
+                                                           eval_config=config['config']['VALIDATION_BEST'],
+                                                           # TODO! need to make this adaptive based on submodel
+                                                           precision='AMP')))
 
-    # Register model
-    # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
-    mlflow_model_log['reg_model'] = (
-        mlflow.register_model(model_uri=model_uri,
-                              name=artifact_name,
-                              tags={'ensemble_name': ensemble_name, 'submodel_name': submodel_name}))
+    if autoregister_models:
+        # https://www.databricks.com/wp-content/uploads/2020/06/blog-mlflow-model-1.png
+        logger.info('MLflow | Registering the model to Model Registry: {}'.
+                    format(ensemble_name, metamodel_name))
+        model_registry_string = '(and registering to Model Registry)'
+        mlflow_model_log['reg_model'] = (
+            mlflow.register_model(model_uri=model_uri,
+                                  name=metamodel_name,
+                                  tags={'ensemble_name': ensemble_name, 'metamodel_name': metamodel_name}))
+    else:
+        logger.info('MLflow | SKIP Model Registering (you can do this manually in MLflow UI then')
+        model_registry_string = ''
+        mlflow_model_log['reg_model'] = None
 
-    logger.info('MLflow | Model log and and registering done in {:.3f} seconds'.format(time.time() - t0))
+    mlflow_model_log['best_dicts'] = ensemble_model.model_best_dicts
+
+    logger.info('MLflow | Model logging to Models {} done in {:.3f} seconds'.
+                format(model_registry_string, time.time() - t0))
+
+    if immediate_load_test:
+        meta_model_uri = mlflow_model_log['log_model'].model_uri
+        logger.info('MLflow | Immediate Model load Test from Model Registry (uri = {}'.format(meta_model_uri))
+        try:
+            # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
+            loaded_meta_model = mlflow.pyfunc.load_model(meta_model_uri)
+            # type(loaded_meta_model)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
+            unwrapped_model = loaded_meta_model.unwrap_python_model()
+            # type(unwrapped_model) # <class 'src.inference.ensemble_model.ModelEnsemble'>
+
+        except Exception as e:
+            logger.warning('Load test failed, e = {}'.format(e))
 
     return mlflow_model_log
 

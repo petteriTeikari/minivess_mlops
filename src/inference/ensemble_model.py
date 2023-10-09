@@ -26,7 +26,8 @@ def inference_ensemble_dataloader(models_of_ensemble: dict,
                                   validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                                   device=device,
                                   eval_config=config['config']['VALIDATION_BEST'],
-                                  precision=config['config']['TRAINING']['PRECISION'])
+                                  # TODO! this could be architecture-specific
+                                  precision='AMP') #config['config']['TRAINING']['PRECISION'])
 
     ensemble_results = inference_ensemble_with_dataloader(ensemble_model,
                                                           dataloader=dataloader,
@@ -90,7 +91,7 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
                 # During training, you have the local model paths that you are loading the model from
                 self.models[submodel_name], self.model_best_dicts[submodel_name], _, _ = (
                     import_model_from_path(model_path=models_of_ensemble[submodel_name],
-                                         validation_config=validation_config))
+                                           validation_config=validation_config))
             else:
                 # you already have the models loaded as in the case with MLflow model registry fetch
                 self.models[submodel_name] = models_of_ensemble[submodel_name]

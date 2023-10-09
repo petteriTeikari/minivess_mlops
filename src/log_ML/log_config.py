@@ -67,8 +67,6 @@ def log_config_artifacts(log_name: str,
     if 'MLflow' in logging_services:
         mlflow.log_artifact(path_out)
 
-
-
     return model_paths
 
 
@@ -85,6 +83,7 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
     # Collect and simplify the submodel structure of the ensemble(s)
     model_paths, ensemble_models_flat = collect_submodels_of_the_ensemble(fold_results)
 
+    log_outputs = {}
     if 'WANDB' in logging_services:
         log_ensembles_to_WANDB(ensemble_models_flat=ensemble_models_flat,
                                config=config,
@@ -93,15 +92,15 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
 
 
     if 'MLflow' in logging_services:
-        log_ensembles_to_MLflow(ensemble_models_flat=ensemble_models_flat,
-                                experim_dataloaders=experim_dataloaders,
-                                ensembled_results=ensembled_results,
-                                cv_ensemble_results=cv_ensemble_results,
-                                config=config,
-                                test_loading=test_loading)
+        log_outputs['MLflow'] = (
+            log_ensembles_to_MLflow(ensemble_models_flat=ensemble_models_flat,
+                                    experim_dataloaders=experim_dataloaders,
+                                    ensembled_results=ensembled_results,
+                                    cv_ensemble_results=cv_ensemble_results,
+                                    config=config,
+                                    test_loading=test_loading))
 
-
-    return {'model_paths': model_paths, 'ensemble_models_flat': ensemble_models_flat}
+    return {'model_paths': model_paths, 'ensemble_models_flat': ensemble_models_flat, 'log_outputs': log_outputs}
 
 
 def collect_submodels_of_the_ensemble(fold_results: dict):

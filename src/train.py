@@ -43,8 +43,8 @@ def training_script(experim_dataloaders: dict,
         fold_results[fold_name], ensembled_results[fold_name] = \
             train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
                                         config=config,
-                                        training_config=training_config,
-                                        model_config=model_config,
+                                        # Note! these are now parsed from input .yaml
+                                        hyperparameters_config=config['hyperparameters'],
                                         machine_config=machine_config,
                                         output_dir=config['run']['fold_dir'][fold_name],
                                         fold_name=fold_name)
@@ -63,21 +63,24 @@ def training_script(experim_dataloaders: dict,
 
 def train_model_for_single_fold(fold_dataloaders: dict,
                                 config: dict,
-                                training_config: dict,
-                                model_config: dict,
+                                hyperparameters_config: dict,
                                 machine_config: dict,
                                 output_dir: str,
                                 fold_name: str):
     """
     Up to you decide if you consider what is really a different architecture within the ensemble
     """
-    architecture_names = ['Unet3'] # quick n dirty testing of the looping mechanics
-    archi_results = {}
+    architecture_names = list(hyperparameters_config['models'].keys())
     output_dir = os.path.join(output_dir, 'submodels')
     os.makedirs(output_dir, exist_ok=True)
 
+    archi_results = {}
     for i, architecture_name in enumerate(architecture_names):
         logger.info('Training architecture #{}/{}: {}'.format(i+1, len(architecture_names), architecture_name))
+        # Pick the proper architecture and training params per architecture so that
+        # "train_model_for_single_architecture()" sees just the "normal model" to be trained for n repeats
+        training_config = hyperparameters_config['models'][architecture_name]['training']
+        model_config = hyperparameters_config['models'][architecture_name]['architecture']
         archi_results[architecture_name] = \
             train_model_for_single_architecture(fold_dataloaders=fold_dataloaders,
                                                 config=config,
@@ -134,6 +137,7 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
                                repeat_name=repeat_name,
                                device=machine_config['IN_USE']['device'],
                                # output_dir=os.path.join(output_dir, archi_name, repeat_name),
+                               archi_name=archi_name,
                                output_dir=os.path.join(output_dir, submodel_name),
                                fold_name=fold_name)
 
@@ -156,6 +160,7 @@ def train_single_model(dataloaders: dict,
                        machine_config: dict,
                        repeat_idx: int,
                        repeat_name: str,
+                       archi_name: str,
                        fold_name: str,
                        device,
                        output_dir: str) -> dict:
@@ -168,7 +173,7 @@ def train_single_model(dataloaders: dict,
 
     # TODO! THIS SHOULD BE HAPPEN WITH THE ARCHITECTURE LOOP, NOT INSIDE THE REPEAT
     # Define the model to be used
-    model = import_segmentation_model(model_config, device)
+    model = import_segmentation_model(model_config, archi_name, device)
 
     # Model training params
     loss_function, optimizer, lr_scheduler = \
