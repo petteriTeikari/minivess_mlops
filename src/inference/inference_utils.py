@@ -8,17 +8,18 @@ from monai.inferers import sliding_window_inference
 from monai.transforms import Activations, AsDiscrete
 from tqdm import tqdm
 
+from src.deprecated_functions.depr_funcs import inference_dataloader
 from src.inference.ensemble_utils import merge_nested_dicts, get_metadata_for_sample_metrics, \
     add_sample_metrics_to_split_results, compute_split_metric_stats
 from src.inference.metrics import get_sample_metrics_from_np_masks, get_sample_uq_metrics_from_ensemble_stats
 from src.log_ML.model_saving import import_model_from_path
 
 
-def inference_sample(batch_data,
-                     model,
+def inference_sample(input_data,
                      metric_dict: dict,
                      device: str,
-                     precision: str = 'AMP'):
+                     precision: str = 'AMP',
+                     input_from: str = 'dict'):
     """
     See e.g. https://docs.monai.io/en/stable/inferers.html
              https://github.com/davidiommi/Ensemble-Segmentation/blob/main/predict_single_image.py
@@ -30,11 +31,19 @@ def inference_sample(batch_data,
     :param auto_mixedprec:
     :return:
     """
+
+    if input_from == 'dict':
+        inputs = input_data["image"]
+    elif input_from == 'tensor':
+        inputs = input_data
+    else:
+        raise IOError('Unknown input_from = {}'.format(input_from))
+
     if precision == 'AMP':  ## AMP
         with torch.cuda.amp.autocast():
-            output = sliding_window_inference(inputs=batch_data["image"].to(device), **metric_dict)
+            output = sliding_window_inference(inputs=inputs.to(device), **metric_dict)
     else:
-        output = sliding_window_inference(inputs=batch_data["image"].to(device), **metric_dict)
+        output = sliding_window_inference(inputs=inputs.to(device), **metric_dict)
 
     # logits -> probabilities
     activ = Activations(sigmoid=True)
@@ -113,9 +122,6 @@ def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
                 split_metrics_stat[dataset][tracked_metric][dataset_eval] = metrics_stat
 
     return {'split_metrics': split_metrics, 'split_metrics_stat': split_metrics_stat}
-
-
-
 
 
 def get_inference_metrics(y_pred: np.ndarray,

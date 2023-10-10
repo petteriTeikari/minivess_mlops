@@ -61,7 +61,9 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         'output_wandb_dir': os.path.join(config['ARGS']['output_dir'], 'WANDB'),
         'output_mlflow_dir': os.path.join(config['ARGS']['output_dir'], 'MLflow'),
         'config_hash': config_hash,
-        'start_time': start_time
+        'start_time': start_time,
+        'src_dir': os.getcwd(),
+        'repo_dir': os.path.join(os.getcwd(), '..'),
     }
 
     # Init variables for 'run'

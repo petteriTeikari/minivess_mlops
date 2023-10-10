@@ -1,3 +1,4 @@
+import os
 import time
 from copy import deepcopy
 
@@ -5,11 +6,12 @@ from loguru import logger
 import mlflow
 import torch
 import wandb
+from mlflow.models import ModelSignature
 
 from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_with_dataloader
 from src.log_ML.mlflow_log import define_mlflow_model_uri, define_artifact_name, define_metamodel_name
 from src.log_ML.mlflow_tests import test_mlflow_Models_reproduction
-from src.log_ML.mlflow_utils import get_mlflow_model_signature
+from src.log_ML.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
 
 
 def log_ensembles_to_MLflow(ensemble_models_flat: dict,
@@ -47,7 +49,12 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                               # TODO! need to make this adaptive based on submodel
                               precision='AMP'))  # config['config']['TRAINING']['PRECISION'])
 
-            # get_mlflow_model_signature(model_in=ensemble_models[ensemble_name])
+            try:
+                signature = get_mlflow_model_signature_from_dataloader_dict(model_in=ensemble_models[ensemble_name],
+                                                                            experim_dataloaders=experim_dataloaders)
+            except Exception as e:
+                logger.warning('Problem creating MLflow ModelSignature, e = {}'.format(e))
+                signature = None
 
             # Log the model to Models (and register it to Model Registry)
             mlflow_model_log[ensemble_name] = (
@@ -56,6 +63,7 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                                          run_params_dict=config['run'],
                                          model_uri=model_uri,
                                          ensemble_name=ensemble_name,
+                                         signature=signature,
                                          config=config))
 
             if test_loading:
@@ -95,6 +103,7 @@ def mlflow_metamodel_logging(ensemble_model,
                              run_params_dict: dict,
                              model_uri: str,
                              ensemble_name: str,
+                             signature: ModelSignature,
                              config: dict,
                              autoregister_models: bool = False,
                              immediate_load_test: bool = False):
@@ -107,11 +116,9 @@ def mlflow_metamodel_logging(ensemble_model,
 
     # Log model
     # https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.log_model
-    # TODO! Add requirements.txt, etc. stuff around here (get requirements.txt from Dockerfile? as we have
-    #  Poetry environment here
-    # TODO! Get signature
     logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
                 format(ensemble_name, metamodel_name))
+
     mlflow_model_log['log_model'] = (
         mlflow.pyfunc.log_model(artifact_path=metamodel_name,
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
@@ -122,7 +129,11 @@ def mlflow_metamodel_logging(ensemble_model,
                                                            device=config['config']['MACHINE']['IN_USE']['device'],
                                                            eval_config=config['config']['VALIDATION_BEST'],
                                                            # TODO! need to make this adaptive based on submodel
-                                                           precision='AMP')))
+                                                           precision='AMP'),
+                                signature=signature,
+                                pip_requirements=os.path.join(config['run']['repo_dir'], 'requirements.txt')
+                                )
+    )
 
     if autoregister_models:
         # https://www.databricks.com/wp-content/uploads/2020/06/blog-mlflow-model-1.png

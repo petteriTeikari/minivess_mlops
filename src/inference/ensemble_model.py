@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Union
 
 import mlflow
 import numpy as np
@@ -46,7 +47,8 @@ def inference_ensemble_with_dataloader(ensemble_model,
                 tqdm(dataloader,
                      desc='ENSEMBLE: Inference on dataloader samples, split "{}"'.format(split),
                      position=0)):
-            sample_ensemble_metrics = ensemble_model.predict_batch(batch_data=batch_data)
+            dict_out = ensemble_model.predict_with_gt(batch_data=batch_data)
+            sample_ensemble_metrics = dict_out['sample_ensemble_metrics']
 
             # Collect the metrics for each sample so you can for example compute mean dice for the split
             dataloader_metrics = \
@@ -60,6 +62,45 @@ def inference_ensemble_with_dataloader(ensemble_model,
     dataloader_metrics_stat = compute_split_metric_stats(dataloader_metrics=dataloader_metrics)
 
     return {'samples': dataloader_metrics, 'stats': dataloader_metrics_stat}
+
+
+def get_monai_param_dict_from_OmegaConf(validation_params, model) -> dict:
+    monai_metric_dict = OmegaConf.to_container(validation_params)  # OmegaConf -> Dict
+    monai_metric_dict['predictor'] = model
+    return monai_metric_dict
+
+
+def ensemble_repeats(inf_res: dict,
+                     ensemble_params: dict,
+                     var_type_key: str = 'arrays',
+                     var_key: str = 'probs') -> dict:
+    input_data = inf_res[var_type_key][var_key]
+    ensemble_stats = compute_ensembled_response(input_data, ensemble_params)
+
+    return ensemble_stats
+
+
+def compute_ensembled_response(input_data: np.ndarray,
+                               ensemble_params) -> dict:
+    variable_stats = {}
+    variable_stats['scalars'] = {}
+    variable_stats['scalars']['n_samples'] = input_data.shape[0]  # i.e. number of repeats / submodels
+
+    variable_stats['arrays'] = {}
+    variable_stats['arrays']['mean'] = np.mean(input_data, axis=0)  # i.e. number of repeats / submodels
+    variable_stats['arrays']['var'] = np.var(input_data, axis=0)  # i.e. number of repeats / submodels
+    variable_stats['arrays']['UQ_epistemic'] = np.nan
+    variable_stats['arrays']['UQ_aleatoric'] = np.nan
+    variable_stats['arrays']['entropy'] = np.nan
+
+    if ensemble_params['method'] == 'average':
+        variable_stats['arrays']['mask'] = (
+            (variable_stats['arrays']['mean'] > ensemble_params['mask_threshold']).astype('float32'))
+    else:
+        # majority_voting_here
+        raise NotImplementedError('Unknown ensemble method = {}'.format())
+
+    return variable_stats
 
 
 class ModelEnsemble(mlflow.pyfunc.PythonModel):
@@ -105,62 +146,69 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
             else:
                 raise NotImplementedError('Only evaluation defined, fix here if you want to resume training')
 
-
-    def predict_batch(self, batch_data):
-
-        def get_monai_param_dict_from_OmegaConf(validation_params, model) -> dict:
-            monai_metric_dict = OmegaConf.to_container(validation_params)  # OmegaConf -> Dict
-            monai_metric_dict['predictor'] = model
-            return monai_metric_dict
-
-
-        def ensemble_repeats(inf_res: dict,
-                             ensemble_params: dict,
-                             var_type_key: str = 'arrays',
-                             var_key: str = 'probs') -> dict:
-            input_data = inf_res[var_type_key][var_key]
-            ensemble_stats = compute_ensembled_response(input_data, ensemble_params)
-
-            return ensemble_stats
-
-        def compute_ensembled_response(input_data: np.ndarray,
-                                       ensemble_params) -> dict:
-
-            variable_stats = {}
-            variable_stats['scalars'] = {}
-            variable_stats['scalars']['n_samples'] = input_data.shape[0]  # i.e. number of repeats / submodels
-
-            variable_stats['arrays'] = {}
-            variable_stats['arrays']['mean'] = np.mean(input_data, axis=0)  # i.e. number of repeats / submodels
-            variable_stats['arrays']['var'] = np.var(input_data, axis=0)  # i.e. number of repeats / submodels
-            variable_stats['arrays']['UQ_epistemic'] = np.nan
-            variable_stats['arrays']['UQ_aleatoric'] = np.nan
-            variable_stats['arrays']['entropy'] = np.nan
-
-            if ensemble_params['method'] == 'average':
-                variable_stats['arrays']['mask'] = (
-                    (variable_stats['arrays']['mean'] > ensemble_params['mask_threshold']).astype('float32'))
-            else:
-                # majority_voting_here
-                raise NotImplementedError('Unknown ensemble method = {}'.format())
-
-            return variable_stats
-
+    def __inference_per_sample(self,
+                               input_data,
+                               input_from: str = 'dict'):
 
         # Inference the batch_data through all the submodels
         inference_results = {}
         for submodel_name in self.models:
             model = self.models[submodel_name]
             monai_metric_dict = get_monai_param_dict_from_OmegaConf(self.validation_params, model)
-            sample_res = inference_sample(batch_data,
-                                          model=model,
+            sample_res = inference_sample(input_data,
                                           metric_dict=monai_metric_dict,
                                           device=self.device,
+                                          input_from=input_from,
                                           precision=self.precision)
 
             # Add different repeats together so you can get the ensemble response
             inference_results = add_sample_results_to_ensemble_results(inf_res=deepcopy(inference_results),
                                                                        sample_res=sample_res)
+
+        return inference_results
+
+
+    def predict_single_volume(self,
+                              image_tensor: Union[np.ndarray,torch.Tensor],
+                              input_as_numpy: bool = False,
+                              return_mask: bool = True,
+                              add_channel_to_output: bool = True):
+        """
+        When you only have the tensor of the images and no idea of the ground truth,
+        i.e. when you want to use the trained model for actual segmentation
+        """
+        if input_as_numpy:
+            image_tensor = torch.Tensor(image_tensor)
+
+        inference_results = self.__inference_per_sample(input_data=image_tensor,
+                                                        input_from='tensor')
+
+        ensemble_stat_results = ensemble_repeats(inf_res=inference_results,
+                                                 ensemble_params=self.ensemble_params)
+
+        if return_mask:
+            mask_out = ensemble_stat_results['arrays']['mask']
+            if add_channel_to_output:
+                if isinstance(mask_out, np.ndarray):
+                    mask_out = mask_out[np.newaxis,:,:,:]
+                else:
+                    raise NotImplementedError('Check what are the dims for torch.Tensor output')
+            return mask_out
+        else:
+            # This contains pixel-wise probabilities, uncertainty estimates, etc in a dictionary
+            return ensemble_stat_results
+
+
+    def predict_with_gt(self,
+                       batch_data,
+                       input_from: str = 'dict',
+                       return_mask: bool = False):
+        """
+        You can use this during the training when you know the ground truth,
+        and the batch_data is the dictionary from the dataloader
+        """
+        inference_results = self.__inference_per_sample(input_data=batch_data,
+                                                        input_from='dict')
 
         # We have now the inference output of each submodel in the "ensemble_results" and we can for example
         # get the average probabilities per pixel/voxel, or do majority voting
@@ -175,7 +223,14 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
                                   eval_config=self.eval_config,
                                   batch_data=batch_data))
 
-        return sample_ensemble_metrics
+        dict_out = {'inference_results': inference_results,
+                    'ensemble_stat_results': ensemble_stat_results,
+                    'sample_ensemble_metrics': sample_ensemble_metrics}
+
+        if return_mask:
+            return dict_out['ensemble_stat_results']['arrays']['mask']
+        else:
+            return dict_out
 
 
     def get_model_weights(self):

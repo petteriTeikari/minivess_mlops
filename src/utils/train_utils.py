@@ -9,6 +9,7 @@ import torch.distributed as dist
 
 from monai.losses import DiceFocalLoss
 from monai.optimizers import Novograd
+from monai.utils import convert_to_tensor
 
 from src.utils.general_utils import check_if_key_in_dict
 
@@ -200,3 +201,14 @@ def get_timings_per_epoch(metadata_dict: dict, epoch_start: float,
         (metadata_dict['metadata_scalars']['time_batch']/mean_batch_sz) * 1000
 
     return metadata_dict
+
+
+def get_first_batch_from_dataloaders_dict(experim_dataloaders: dict,
+                                          split: str = 'TRAIN',
+                                          return_batch_dict: bool = True):
+    first_fold = list(experim_dataloaders.keys())[0]
+    dataloader = experim_dataloaders[first_fold][split]
+    batch_dict = next(iter(dataloader))
+    # images, labels = batch_dict['image'], batch_dict['label']
+    # logger.info('MLflow | Get first batch of "{}" dataloader, batch sz = {}'.format(split, images.shape))
+    return batch_dict
