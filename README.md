@@ -47,8 +47,14 @@ This file contains only the parameters that you want to change,
 as compared to the "base config" in `src/configs/base/base_config.yaml`.
 A logic for example used in the [`VISSL` library](https://colab.research.google.com/github/facebookresearch/vissl/blob/stable/tutorials/Understanding_VISSL_Training_and_YAML_Config.ipynb)
 
-At the moment using the [`OmegaConf`](https://omegaconf.readthedocs.io/) for managing configuration dictionary, see later if some [`Hydra`](https://hydra.cc/) is needed on top of it. 
-
 ### Inference / serving
 
 _TODO!_
+
+## Wiki
+
+See some background for decisions, and tutorials: https://github.com/petteriTeikari/minivess_mlops/wiki
+
+## TODO!
+
+See cards on [Github Projects](https://github.com/users/petteriTeikari/projects/2)
