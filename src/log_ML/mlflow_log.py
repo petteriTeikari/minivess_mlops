@@ -28,20 +28,9 @@ def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     os.environ['MLFLOW_TRACKING_PASSWORD'] = credentials['mlflow']['mlflow_tracking_password']
 
 
-def init_mlflow_logging(config: dict,
-                        mlflow_config: dict,
-                        experiment_name: str = "MINIVESS_segmentation",
-                        run_name: str = "UNet3D"):
-    """
-    see e.g. https://github.com/Project-MONAI/tutorials/blob/main/experiment_management/spleen_segmentation_mlflow.ipynb
-    https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded
-    :param config:
-    :return:
-    """
-
-    def init_mlflow_run(local_server_path: str,
-                        experiment_name: str = "MINIVESS_segmentation",
-                        run_name: str = "UNet3D"):
+def init_mlflow_run(local_server_path: str,
+                    experiment_name: str = "MINIVESS_segmentation",
+                    run_name: str = "UNet3D"):
 
         experiment = mlflow.set_experiment(experiment_name)
         # mlflow.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
@@ -57,6 +46,17 @@ def init_mlflow_logging(config: dict,
         logger.info(" source.type: {}".format(active_run.data.tags['mlflow.source.type']))
         return experiment, active_run
 
+
+def init_mlflow_logging(config: dict,
+                        mlflow_config: dict,
+                        experiment_name: str = "MINIVESS_segmentation",
+                        run_name: str = "UNet3D"):
+    """
+    see e.g. https://github.com/Project-MONAI/tutorials/blob/main/experiment_management/spleen_segmentation_mlflow.ipynb
+    https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded
+    :param config:
+    :return:
+    """
 
     if mlflow_config['TRACKING']['enable']:
         logger.info('MLflow | Initializing MLflow Experiment tracking')
@@ -99,9 +99,6 @@ def init_mlflow_logging(config: dict,
             logger.info('MLflow | Writing dummy parameter')
             mlflow.log_param('dummy_key', 'dummy_value')
 
-        logger.info('MLflow | Placeholder to log your Dataset, '
-                    'see https://mlflow.org/docs/latest/python_api/mlflow.data.html')
-
     else:
         logger.info('Skipping MLflow Experiment tracking')
 
@@ -111,6 +108,19 @@ def init_mlflow_logging(config: dict,
     mlflow_dict_omegaconf = mlflow_dicts_to_omegaconf_dict(experiment, active_run)
 
     return mlflow_dict_omegaconf, mlflow_dict
+
+
+def mlflow_log_dataset(mlflow_config: dict,
+                       dataset_cfg: dict,
+                       filelisting: dict,
+                       fold_split_file_dicts: dict,
+                       config: dict):
+    """
+    https://mlflow.org/docs/latest/python_api/mlflow.data.html
+    """
+    mlflow_dataset_cfg = mlflow_config['TRACKING']['DATASET']
+    logger.info('MLflow | Placeholder to log your Dataset, '
+                'see https://mlflow.org/docs/latest/python_api/mlflow.data.html')
 
 
 def mlflow_dicts_to_omegaconf_dict(experiment, active_run):

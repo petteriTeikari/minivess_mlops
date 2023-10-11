@@ -1,18 +1,10 @@
 import os
-from copy import deepcopy
 
 import mlflow
 import numpy as np
-import torch
 from loguru import logger
-# from mlflow import MlflowClient
-
-# from mlflow.entities.model_registry import ModelVersion
-
 
 from src.inference.ensemble_model import inference_ensemble_with_dataloader, ModelEnsemble
-from src.log_ML.mlflow_log import define_artifact_name
-from src.log_ML.mlflow_utils import get_model_from_mlflow_model_registry, get_subdicts_from_mlflow_model_log
 from src.log_ML.model_saving import get_weight_vectors_from_best_dicts
 
 

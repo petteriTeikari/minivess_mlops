@@ -4,6 +4,7 @@ from loguru import logger
 from src.datasets.dvc_utils import get_dvc_commit
 from src.datasets.minivess import download_and_extract_minivess_dataset, define_minivess_dataset, \
     define_minivess_splits, get_minivess_filelisting, minivess_debug_splits, import_minivess_dataset
+from src.log_ML.mlflow_log import mlflow_log_dataset
 from src.utils.general_utils import check_if_key_in_dict
 from src.utils.transforms import define_transforms, no_aug
 
@@ -213,6 +214,14 @@ def import_dataset(data_config: dict,
     else:
         raise NotImplementedError('Do not yet know how to download a dataset '
                                   'called = "{}"'.format(dataset_name))
+
+    # Log the dataset to MLflow
+    if config['config']['LOGGING']['MLFLOW']['TRACKING']:
+        mlflow_log_dataset(mlflow_config=config['config']['LOGGING']['MLFLOW'],
+                           dataset_cfg=data_config['DATA_SOURCE'][dataset_name],
+                           filelisting=filelisting,
+                           fold_split_file_dicts=fold_split_file_dicts,
+                           config=config)
 
     return filelisting, fold_split_file_dicts, data_config
 

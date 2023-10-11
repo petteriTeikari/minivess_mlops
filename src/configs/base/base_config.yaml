@@ -324,6 +324,9 @@ config:
       server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'
       TRACKING:
         enable: True
+        DATASET:
+          # https://mlflow.org/docs/latest/python_api/mlflow.data.html
+          placeholder: 0
       MODEL_REGISTRY:
         placeholder: 1
       # Params for testing that you can load models from model registry, and the metrics match

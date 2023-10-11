@@ -27,6 +27,8 @@ def get_run_metadata(metadata_method: str = 'MONAI'):
     ids = get_commit_id()
     metadata = {**metadata, **ids}
 
+    # TODO! Add DVC Library info
+
     return metadata
 
 
