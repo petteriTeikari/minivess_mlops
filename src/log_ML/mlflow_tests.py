@@ -209,7 +209,7 @@ def test_compare_outputs(test: dict, ref: dict,
         logger.info('MLflow | MLflow Models output test OK)')
         return True, metric_checks
     else:
-        logger.warning('MLflow | MLflow Models output test OK')
+        logger.warning('MLflow | MLflow Models output test failed (inspect later the stochasticity here)')
         return False, metric_checks
 
 
