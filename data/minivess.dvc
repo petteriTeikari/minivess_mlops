@@ -1,0 +1,6 @@
+outs:
+- md5: 6edebbc11fc219c272225a884278afc4.dir
+  size: 984676438
+  nfiles: 211
+  hash: md5
+  path: minivess

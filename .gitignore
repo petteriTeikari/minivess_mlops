@@ -7,4 +7,3 @@
 /src/wandb/*
 /mlruns/*
 *.pdf
-/data
