@@ -14,5 +14,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: dockerhub login
+      env:
+        DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
+        DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
+      run:
+        docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      run: docker build . --file Dockerfile --tag petteriteikari/minivess-mlops:${{ github.sha }}
+    - name: Push the image to Dockerhub
+      run: docker push petteriteikari/minivess-mlops:${{ github.sha }}
