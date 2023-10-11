@@ -2,6 +2,7 @@
     remote = remote_storage
 [cache]
     dir = /mnt/minivess_mlops_artifacts/data/dvc_shared_cache
-    type = symlink
+    type = "reflink,symlink,hardlink,copy"
+    shared = group
 ['remote "remote_storage"']
     url = s3://minivessdataset

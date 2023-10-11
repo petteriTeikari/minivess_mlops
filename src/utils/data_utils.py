@@ -3,7 +3,7 @@ from loguru import logger
 
 from src.datasets.dvc_utils import get_dvc_commit
 from src.datasets.minivess import download_and_extract_minivess_dataset, define_minivess_dataset, \
-    define_minivess_splits, get_minivess_filelisting, minivess_debug_splits
+    define_minivess_splits, get_minivess_filelisting, minivess_debug_splits, import_minivess_dataset
 from src.utils.general_utils import check_if_key_in_dict
 from src.utils.transforms import define_transforms, no_aug
 
@@ -147,7 +147,10 @@ def redefine_dataloader_for_inference(dataloader_batched,
     return dataloader
 
 
-def import_datasets(data_config: dict, data_dir: str, debug_mode: bool = False):
+def import_datasets(data_config: dict,
+                    data_dir: str,
+                    config: dict,
+                    debug_mode: bool = False,):
 
     def reverse_fold_and_dataset_order(fold_split_file_dicts):
         # Note! if you combine multiple datasets, we assume that all the different datasets have similar folds
@@ -162,13 +165,16 @@ def import_datasets(data_config: dict, data_dir: str, debug_mode: bool = False):
         return dict_out
 
 
-    datasets_to_import = data_config['DATA_SOURCE']['DATASET_NAME']
+    datasets_to_import = data_config['DATA_SOURCE']['DATASET_NAMES']
     logger.info('Importing the following datasets: {}', datasets_to_import)
     dataset_filelistings, fold_split_file_dicts = {}, {}
     for i, dataset_name in enumerate(datasets_to_import):
         dataset_filelistings[dataset_name], fold_split_file_dicts[dataset_name], data_config = \
-            import_dataset(data_config, data_dir, dataset_name,
-                           debug_mode=debug_mode)
+            import_dataset(data_config=data_config,
+                           data_dir=data_dir,
+                           dataset_name=dataset_name,
+                           debug_mode=debug_mode,
+                           config=config)
 
     # reverse fold and dataset_name in the fold_splits for easier processing afterwards
     fold_split_file_dicts = reverse_fold_and_dataset_order(fold_split_file_dicts)
@@ -176,7 +182,11 @@ def import_datasets(data_config: dict, data_dir: str, debug_mode: bool = False):
     return fold_split_file_dicts, data_config
 
 
-def import_dataset(data_config: dict, data_dir: str, dataset_name: str, debug_mode: bool = False):
+def import_dataset(data_config: dict,
+                   data_dir: str,
+                   dataset_name: str,
+                   config: dict,
+                   debug_mode: bool = False):
 
     logger.info('Importing: {}', dataset_name)
     dataset_cfg = data_config['DATA_SOURCE'][dataset_name]
@@ -191,15 +201,14 @@ def import_dataset(data_config: dict, data_dir: str, dataset_name: str, debug_mo
                       'see MINIVESS definition for an example'.format(dataset_name))
 
     if dataset_name == 'MINIVESS':
-
-        input_url = dataset_cfg['DATA_DOWNLOAD_URL']
-        dataset_dir = download_and_extract_minivess_dataset(input_url=input_url, data_dir=data_dir)
-        get_dvc_commit(dataset_dir)
-        filelisting, data_config['DATA_SOURCE'][dataset_name]['STATS'] = get_minivess_filelisting(dataset_dir)
-        fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
-
-        if debug_mode:
-            minivess_debug_splits(fold_split_file_dicts)
+        filelisting, fold_split_file_dicts, data_config['DATA_SOURCE'][dataset_name]['STATS'] \
+            = import_minivess_dataset(dataset_cfg=dataset_cfg,
+                                      data_dir=data_dir,
+                                      debug_mode=debug_mode,
+                                      config=config,
+                                      dataset_name=dataset_name,
+                                      fetch_method=dataset_cfg['FETCH_METHOD'],
+                                      fetch_params=dataset_cfg['FETCH_METHODS'][dataset_cfg['FETCH_METHOD']])
 
     else:
         raise NotImplementedError('Do not yet know how to download a dataset '

@@ -22,11 +22,20 @@ config:
     DATA_SOURCE:
       # To think about here how to define multiple datasets,
       # TOADD, i.e. how to create multiple val, and test subdictionaries
-      DATASET_NAME:
+      DATASET_NAMES:
         - 'MINIVESS'
       MINIVESS:
-        DATA_INFO_URL: 'https://doi.org/10.25493/HPBE-YHK'
-        DATA_DOWNLOAD_URL: 'https://data.kg.ebrains.eu/zip?container=https://data-proxy.ebrains.eu/api/v1/buckets/d-bf268b89-1420-476b-b428-b85a913eb523'
+        FETCH_METHOD: 'DVC'
+        FETCH_METHODS:
+          DVC:
+            datapath_base: 'data'
+            version: 'placeholder'
+            repo_url: 'https://github.com/petteriTeikari/minivess_mlops'
+          EBrains:
+            # this was originally used for the data, but it is a bit cumbersome to use programmatically,
+            # wtih authentication (registration) requiring extra hoops for non-academics
+            DATA_INFO_URL: 'https://doi.org/10.25493/HPBE-YHK'
+            DATA_DOWNLOAD_URL: 'https://data.kg.ebrains.eu/zip?container=https://data-proxy.ebrains.eu/api/v1/buckets/d-bf268b89-1420-476b-b428-b85a913eb523'
         SPLITS:
           NAME: 'RANDOM'
           RANDOM:
@@ -38,9 +47,6 @@ config:
           # and reshuffle train/val?
           TXT_FILE:
             PLACEHOLDER: 0
-        # With no commit, we will just commit the downloaded dataset. Note! thet EBRAINS allow versioning too
-        # and we are not tracking that here (as in having dvc commit change when versioning changes
-        DVC_COMMIT: null
         # Dataset object, see e.g. "2. Cache intermediate outcomes into persistent storage"
         # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
         DATASET:

@@ -7,3 +7,4 @@
 /src/wandb/*
 /mlruns/*
 *.pdf
+/src/data/json/mv01.json

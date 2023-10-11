@@ -78,8 +78,10 @@ if __name__ == '__main__':
 
         # Collect the data and define splits
         fold_split_file_dicts, config['config']['DATA'] = \
-            import_datasets(data_config=config['config']['DATA'], data_dir=args['data_dir'],
-                            debug_mode=args['debug_mode'])
+            import_datasets(data_config=config['config']['DATA'],
+                            data_dir=args['data_dir'],
+                            debug_mode=args['debug_mode'],
+                            config=config)
 
         # Create and validate datasets and dataloaders
         experim_datasets, experim_dataloaders = \

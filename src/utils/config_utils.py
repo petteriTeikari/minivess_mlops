@@ -265,7 +265,7 @@ def define_hyperparam_run_params(config: dict) -> dict:
     logger.info('Hand-picking the keys/subdicts from "config" that are logged as hyperparameters for MLflow/WANDB')
 
     # What datasets were you used for training the model
-    hyperparams['datasets'] = cfg['DATA']['DATA_SOURCE']['DATASET_NAME']
+    hyperparams['datasets'] = cfg['DATA']['DATA_SOURCE']['DATASET_NAMES']
 
     # What model and architecture hyperparams you used
     hyperparams['models'] = {}

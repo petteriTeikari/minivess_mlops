@@ -1,6 +1,8 @@
 import glob
 import os
 
+import dvc.api
+
 from monai.data import CacheDataset, Dataset
 from loguru import logger
 from tqdm import tqdm
@@ -9,6 +11,65 @@ import zipfile
 import random
 
 from ml_tests.check_files import check_file_listing
+from src.datasets.dvc_utils import get_dvc_files_of_repo
+
+
+def import_minivess_dataset(dataset_cfg: dict,
+                            data_dir: str,
+                            debug_mode: bool,
+                            config: dict,
+                            dataset_name: str,
+                            fetch_method: str,
+                            fetch_params: dict):
+
+
+
+    if fetch_method == 'DVC':
+        dataset_dir = fetch_dataset_with_dvc(fetch_params=fetch_params,
+                                             dataset_cfg=dataset_cfg,
+                                             dataset_name_lowercase=dataset_name.lower(),
+                                             repo_dir=config['run']['repo_dir'])
+
+    elif fetch_method == 'EBrains':
+        dataset_dir = import_filelisting_EBrains(dataset_cfg=dataset_cfg,
+                                                 data_dir=data_dir,
+                                                 fetch_params=fetch_params)
+
+    else:
+        raise NotImplementedError('Unknown dataset fetch method for Minivess = {}'.format(fetch_method))
+
+    filelisting, dataset_stats = get_minivess_filelisting(dataset_dir)
+    fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
+
+    if debug_mode:
+        minivess_debug_splits(fold_split_file_dicts)
+
+    return filelisting, fold_split_file_dicts, dataset_stats
+
+
+def fetch_dataset_with_dvc(fetch_params: dict,
+                           dataset_cfg: dict,
+                           dataset_name_lowercase: str,
+                           repo_dir: str):
+
+    dataset_dir = get_dvc_files_of_repo(repo_dir=repo_dir,
+                                       dataset_name_lowercase=dataset_name_lowercase,
+                                       fetch_params=fetch_params,
+                                       dataset_cfg=dataset_cfg)
+
+    return dataset_dir
+
+
+def import_filelisting_EBrains(dataset_cfg: dict,
+                               data_dir: dict,
+                               fetch_params: dict):
+
+    logger.warning('Work on the EBrains method more if you want to use this,'
+                   'recommended to use DVC for now')
+    input_url = dataset_cfg['DATA_DOWNLOAD_URL']
+    dataset_dir = download_and_extract_minivess_dataset(input_url=input_url, data_dir=data_dir)
+
+    return dataset_dir
 
 
 def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
