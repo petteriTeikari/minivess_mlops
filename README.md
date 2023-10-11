@@ -6,6 +6,8 @@ Charissa Poon, Petteri Teikari _et al._ (2023):
 "A dataset of rodent cerebrovasculature from in vivo multiphoton fluorescence microscopy imaging", 
 Scientific Data 10, 141 doi: [10.1038/s41597-023-02048-8](https://doi.org/10.1038/s41597-023-02048-8) see also: [Dagshub](https://dagshub.com/petteriTeikari/minivess_mlops)
 
+[![Docker Image CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/docker-image.yml)
+
 ## Prerequisites
 
 Tested on Ubuntu 22.04 
