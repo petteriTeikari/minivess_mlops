@@ -1,4 +1,5 @@
 # Specify the parent image from which we build
+# EXTRA COMMENT LINE ADDED TO TEST THE DOCKER BUILD with GITHUB ACTIONS
 FROM ubuntu:22.04 as base
 
 # Poetry approach from:
