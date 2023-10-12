@@ -1,4 +1,4 @@
-# minivess_mlops
+# MiniVess MLOps
 
 (in-progress) MLOPS boilerplate code for more end-to-end reproducible pipeline for the dataset published in the article:
 
