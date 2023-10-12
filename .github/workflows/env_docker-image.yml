@@ -14,7 +14,7 @@ on:
       # atm as no code is executed there, but the Docker is only used as a Pycharm Interpreter
       - 'poetry.lock'
       - 'pyproject.toml'
-      - 'Dockerfile'
+      - 'Dockerfile_env'
 
 jobs:
 
