@@ -2,13 +2,16 @@ import argparse
 import os
 
 import sys
+
+from src.utils.dataloder_utils import define_dataset_and_dataloader
+
 src_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.split(src_path)[0]
 sys.path.insert(0, project_path) # so that src. is imported correctly also in VSCode by default
 
 from src.train import training_script
-from src.utils.config_utils import import_config, set_up_environment
-from src.utils.data_utils import define_dataset_and_dataloader, import_datasets
+from src.utils.config_utils import import_config
+from src.utils.data_utils import import_datasets
 
 import warnings
 
@@ -92,8 +95,6 @@ if __name__ == '__main__':
         hparam_run_results[hyperparam_name] = \
             training_script(experim_dataloaders=experim_dataloaders,
                             config=config,
-                            training_config=config['config']['TRAINING'],
-                            model_config=config['config']['MODEL'],
                             machine_config=config['config']['MACHINE'],
                             output_dir=config['run']['output_experiment_dir'])
 

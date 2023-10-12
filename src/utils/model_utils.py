@@ -1,8 +1,13 @@
+from collections import OrderedDict
+from copy import deepcopy
+
 import numpy as np
 import torch
 from loguru import logger
 
 from monai.networks.nets import SegResNet, UNet
+from torch import nn
+
 
 def import_segmentation_model(model_config: dict, archi_name: str, device):
 
@@ -10,7 +15,7 @@ def import_segmentation_model(model_config: dict, archi_name: str, device):
     #  and do not map all possible models here, use like "automagic Monai" model use, and then allow the use
     #  of custom 3rd party models that you maybe found from Github or something
 
-    if archi_name == 'Unet':
+    if 'Unet' in archi_name:
         model = UNet(**model_config).to(device)
     elif archi_name == 'SegResNet':
         model = SegResNet(**model_config).to(device)
@@ -47,7 +52,7 @@ def filter_layer_names(layers, layer_name_wildcard: str):
     for layer in layers:
         layer_name = layer.__class__.__name__
         if layer_name_wildcard in layer_name.lower():
-            layers_out.append(layer)
+            layers_out.append(deepcopy(layer))
 
     return layers_out
 
@@ -97,3 +102,22 @@ def get_last_layer_weights_of_model(model,
                        'returning all the {} weights'.format(len(weights)))
 
     return weights
+
+
+def create_pseudomodel_from_filtered_layers(layers: list):
+
+    def list_to_list_of_tuples(layers: list) -> list:
+        list_of_tuples = []
+        for i, layer in enumerate(layers):
+            list_of_tuples.append((layer.__class__.__name__, layer))
+        return list_of_tuples
+
+    def list_of_layers_to_ordered_dict(layers: list) -> OrderedDict:
+        # https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html#sequential
+        list_of_tuples = list_to_list_of_tuples(layers)
+        dict = OrderedDict(list_of_tuples)
+        return dict
+
+    model = nn.Sequential(list_of_layers_to_ordered_dict(layers))
+
+    return model

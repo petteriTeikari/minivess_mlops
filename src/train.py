@@ -1,10 +1,13 @@
 import os
 import time
+from copy import deepcopy
+
 import numpy as np
 import torch
 from tqdm import tqdm
 from loguru import logger
 
+from ml_tests.model_tests import model_tests_main
 from src.inference.ensemble_main import reinference_dataloaders
 from src.eval import evaluate_datasets_per_epoch
 from src.inference.ensemble_utils import get_submodel_name
@@ -19,8 +22,6 @@ from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_mo
 
 def training_script(experim_dataloaders: dict,
                     config: dict,
-                    training_config: dict,
-                    model_config: dict,
                     machine_config: dict,
                     output_dir: str) -> dict:
 
@@ -81,6 +82,9 @@ def train_model_for_single_fold(fold_dataloaders: dict,
         # "train_model_for_single_architecture()" sees just the "normal model" to be trained for n repeats
         training_config = hyperparameters_config['models'][architecture_name]['training']
         model_config = hyperparameters_config['models'][architecture_name]['architecture']
+
+        # TODO! Re-define dataloader on each iteration of the different architecture
+        #  e..g. if you want to do diverse ensembles with each submodel with different augmentation
         archi_results[architecture_name] = \
             train_model_for_single_architecture(fold_dataloaders=fold_dataloaders,
                                                 config=config,
@@ -171,11 +175,12 @@ def train_single_model(dataloaders: dict,
     else:
         raise NotImplementedError('Check the train loop also for non-AMP operation')
 
-    # TODO! THIS SHOULD BE HAPPEN WITH THE ARCHITECTURE LOOP, NOT INSIDE THE REPEAT
     # Define the model to be used
     model = import_segmentation_model(model_config, archi_name, device)
 
     # Model training params
+    # TODO! if you some LDAM-DRW type of scheme for class-imbalanced learning, you might re-define loss
+    #  on each epoch as it is the only way to change to class weights dynamically?
     loss_function, optimizer, lr_scheduler = \
         set_model_training_params(model, device, scaler, training_config, config)
 
@@ -187,9 +192,14 @@ def train_single_model(dataloaders: dict,
                               training_config, config, output_dir=output_dir,
                               repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
 
+    # Post-train scripts (if done)
+    post_train_n_epochs_script()
+
     # When training is done, you con for example log the repeat/experiment/n_epochs level results
     log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
                          repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
+
+
 
     results_out = {
                    'train_results': train_results,
@@ -226,6 +236,14 @@ def train_n_epochs_script(model, dataloaders,
 
         eval_epoch_results = {}
 
+        init_model = deepcopy(model) # for ML tests, track if model has changed
+        if epoch == start_epoch:
+            model_test_metrics0, model_tests0 = (
+                model_tests_main(model,
+                                 initial_model=None,
+                                 test_config=config['config']['TESTING']['MODEL'],
+                                 first_epoch=True))
+
         # Train
         train_epoch_results, eval_epoch_results['TRAIN'] = \
             train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, scaler, training_config,
@@ -241,6 +259,13 @@ def train_n_epochs_script(model, dataloaders,
         split_name = 'TEST'
         eval_epoch_results[split_name] = evaluate_datasets_per_epoch(model, device, epoch, dataloaders,
                                                                      training_config, metric_dict, split_name)
+
+        # ML Tests (again)
+        model_test_metrics, model_tests = (
+            model_tests_main(model,
+                             initial_model=None,
+                             test_config=config['config']['TESTING']['MODEL'],
+                             first_epoch=True))
 
         # Collect results to a dictionary and avoid having multiple lists for each metric
         train_results, eval_results = collect_epoch_results(train_epoch_results, eval_epoch_results,
@@ -319,4 +344,8 @@ def train_1_batch(model, device, batch_data, loss_function, amp_on: bool = True)
     return loss
 
 
+def post_train_n_epochs_script():
 
+    # TODO! Any post-repeat training stuff could happen here, any plug-n-play methods to improve the model
+    #  SWA, Multi-SWAG, Last Layer Re-Training [Polina Kirichenko et al. (2022)], etc.
+    logger.debug('Placeholder for any post n epochs training')
