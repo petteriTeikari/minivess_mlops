@@ -1,5 +1,4 @@
 # Specify the parent image from which we build
-# EXTRA COMMENT LINE ADDED TO TEST THE DOCKER BUILD with GITHUB ACTIONS
 FROM ubuntu:22.04 as base
 
 # Poetry approach from:
@@ -24,7 +23,6 @@ ENV USER dockeruser
 ENV HOME /home/$USER
 RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
 RUN chown $USER:$USER $HOME
-# ENV POETRY_VERSION=1.2.2
 
 # "Layer of your basics"
 # i.e. what you need to install to this Ubuntu (without GPU)
@@ -89,6 +87,7 @@ RUN pip install --no-cache-dir --user -r $HOME/requirements.txt
 # Not sure if this is very optimal for multi-stage builds? or if this naming hierarchy is needed?
 FROM minivess-base as minivess-mlops
 
+# TODO!
 # Install NVIDIA
 # https://nvidia.github.io/nvidia-docker/
 # 1)
@@ -111,5 +110,12 @@ FROM minivess-base as minivess-mlops
 #        # how to check this above already?
 #         echo "Skipping NVIDIA install"; \
 #    fi
-#
-#FROM minivess-mlops as minivess-mlops-NVIDIA
+
+# Placeholder type of layer before fixing the NVIDIA install
+RUN echo $DEPLOY_ENV
+
+FROM minivess-mlops as minivess-mlops-env
+
+# TODO! you actually need two Docker files, or can you more easily push the intermediate images to Docker Hub
+# examine this, like the copying of all the code would come here
+# FROM minivess-mlops-env as minivess-mlops
