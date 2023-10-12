@@ -117,5 +117,6 @@ RUN echo $DEPLOY_ENV
 FROM minivess-mlops as minivess-mlops-env
 
 # TODO! you actually need two Docker files, or can you more easily push the intermediate images to Docker Hub
-# examine this, like the copying of all the code would come here
+# examine this, like the copying of all the code would come here (maybe you want to use the same env Docker),
+# and also have your "code Docker" private with proprietary code?
 # FROM minivess-mlops-env as minivess-mlops

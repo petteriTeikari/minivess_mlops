@@ -33,4 +33,4 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest
     - name: Push the image to Dockerhub
-      run: docker push petteriteikari/minivess-mlop-env:latest
+      run: docker push petteriteikari/minivess-mlops-env:latest
