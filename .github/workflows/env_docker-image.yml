@@ -1,4 +1,10 @@
-name: Docker Image CI
+# Build 2 different Docker Images :
+# * the "Environment" now refers to the image containing all the needed Ubuntu packages and Python libraries,
+#   and what you could use as an interpreter in PyCharm, and what you would like to auto-build only when 
+#   Poetry environment or the Dockerfile changes
+# * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
+#   auto-built everytime the `src` and ` ml_tests` code has updates
+name: Docker Image (Environment) CI
 
 on:
   # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-including-paths
@@ -25,6 +31,6 @@ jobs:
       run:
         docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag petteriteikari/minivess-mlops:${{ github.sha }}
+      run: docker build . --file Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest
     - name: Push the image to Dockerhub
-      run: docker push petteriteikari/minivess-mlops:${{ github.sha }}
+      run: docker push petteriteikari/minivess-mlop-env:latest
