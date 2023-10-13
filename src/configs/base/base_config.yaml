@@ -340,11 +340,17 @@ config:
   # ----------------------------------------------------------------------------------- #
   TESTING:
     DATA:
+      # Data on local disk, shared cache, S3 bucket, etc.
       DUMMY:
         enable: False
+    # Pytorch or MONAI dataset creation
+    DATASET:
+      # Add None to metadata
+      debug_testing: False
+    # For Pytorch/MONAI dataloaders
     DATALOADER:
       # Adds errors to data to test the dataloader error handling if you only have good data
-      debug_the_testing: True
+      debug_testing: False
       DATA_VALIDITY:
         enable: True
     MODEL:

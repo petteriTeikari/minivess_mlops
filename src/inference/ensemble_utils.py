@@ -53,11 +53,14 @@ def get_metadata_for_sample_metrics(metadata: dict) -> dict:
     # sample and have an idea which samples are hard to segment, if there are some outliers in the data,
     # label noise, etc.
     try:
-        dir_in, fname = os.path.split(metadata)
+        filepath = metadata['filepath_json'][0]
+        dir_in, fname = os.path.split(filepath)
+        # TODO! No necessarily need to create a new dict, think of ways to automatically to flatten
+        #  the metadata dict and add new entries here if you need some sparsing
         sample_name, f_ext = os.path.splitext(fname)
         sample_metadata = {
-            'metadata_filepath': np.expand_dims(np.array((metadata)), axis=0),
-            'sample_name': np.expand_dims(np.array((sample_name)), axis=0)
+            'filepath_json': filepath,
+            'sample_name': sample_name
         }
     except Exception as e:
         logger.warning('Problem getting the metadata? error = "{}",\n'

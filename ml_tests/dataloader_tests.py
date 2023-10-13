@@ -6,13 +6,15 @@ import numpy as np
 
 from loguru import logger
 
+from ml_tests.dataset_tests import ml_test_dataset_for_allowed_types
+from ml_tests.test_utils import add_boolean_and_metric_strings_to_summary
 from src.inference.ensemble_utils import merge_nested_dicts
 
 
 def ml_test_dataloader_dict_integrity(dataloaders: dict,
                                       test_config: dict,
                                       run_params: dict,
-                                      debug_the_testing: bool = True):
+                                      debug_testing: bool = True):
 
     dataloader_metrics, dataloader_ok_dict = {}, {}
     # Loop through all the dataloaders
@@ -34,7 +36,7 @@ def ml_test_dataloader_dict_integrity(dataloaders: dict,
                                                   fold_name=fold_name,
                                                   dataset=dataset,
                                                   test_config=test_config,
-                                                  debug_the_testing=debug_the_testing))
+                                                  debug_testing=debug_testing))
 
             elif isinstance(split, monai.data.DataLoader):
                 dataset = 'dummy'
@@ -45,7 +47,7 @@ def ml_test_dataloader_dict_integrity(dataloaders: dict,
                                               split_name=split_name,
                                               fold_name=fold_name,
                                               test_config=test_config,
-                                              debug_the_testing=debug_the_testing))
+                                              debug_testing=debug_testing))
             else:
                 raise IOError('Why is type of {} here?'.format(type(split)))
 
@@ -75,25 +77,19 @@ def dataloader_test_summary(dataloader_metrics: dict,
                 metrics = dataloader_metrics[fold_name][split_name][dataset]
                 booleans = dataloader_ok_dict[fold_name][split_name][dataset]
 
-                for test_name in metrics:
-                    test_boolean = booleans[test_name]
-                    report_string += f'\t\t\t{test_name}: {test_boolean}\n'
-                    test_metrics = metrics[test_name]
-                    for problem_sample in test_metrics:
-                        problem_dict = test_metrics[problem_sample]
-                        report_string += f'\t\t\t\t{problem_sample}\n'
-                        for key in params_to_print:
-                            try:
-                                report_string += f'\t\t\t\t\t{key} = {problem_dict[key]}\n'
-                            except:
-                                logger.warning('cannot find desired key = "{}" in the problem_dict'.format(key))
-                    all_tests_ok = all_tests_ok and test_boolean
+                report_string, all_tests_ok = (
+                    add_boolean_and_metric_strings_to_summary(metrics=metrics,
+                                                              booleans=booleans,
+                                                              report_string=report_string,
+                                                              all_tests_ok=all_tests_ok,
+                                                              params_to_print=params_to_print))
 
     if all_tests_ok:
         logger.info('All the dataloaders passed the tests!')
         report_string = None
     else:
         logger.error('Some of the dataloaders failed the tests!')
+        raise OSError('Some of the dataloaders failed the tests!')
 
     return all_tests_ok, report_string
 
@@ -103,34 +99,42 @@ def ml_test_single_dataloader(dataloader: monai.data.DataLoader,
                               split_name: str = None,
                               fold_name: str = None,
                               dataset: str = None,
-                              debug_the_testing: bool = False):
-
-    # Check that the dataloader does not have dictionaries that for example
-    # contain "None" or something that will crash your training script
-    ml_test_dataloader_for_allowed_types(dataloader=dataloader)
+                              debug_testing: bool = False):
 
     dataloader_metrics, dataloader_ok_dict = {}, {}
-    no_batches = len(dataloader)
-    for i, batch_data in enumerate(dataloader):
-        logger.info('ML Test for batch {}/{} in split = {}, fold = {}, dataset = {}'.
-                    format(i+1, no_batches, split_name, fold_name, dataset))
 
-        batch_metrics, batch_ok_dict = (
-            ml_test_single_batch_dict(batch_data,
-                                      test_config=test_config,
-                                      split_name=split_name,
-                                      fold_name=fold_name,
-                                      dataset=dataset,
-                                      i=i,
-                                      filenames=batch_data['metadata'],
-                                      no_batches=no_batches,
-                                      debug_the_testing=debug_the_testing))
+    # Test placeholder to check that all the types are allowed, e.g. no None types allowed
+    dataloader_ok_dict['dataset_has_valid_types'], dataloader_metrics['dataset_has_valid_types'] = (
+        ml_test_dataloader_for_allowed_types(dataloader=dataloader,
+                                             split_name=split_name,
+                                             fold_name=fold_name,
+                                             dataset=dataset))
 
-        # Collect batch-levels to a dataloader level results
-        dataloader_metrics, dataloader_ok_dict = (
-            dataloader_collector_of_batches(dataloader_metrics, dataloader_ok_dict,
-                                            batch_metrics, batch_ok_dict,
-                                            add_dummy_data=debug_the_testing))
+    if dataloader_ok_dict['dataset_has_valid_types']:
+
+        no_batches = len(dataloader)
+        for i, batch_data in enumerate(dataloader):
+            logger.info('ML Test for batch {}/{} in split = {}, fold = {}, dataset = {}'.
+                        format(i+1, no_batches, split_name, fold_name, dataset))
+
+            batch_metrics, batch_ok_dict = (
+                ml_test_single_batch_dict(batch_data,
+                                          test_config=test_config,
+                                          split_name=split_name,
+                                          fold_name=fold_name,
+                                          dataset=dataset,
+                                          i=i,
+                                          filenames=batch_data['metadata']['filepath_json'],
+                                          no_batches=no_batches,
+                                          debug_testing=debug_testing))
+
+            # Collect batch-levels to a dataloader level results
+            dataloader_metrics, dataloader_ok_dict = (
+                dataloader_collector_of_batches(dataloader_metrics, dataloader_ok_dict,
+                                                batch_metrics, batch_ok_dict,
+                                                add_dummy_data=debug_testing))
+    else:
+        logger.warning('Cannot run nan/inf checks as you have illegal entries in the dataset(s) of your dataloader')
 
     return dataloader_metrics, dataloader_ok_dict
 
@@ -154,10 +158,22 @@ def dataloader_collector_of_batches(dataloader_metrics, dataloader_ok_dict,
     if len(dataloader_ok_dict) == 0:
         # if any batch of the dataloader is not ok, then the whole dataloader is not ok
         dataloader_ok_dict = batch_ok_dict
-        for test_name in dataloader_ok_dict:
+    else:
+        for test_name in batch_ok_dict:
+            if test_name not in dataloader_ok_dict:
+                dataloader_ok_dict[test_name] = True
             previous_boolean = dataloader_ok_dict[test_name]
             current_boolean = batch_ok_dict[test_name]
-            dataloader_ok_dict[test_name] = previous_boolean and current_boolean
+            updated_boolean = previous_boolean and current_boolean
+            dataloader_ok_dict[test_name] = updated_boolean
+
+    # e.g. dataloader_ok_dict:
+    #      {'image_nans_infs': False, 'label_nans_infs': False}
+    # e.g. dataloader_metrics:
+    #      {'image_nans_infs': {'mv16': {'number': 5, 'percentage': 0.1, 'filename': 'mv16.json'},
+    #                           'mv52': {'number': 15, 'percentage': 1, 'filename': 'mv52.json'}},
+    #       'label_nans_infs': ...
+    #      }
 
     return dataloader_metrics, dataloader_ok_dict
 
@@ -170,7 +186,7 @@ def ml_test_single_batch_dict(batch_data: dict,
                               i: str,
                               filenames: list,
                               no_batches: int,
-                              debug_the_testing: bool = False):
+                              debug_testing: bool = False):
 
     batch_test_metrics, batch_tests = {}, {}
 
@@ -179,14 +195,14 @@ def ml_test_single_batch_dict(batch_data: dict,
         ml_test_batch_nan_and_inf(batch_tensor=batch_data['image'],
                                   test_name=test_name,
                                   filenames=filenames,
-                                  fake_a_nan=debug_the_testing))
+                                  fake_a_nan=debug_testing))
 
     test_name = 'label_nans_infs'
     batch_test_metrics[test_name], batch_tests[test_name] = (
         ml_test_batch_nan_and_inf(batch_tensor=batch_data['label'],
                                   test_name=test_name,
                                   filenames=filenames,
-                                  fake_a_nan=debug_the_testing))
+                                  fake_a_nan=debug_testing))
 
     return batch_test_metrics, batch_tests
 
@@ -267,15 +283,34 @@ def get_per_sample_naninf_stats(batch_test_metrics: dict,
     batch_test_metrics[fname_wo_ext] = {}
     batch_test_metrics[fname_wo_ext]['number'] = error_sums[sample_idx]
     batch_test_metrics[fname_wo_ext]['percentage'] = (
-            batch_test_metrics[fname_wo_ext]['number'] / no_voxels)
+            100*(batch_test_metrics[fname_wo_ext]['number'] / no_voxels))
     batch_test_metrics[fname_wo_ext]['filename'] = fname
     batch_test_metrics[fname_wo_ext]['filepath'] = filepath
 
     return batch_test_metrics
 
 
-def ml_test_dataloader_for_allowed_types(dataloader):
-    # TODO! For example you cannot have None types in any metadata that goes through
-    #  the dataloader and simply by iterating stuff through here will throw errors on
-    #  the glitch sample
-    pass
+def ml_test_dataloader_for_allowed_types(dataloader: monai.data.dataloader.DataLoader,
+                                         split_name: str,
+                                         fold_name: str,
+                                         dataset: str):
+    """
+    Test for possible Nones or any other illegal types for Pytorch dataloaders
+    """
+
+    dataloader_is_valid = True
+    samples_not_valid = {}
+    try:
+        for i, batch_data in enumerate(dataloader):
+            pass
+    except Exception as e:
+        dataloader_is_valid = False
+        logger.error('Problem iterating through the dataloader, e= {}\n'.format(e))
+        try:
+            is_dataset_valid, samples_not_valid = (
+                ml_test_dataset_for_allowed_types(split_file_dict=dataloader.dataset.data))
+            assert dataloader_is_valid == is_dataset_valid, 'these should be the same!'
+        except Exception as e:
+            raise IOError('Failed to get the "split_file_dict" Some new type of dataloader? e = {}'.format(e))
+
+    return dataloader_is_valid, samples_not_valid

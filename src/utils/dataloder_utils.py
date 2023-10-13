@@ -2,11 +2,14 @@ from loguru import logger
 from monai.data import DataLoader, list_data_collate, Dataset
 
 from ml_tests.dataloader_tests import ml_test_dataloader_dict_integrity
+from ml_tests.dataset_tests import ml_test_dataset_summary
 from src.datasets.minivess import define_minivess_dataset
 from src.utils.transforms import define_transforms, no_aug
 
 
-def define_datasets(config: dict, fold_split_file_dicts: dict):
+def define_datasets(config: dict,
+                    fold_split_file_dicts: dict,
+                    debug_testing: bool = False):
     """
     :param config: dict
         as imported form the task .yaml
@@ -23,10 +26,13 @@ def define_datasets(config: dict, fold_split_file_dicts: dict):
         #   specific source of data (which would be masked if you just grouped all the test sampled in one dataloader?
     """
 
-    datasets = {}
+    if debug_testing:
+        logger.warning('WARNING! Debugging mode on for dataset, and errors are intentionally added!')
+
+    datasets, ml_test_dataset = {}, {}
     logger.info('Creating (MONAI/PyTorch) Datasets')
     for f, fold_name in enumerate(fold_split_file_dicts):
-        datasets[fold_name] = {}
+        datasets[fold_name], ml_test_dataset[fold_name] = {}, {}
 
         for i, dataset_name in enumerate(fold_split_file_dicts[fold_name].keys()):
             logger.info('Creating (MONAI/PyTorch) Datasets for dataset source = "{}"', dataset_name)
@@ -43,15 +49,26 @@ def define_datasets(config: dict, fold_split_file_dicts: dict):
 
             if dataset_name == 'MINIVESS':
                 split_file_dicts = fold_split_file_dicts[fold_name][dataset_name]
-                datasets[fold_name][dataset_name] = \
+                datasets[fold_name][dataset_name], ml_test_dataset[fold_name][dataset_name] = \
                     define_minivess_dataset(dataset_config=dataset_config,
                                             split_file_dicts=split_file_dicts,
-                                            transforms=transforms)
+                                            transforms=transforms,
+                                            debug_testing=debug_testing)
             else:
                 raise NotImplementedError('Only implemented minivess dataset now!, '
                                           'not = "{}"'.format(config['config']['DATA']['DATASET_NAME']))
 
+    # Test report for dataset integrity
+    all_tests_ok, report_string = ml_test_dataset_summary(ml_test_dataset)
+
+    if not all_tests_ok:
+        print(report_string)
+        logger.debug('Your chance to write the dataset ML test "report_to_string" to a file or something')
+        logger.error('Dataset contains illegal types!')
+        raise TypeError('Dataset contains illegal types!')
+
     return datasets
+
 
 def redefine_dataloader_for_inference(dataloader_batched,
                                       config: dict,
@@ -88,9 +105,13 @@ def redefine_dataloader_for_inference(dataloader_batched,
     return dataloader
 
 
-def define_dataset_and_dataloader(config: dict, fold_split_file_dicts: dict):
+def define_dataset_and_dataloader(config: dict,
+                                  fold_split_file_dicts: dict):
+    datasets = define_datasets(config=config,
+                               fold_split_file_dicts=fold_split_file_dicts,
+                               debug_testing=config['config']['TESTING']['DATASET']['debug_testing'])
 
-    datasets = define_datasets(config, fold_split_file_dicts=fold_split_file_dicts)
+
     dataloaders = define_dataloaders(datasets, config,
                                      dataloader_config=config['config']['DATA']['DATALOADER'])
 
@@ -102,7 +123,7 @@ def define_dataset_and_dataloader(config: dict, fold_split_file_dicts: dict):
     ml_test_dataloader_dict_integrity(dataloaders,
                                       test_config=config['config']['TESTING']['DATALOADER'],
                                       run_params=config['run'],
-                                      debug_the_testing=config['config']['TESTING']['DATALOADER']['debug_the_testing'])
+                                      debug_testing=config['config']['TESTING']['DATALOADER']['debug_testing'])
 
     return datasets, dataloaders
 

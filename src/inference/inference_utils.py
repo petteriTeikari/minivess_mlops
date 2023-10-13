@@ -142,7 +142,8 @@ def get_inference_metrics(y_pred: np.ndarray,
             ensemble_uq_metrics = get_sample_uq_metrics_from_ensemble_stats(ensemble_stat_results)
             ensemble_metrics = merge_nested_dicts(ensemble_metrics, ensemble_uq_metrics) # {**ensemble_metrics, **ensemble_uq_metrics}
 
-        ensemble_metrics['metadata'] = get_metadata_for_sample_metrics(metadata=batch_data['metadata'][0])
+        ensemble_metrics['metadata'] = (
+            get_metadata_for_sample_metrics(metadata=batch_data['metadata']))
 
     else:
         ensemble_metrics = None

@@ -9,7 +9,7 @@ from src.utils.general_utils import check_if_key_in_dict
 def import_datasets(data_config: dict,
                     data_dir: str,
                     config: dict,
-                    debug_mode: bool = False,):
+                    debug_mode: bool = False):
 
     def reverse_fold_and_dataset_order(fold_split_file_dicts):
         # Note! if you combine multiple datasets, we assume that all the different datasets have similar folds

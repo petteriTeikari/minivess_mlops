@@ -93,7 +93,8 @@ if __name__ == '__main__':
 
         # Create and validate datasets and dataloaders
         experim_datasets, experim_dataloaders = \
-            define_dataset_and_dataloader(config, fold_split_file_dicts=fold_split_file_dicts)
+            define_dataset_and_dataloader(config=config,
+                                          fold_split_file_dicts=fold_split_file_dicts)
 
         # Train for n folds, n repeats, n epochs (single model)
         if SKIP_TRAINING:
