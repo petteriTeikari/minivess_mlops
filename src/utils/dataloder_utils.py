@@ -1,6 +1,7 @@
 from loguru import logger
 from monai.data import DataLoader, list_data_collate, Dataset
 
+from ml_tests.dataloader_tests import ml_test_dataloader_dict_integrity
 from src.datasets.minivess import define_minivess_dataset
 from src.utils.transforms import define_transforms, no_aug
 
@@ -96,6 +97,11 @@ def define_dataset_and_dataloader(config: dict, fold_split_file_dicts: dict):
     # FIXME remove this eventually, and do not do quick and dirty stuff :)
     datasets, dataloaders = quick_and_dirty_training_dataloader_creation(datasets, dataloaders)
     logger.info('Done with the training preparation\n')
+
+    # Test that you can use the constructed dataloaders actually
+    dataloaders_metrics, dataloaders_ok = (
+        ml_test_dataloader_dict_integrity(dataloaders,
+                                          test_config = config['config']['TESTING']['DATALOADER']))
 
     return datasets, dataloaders
 

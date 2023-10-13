@@ -1,5 +1,6 @@
 import os
 import warnings
+from itertools import compress
 
 import numpy as np
 from tqdm import tqdm
@@ -7,10 +8,12 @@ import nibabel as nib
 
 from loguru import logger
 
+from ml_tests.ml_tests import ml_test_data_not_corrupted
 
-def check_file_listing(list_of_files: list,
-                       import_library: str = 'nibabel',
-                       debug_verbose: bool = False):
+
+def ml_test_filelisting_corruption(list_of_files: list,
+                                   import_library: str = 'nibabel',
+                                   debug_verbose: bool = False):
 
     info_of_files = []
     read_problem_of_files = []
@@ -29,8 +32,9 @@ def check_file_listing(list_of_files: list,
     size_stats = nibabel_summary_of_all_files(info_of_files, read_problem_of_files)
 
     # return only the files that had issues, len(read_problem_of_files) = 0, when things are good
-    idx_for_filenames_with_problems = ~np.isnan(read_problem_of_files)
-    problematic_files = [i for i,j in zip(read_problem_of_files,list(idx_for_filenames_with_problems)) if j]
+    idx_for_filenames_with_problems = list(~np.isnan(read_problem_of_files))
+    problematic_files = list(compress(read_problem_of_files, idx_for_filenames_with_problems))
+    not_corrupted = ml_test_data_not_corrupted(corrupted_files=problematic_files)
 
     return size_stats, info_of_files, problematic_files
 

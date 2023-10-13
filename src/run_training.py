@@ -61,6 +61,8 @@ def parse_args_to_dict():
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
                              "you cannot meaningfully compare e.g. DICE score from dataset 1 to dataset 2")
+    # TODO! Add "run_mode" or something: ['train', 'test_dataload', 'test_train', 'debug]
+    #  to allow some CI/CD
     return vars(parser.parse_args())
 
 

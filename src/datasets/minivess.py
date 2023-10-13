@@ -10,7 +10,7 @@ import requests
 import zipfile
 import random
 
-from ml_tests.check_files import check_file_listing
+from ml_tests.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
 
 
@@ -179,7 +179,7 @@ def get_minivess_filelisting(dataset_dir: str,
 
     # Run test for data integrity, i.e. there are no corrupted files, and return the headers back too
     size_stats, info_of_files, problematic_files = \
-        check_file_listing(list_of_files=images, import_library='nibabel')
+        ml_test_filelisting_corruption(list_of_files=images, import_library='nibabel')
 
     filelisting = {'images': images,
                    'labels': labels,
