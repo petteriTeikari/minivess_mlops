@@ -20,10 +20,13 @@ from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_mo
     get_timings_per_epoch
 
 
-def training_script(experim_dataloaders: dict,
+def training_script(hyperparam_name: str,
+                    experim_dataloaders: dict,
                     config: dict,
                     machine_config: dict,
                     output_dir: str) -> dict:
+
+    logger.info('Starting training for the hyperparameter config "{}"'.format(hyperparam_name))
 
     # Cross-validation loop (if used), i.e. when train/val splits change for each execution
     os.makedirs(output_dir, exist_ok=True)
@@ -58,6 +61,8 @@ def training_script(experim_dataloaders: dict,
                                     experim_dataloaders=experim_dataloaders,
                                     config=config,
                                     output_dir=output_dir))
+
+    logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
 
     return {'fold_results':fold_results, 'ensembled_results': ensembled_results, 'config': config}
 

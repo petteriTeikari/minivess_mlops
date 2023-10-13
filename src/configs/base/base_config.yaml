@@ -76,7 +76,7 @@ config:
       THREAD_DATALOADER:
         PLACEHOLDER: 1
       TRAIN:
-        BATCH_SZ: 2
+        BATCH_SZ: 1
         NUM_WORKERS: 1
       VAL:
         BATCH_SZ: 2
@@ -343,6 +343,8 @@ config:
       DUMMY:
         enable: False
     DATALOADER:
+      # Adds errors to data to test the dataloader error handling if you only have good data
+      debug_the_testing: True
       DATA_VALIDITY:
         enable: True
     MODEL:

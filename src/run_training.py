@@ -36,6 +36,9 @@ logger.remove()
 logger.add(sys.stderr, filter=my_filter)
 # LOG_MIN_LEVEL = "DEBUG"
 
+# TODO! Set this flag based on the run_mode when you actually implement it for CI/CD
+SKIP_TRAINING = False
+
 
 def parse_args_to_dict():
     parser = argparse.ArgumentParser(description='Segmentation pipeline for Minivess dataset')
@@ -93,13 +96,15 @@ if __name__ == '__main__':
             define_dataset_and_dataloader(config, fold_split_file_dicts=fold_split_file_dicts)
 
         # Train for n folds, n repeats, n epochs (single model)
-        logger.info('Starting training for the hyperparameter config "{}"'.format(hyperparam_name))
-        hparam_run_results[hyperparam_name] = \
-            training_script(experim_dataloaders=experim_dataloaders,
-                            config=config,
-                            machine_config=config['config']['MACHINE'],
-                            output_dir=config['run']['output_experiment_dir'])
-
-        logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
+        if SKIP_TRAINING:
+            logger.info('Skipping the training for now, hyperparam_name = {}'
+                        'e.g. when running CI/CD tasks for data checks'.format(hyperparam_name))
+        else:
+            hparam_run_results[hyperparam_name] = \
+                training_script(hyperparam_name=hyperparam_name,
+                                experim_dataloaders=experim_dataloaders,
+                                config=config,
+                                machine_config=config['config']['MACHINE'],
+                                output_dir=config['run']['output_experiment_dir'])
 
     logger.info('Done with the experiment!')

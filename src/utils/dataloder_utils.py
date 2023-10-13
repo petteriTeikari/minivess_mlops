@@ -99,9 +99,10 @@ def define_dataset_and_dataloader(config: dict, fold_split_file_dicts: dict):
     logger.info('Done with the training preparation\n')
 
     # Test that you can use the constructed dataloaders actually
-    dataloaders_metrics, dataloaders_ok = (
-        ml_test_dataloader_dict_integrity(dataloaders,
-                                          test_config = config['config']['TESTING']['DATALOADER']))
+    ml_test_dataloader_dict_integrity(dataloaders,
+                                      test_config=config['config']['TESTING']['DATALOADER'],
+                                      run_params=config['run'],
+                                      debug_the_testing=config['config']['TESTING']['DATALOADER']['debug_the_testing'])
 
     return datasets, dataloaders
 
@@ -140,6 +141,10 @@ def define_dataloaders(datasets: dict, config: dict, dataloader_config: dict):
             dataloaders[fold_name][dataset_name] = {}
             dataset_per_name = datasets[fold_name][dataset_name]
             for j, split in enumerate(dataset_per_name.keys()):
+                logger.info('Dataloader for fold = {}, dataset = {}, split = {}, batch_sz = {}, num_workers = {}'.
+                            format(fold_name, dataset_name, split,
+                                   dataloader_config[split]['BATCH_SZ'],
+                                   dataloader_config[split]['NUM_WORKERS']))
                 dataloaders[fold_name][dataset_name][split] = \
                     DataLoader(dataset_per_name[split],
                                batch_size=dataloader_config[split]['BATCH_SZ'],
