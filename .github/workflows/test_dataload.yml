@@ -1,4 +1,4 @@
-name: Test dataload
+name: Test dataload CI
 
 on:
   push:
