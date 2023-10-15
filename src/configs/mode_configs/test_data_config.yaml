@@ -1,0 +1,7 @@
+NAME: 'test_data'
+# TODO! update the changed keys in the config
+config:
+  VERBOSE: True
+  DATA:
+    DATALOADER:
+      SKIP_DATALOADER: True

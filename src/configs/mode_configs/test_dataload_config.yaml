@@ -1,0 +1,6 @@
+NAME: 'test_dataload'
+# TODO! update the changed keys in the config
+config:
+  VERBOSE: True
+  TRAINING:
+    SKIP_TRAINING: True

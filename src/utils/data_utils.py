@@ -9,7 +9,7 @@ from src.utils.general_utils import check_if_key_in_dict
 def import_datasets(data_config: dict,
                     data_dir: str,
                     config: dict,
-                    debug_mode: bool = False):
+                    run_mode: str = 'train'):
 
     def reverse_fold_and_dataset_order(fold_split_file_dicts):
         # Note! if you combine multiple datasets, we assume that all the different datasets have similar folds
@@ -32,7 +32,7 @@ def import_datasets(data_config: dict,
             import_dataset(data_config=data_config,
                            data_dir=data_dir,
                            dataset_name=dataset_name,
-                           debug_mode=debug_mode,
+                           run_mode=run_mode,
                            config=config)
 
     # reverse fold and dataset_name in the fold_splits for easier processing afterwards
@@ -45,7 +45,7 @@ def import_dataset(data_config: dict,
                    data_dir: str,
                    dataset_name: str,
                    config: dict,
-                   debug_mode: bool = False):
+                   run_mode: str = 'train'):
 
     logger.info('Importing: {}', dataset_name)
     dataset_cfg = data_config['DATA_SOURCE'][dataset_name]
@@ -63,7 +63,7 @@ def import_dataset(data_config: dict,
         filelisting, fold_split_file_dicts, data_config['DATA_SOURCE'][dataset_name]['STATS'] \
             = import_minivess_dataset(dataset_cfg=dataset_cfg,
                                       data_dir=data_dir,
-                                      debug_mode=debug_mode,
+                                      run_mode=run_mode,
                                       config=config,
                                       dataset_name=dataset_name,
                                       fetch_method=dataset_cfg['FETCH_METHOD'],

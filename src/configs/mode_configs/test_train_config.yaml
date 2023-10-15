@@ -1,0 +1,4 @@
+NAME: 'test_train'
+# TODO! update the changed keys in the config
+config:
+  VERBOSE: True

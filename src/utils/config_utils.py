@@ -15,9 +15,11 @@ import collections.abc
 import torch.distributed as dist
 
 from omegaconf import OmegaConf
+from pydantic.v1.utils import deep_update
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
+from src.utils.general_utils import diff_OmegaDicts
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
@@ -112,8 +114,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
                                                                 experiment_name = config['ARGS']['project_name'],
                                                                 run_name = config['run']['hyperparam_name'])
 
-    if args['debug_mode']:
-        set_config_for_debug_mode(config)
+    if args['run_mode'] != 'train':
+        config = update_config_for_non_train_mode(config,
+                                                  config_dir=os.path.join(CONFIG_DIR, 'mode_configs'),
+                                                  run_mode=args['run_mode'])
 
     return config
 
@@ -125,9 +129,20 @@ def config_manual_fixes(config: dict):
     return config
 
 
-def set_config_for_debug_mode(config):
-    logger.warning('DEBUG MODE ON! Setting config, so that you train only for one epoch')
-    config['config']['TRAINING']['NUM_EPOCHS'] = 1
+def update_config_for_non_train_mode(config: dict,
+                                     config_dir: str,
+                                     run_mode: str):
+
+    logger.warning('Your run_mode != "train" (it is "{}", '
+                   'you are running this for dev or CI/CD purposes'.format(run_mode))
+
+    if not os.path.exists(config_dir):
+        raise IOError('Cannot find the directory for run_mode .yaml config files from "{}"'.format(config_dir))
+
+    config_fname = '{}_config.yaml'.format(run_mode)
+    config = update_base_with_task_config(task_config_file=config_fname,
+                                          config_dir=config_dir,
+                                          base_config=deepcopy(config))
 
     return config
 
@@ -135,25 +150,50 @@ def set_config_for_debug_mode(config):
 def update_base_with_task_config(task_config_file: str, config_dir: str, base_config: dict):
 
     # https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-    def update_config_dictionary(d, u):
-        no_of_updates = 0
-        for k, v in u.items():
-            if isinstance(v, collections.abc.Mapping):
-                d[k], _ = update_config_dictionary(d.get(k, {}), v)
-                no_of_updates += 1
-            else:
-                d[k] = v
-        return d, no_of_updates
+    def update_config_dictionary(d: dict,
+                                 u: dict,
+                                 input_is_omegaconf: bool = True,
+                                 method: str = 'pydantic'):
+        if input_is_omegaconf:
+            # TODO! examine OmegaConf.merge() and OmegaConf.update() for omegaConf native merge?
+            d = OmegaConf.to_container(d, resolve=True)
+            u = OmegaConf.to_container(u, resolve=True)
+
+        if method == 'pydantic':
+            #print(d['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
+            #print(u['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
+            d = deep_update(d, u)
+        else:
+            for k, v in u.items():
+                if isinstance(v, collections.abc.Mapping):
+                    d[k], _ = update_config_dictionary(d.get(k, {}), v, input_is_omegaconf=False)
+                else:
+                    d[k] = v
+
+        if input_is_omegaconf:
+            d = OmegaConf.create(d)
+
+        return d
+
+    def get_changed_keys(base_config, config):
+        set1 = set(base_config.items())
+        set2 = set(config.items())
+        diff = set1 ^ set2
+        return diff
 
     # Task config now contains only subset of keys (of the base config), i.e. the parameters
     # that you change (no need to redefine all possible parameters)
     task_config = import_config_from_yaml(config_file = task_config_file,
-                                          config_dir = CONFIG_DIR,
+                                          config_dir = config_dir,
                                           config_type = 'task')
 
     # update the base config now with the task config (i.e. the keys that have changed)
-    config, no_of_updates = update_config_dictionary(d = base_config, u = task_config)
-    logger.info('Updated the base config with a total of {} changed keys from the task config', no_of_updates)
+    config = update_config_dictionary(d = base_config,
+                                      u = task_config)
+    # logger.info('Updated the base config with a total of {} changed keys from the task config', no_of_updates)
+    # diff = diff_OmegaDicts(a=base_config, b=config) # TODO!
+    # TODO! Need to check also whether you have a typo in dict, or some extra nesting, and the desired
+    #  output does not happen, check VISSL for "guidance"
 
     # TOADD: Hydra?
     # https://www.sscardapane.it/tutorials/hydra-tutorial/#first-steps-manipulating-a-yaml-file

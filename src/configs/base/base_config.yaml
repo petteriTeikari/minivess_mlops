@@ -47,6 +47,14 @@ config:
           # and reshuffle train/val?
           TXT_FILE:
             PLACEHOLDER: 0
+        # with run_mode = 'debug', pick first n samples of the split to speed things up
+        SUBSET:
+          NAME: ???
+          # Number of first samples in the dataset
+          DEBUG:
+            TRAIN: 2
+            VAL: 2
+            TEST: 1
         # Dataset object, see e.g. "2. Cache intermediate outcomes into persistent storage"
         # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
         DATASET:
@@ -68,6 +76,7 @@ config:
           TEST: 'NO_AUG'
     # Dataloader object
     DATALOADER:
+      SKIP_DATALOADER: False
       NAME: 'DATALOADER_BASIC'
       # See e.g. "ThreadDataLoader vs. DataLoader"
       # https://github.com/Project-MONAI/tutorials/blob/main/acceleration/fast_model_training_guide.md
@@ -169,6 +178,7 @@ config:
   TRAINING:
     # Have a look on the float16 vs bfloat16, and whether to for example include
     # HuggingFace's accelerate here, or what is the easiest?
+    SKIP_TRAINING: False
     Unet_2D:
       PRECISION: 'AMP'
       NO_REPEATS: 1

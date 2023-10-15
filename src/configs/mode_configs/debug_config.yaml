@@ -1,0 +1,7 @@
+NAME: 'debug_minivess'
+# TODO! update the changed keys in the config
+config:
+  VERBOSE: True
+  config:
+    TRAINING:
+      NUM_EPOCHS: 1

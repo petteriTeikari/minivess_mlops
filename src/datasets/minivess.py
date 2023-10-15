@@ -17,7 +17,7 @@ from src.datasets.dvc_utils import get_dvc_files_of_repo
 
 def import_minivess_dataset(dataset_cfg: dict,
                             data_dir: str,
-                            debug_mode: bool,
+                            run_mode: str,
                             config: dict,
                             dataset_name: str,
                             fetch_method: str,
@@ -40,8 +40,9 @@ def import_minivess_dataset(dataset_cfg: dict,
     filelisting, dataset_stats = get_minivess_filelisting(dataset_dir)
     fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
 
-    if debug_mode:
-        minivess_debug_splits(fold_split_file_dicts)
+    if run_mode == 'debug':
+        minivess_debug_splits(fold_split_file_dicts,
+                              debug_subsets=dataset_cfg['SUBSET']['DEBUG'])
 
     return filelisting, fold_split_file_dicts, dataset_stats
 
@@ -311,17 +312,14 @@ def create_dataset_per_split(dataset_config: dict,
     return ds, ml_test_dataset
 
 
-def minivess_debug_splits(fold_split_file_dicts: dict):
+def minivess_debug_splits(fold_split_file_dicts: dict,
+                          debug_subsets: dict):
 
     logger.warning('DEBUG MODE ON! Taking subsets of the data to speed things up (e.g. on CPU debug/development)')
     for fold in fold_split_file_dicts:
         for split in fold_split_file_dicts[fold]:
-            if split == 'TEST':
-                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:1]
-            if split == 'TRAIN':
-                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:2]
-            if split == 'VAL':
-                fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:2]
+            logger.warning('First {} samples for split = {}'.format(debug_subsets[split], split))
+            fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:debug_subsets[split]]
 
     return fold_split_file_dicts
 
