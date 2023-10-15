@@ -16,13 +16,16 @@ ENV DEPLOY_ENV $DEPLOY_IN
 ARG IMAGE_TYPE=dev
 ENV PROD_IMAGE $IMAGE_TYPE
 
-# Define environment
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/docker-specialized.html
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # https://stackoverflow.com/a/63643361/18650369
-ENV USER dockeruser
-ENV HOME /home/$USER
-RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
-RUN chown $USER:$USER $HOME
+# ENV USER dockeruser
+# ENV HOME /home/$USER
+ENV HOME /home
+# RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
+# RUN chown $USER:$USER $HOME
 
 # "Layer of your basics"
 # i.e. what you need to install to this Ubuntu (without GPU)
@@ -33,7 +36,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends apt-utils && \
     apt install software-properties-common curl -y && \
     apt-get install git-all -y && \
-    # apt remove --purge -y python3.10 && \
     # https://pythonspeed.com/articles/base-image-python-docker-images/
     add-apt-repository ppa:deadsnakes/ppa && \
     apt install -y python3-pip python3.8-dev python3.8-distutils python3.8-venv && \
@@ -41,6 +43,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     # https://github.com/pyenv/pyenv
     ln -sf /usr/bin/python3.8 /usr/bin/python3 && \
     ln -sf /usr/bin/python3.8 /usr/bin/python && \
+    # apt remove --purge -y python3.10 && \
     # python3 --version && \
     apt install -y s3fs
 
@@ -48,7 +51,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 FROM base as minivess-base
 
 # Switch to non-privileged user from superuser
-USER $USER
+# USER $USER
 
 # Install Poetry (or via pip: https://stackoverflow.com/a/54763270/18650369)
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
@@ -81,11 +84,11 @@ RUN if [ "$PROD_IMAGE" = "dev" ] ; then \
     fi
 
 # Install the required packages finally
-ENV PATH="${PATH}:$HOME/.local/bin"
-RUN pip install --no-cache-dir --user -r $HOME/requirements.txt
+# ENV PATH="${PATH}:$HOME/.local/bin"
+RUN pip install --no-cache-dir -r $HOME/requirements.txt
 
 # Not sure if this is very optimal for multi-stage builds? or if this naming hierarchy is needed?
-FROM minivess-base as minivess-mlops
+FROM minivess-base as minivess-base-gpu
 
 # TODO!
 # Install NVIDIA
@@ -114,9 +117,6 @@ FROM minivess-base as minivess-mlops
 # Placeholder type of layer before fixing the NVIDIA install
 RUN echo $DEPLOY_ENV
 
-FROM minivess-mlops as minivess-mlops-env
+# TODO! Check if you can clean a bit the cache etc. to reduce the image size
 
-# TODO! you actually need two Docker files, or can you more easily push the intermediate images to Docker Hub
-# examine this, like the copying of all the code would come here (maybe you want to use the same env Docker),
-# and also have your "code Docker" private with proprietary code?
-# FROM minivess-mlops-env as minivess-mlops
+FROM minivess-base-gpu as minivess-mlops-env

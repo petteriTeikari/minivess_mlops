@@ -2,13 +2,11 @@ import argparse
 import os
 
 import sys
-
-from src.utils.dataloder_utils import define_dataset_and_dataloader
-
 src_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.split(src_path)[0]
 sys.path.insert(0, project_path) # so that src. is imported correctly also in VSCode by default
 
+from src.utils.dataloder_utils import define_dataset_and_dataloader
 from src.train import training_script
 from src.utils.config_utils import import_config
 from src.utils.data_utils import import_datasets

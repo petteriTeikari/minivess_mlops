@@ -2,15 +2,22 @@ name: Test dataload CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ master ]
+    branches: [ "main" ]
 
 jobs:
   build:
-    runs-on: petteriteikari/minivess-mlops-env:latest
+    runs-on: ubuntu-latest
     steps:
       - name: checkout repo content
         uses: actions/checkout@v2 # checkout the repository content
+      - name: dockerhub login
+        env:
+          DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
+          DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
+        run:
+          docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
+      # RUN THE CODE WITH THE DOCKER IMAGE: petteriteikari/minivess-mlops-env:latest
       - name: execute py script # run main.py
         run: python run_training.py -c task_config.yaml -run test_dataload

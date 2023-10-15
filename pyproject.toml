@@ -26,6 +26,7 @@ transformers = "^4.33.0"
 pynrrd = "^1.0.0"
 pytorch-ignite = "^0.4.12"
 dvc = {extras = ["s3"], version = "^3.25.0"}
+weightwatcher = "^0.7.3.1"
 
 
 [build-system]

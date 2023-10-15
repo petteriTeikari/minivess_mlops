@@ -2866,6 +2866,20 @@ python-dateutil = ">=2.7"
 setuptools_scm = ">=7"
 
 [[package]]
+name = "matplotlib-inline"
+version = "0.1.6"
+description = "Inline Matplotlib backend for Jupyter"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "matplotlib-inline-0.1.6.tar.gz", hash = "sha256:f887e5f10ba98e8d2b150ddcf4702c1e5f8b3a20005eb0f74bfdbd360ee6f304"},
+    {file = "matplotlib_inline-0.1.6-py3-none-any.whl", hash = "sha256:f1f41aab5328aa5aaea9b16d083b128102f8712542f819fe7e6a420ff581b311"},
+]
+
+[package.dependencies]
+traitlets = "*"
+
+[[package]]
 name = "mdurl"
 version = "0.1.2"
 description = "Markdown URL utilities"
@@ -3610,6 +3624,22 @@ files = [
 [package.extras]
 docs = ["furo (>=2023.7.26)", "proselint (>=0.13)", "sphinx (>=7.1.1)", "sphinx-autodoc-typehints (>=1.24)"]
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=7.4)", "pytest-cov (>=4.1)", "pytest-mock (>=3.11.1)"]
+
+[[package]]
+name = "powerlaw"
+version = "1.5"
+description = "Toolbox for testing if a probability distribution fits a power law"
+optional = false
+python-versions = "*"
+files = [
+    {file = "powerlaw-1.5-py3-none-any.whl", hash = "sha256:633a669573d9fd663d2f452f121117f2d6b2f2c502eca532f9355f733abfec96"},
+]
+
+[package.dependencies]
+matplotlib = "*"
+mpmath = "*"
+numpy = "*"
+scipy = "*"
 
 [[package]]
 name = "prompt-toolkit"
@@ -5367,6 +5397,21 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "traitlets"
+version = "5.11.2"
+description = "Traitlets Python configuration system"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "traitlets-5.11.2-py3-none-any.whl", hash = "sha256:98277f247f18b2c5cabaf4af369187754f4fb0e85911d473f72329db8a7f4fae"},
+    {file = "traitlets-5.11.2.tar.gz", hash = "sha256:7564b5bf8d38c40fa45498072bf4dc5e8346eb087bbf1e2ae2d8774f6a0f078e"},
+]
+
+[package.extras]
+docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
+test = ["argcomplete (>=3.0.3)", "mypy (>=1.5.1)", "pre-commit", "pytest (>=7.0,<7.5)", "pytest-mock", "pytest-mypy-testing"]
+
+[[package]]
 name = "transformers"
 version = "4.34.0"
 description = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
@@ -5639,6 +5684,27 @@ optional = ["python-socks", "wsaccel"]
 test = ["websockets"]
 
 [[package]]
+name = "weightwatcher"
+version = "0.7.3.1"
+description = "Diagnostic Tool for Deep Neural Networks"
+optional = false
+python-versions = ">= 3.3"
+files = [
+    {file = "weightwatcher-0.7.3.1-py3-none-any.whl", hash = "sha256:5f405129887123bbecd2ed8da2c0e7dab37c26db5db9bc36fa5c00f721201bf3"},
+    {file = "weightwatcher-0.7.3.1.tar.gz", hash = "sha256:ea17974bba8ad153385bbaec7cac5ba302fb0e765571aba900156c39b9aeb744"},
+]
+
+[package.dependencies]
+matplotlib = "*"
+matplotlib-inline = "*"
+numpy = "*"
+pandas = "*"
+powerlaw = "*"
+safetensors = "*"
+scikit-learn = "*"
+tqdm = "*"
+
+[[package]]
 name = "werkzeug"
 version = "3.0.0"
 description = "The comprehensive WSGI web application library."
@@ -5889,4 +5955,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.17"
-content-hash = "7d192b9fb7e4257c5c094fd8aca34a29682f10ea02f7965274d2999ce7e73b31"
+content-hash = "0848f3fd2ec6a0a1360edb68f528298bcdb99f22fb180db4072a89d416b1f808"
