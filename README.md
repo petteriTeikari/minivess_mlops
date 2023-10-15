@@ -1,6 +1,6 @@
 # MiniVess MLOps
 
-[![Docker Image (Environment) CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml)
+[![Docker Image (Environment) CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml) [![Test dataload CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml)
 
 (in-progress) MLOPS boilerplate code for more end-to-end reproducible pipeline for the dataset published in the article:
 
