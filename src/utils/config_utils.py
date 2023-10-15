@@ -40,6 +40,11 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
                                           config_dir = CONFIG_DIR,
                                           base_config = base_config)
 
+    if args['run_mode'] != 'train':
+        config = update_config_for_non_train_mode(config,
+                                                  config_dir=os.path.join(CONFIG_DIR, 'mode_configs'),
+                                                  run_mode=args['run_mode'])
+
     config = config_manual_fixes(config)
 
     # Add the input arguments as an extra subdict to the config
@@ -114,11 +119,6 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
                                                                 experiment_name = config['ARGS']['project_name'],
                                                                 run_name = config['run']['hyperparam_name'])
 
-    if args['run_mode'] != 'train':
-        config = update_config_for_non_train_mode(config,
-                                                  config_dir=os.path.join(CONFIG_DIR, 'mode_configs'),
-                                                  run_mode=args['run_mode'])
-
     return config
 
 
@@ -143,6 +143,9 @@ def update_config_for_non_train_mode(config: dict,
     config = update_base_with_task_config(task_config_file=config_fname,
                                           config_dir=config_dir,
                                           base_config=deepcopy(config))
+
+    # TODO! add some prefix for project and/or run name so you can log the runs to MLflow/WANDB if desired
+    #  without them messing up the actual training results dashboards
 
     return config
 

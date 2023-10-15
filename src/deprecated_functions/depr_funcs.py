@@ -261,3 +261,27 @@ def create_model_ensemble_from_mlflow_model_registry(ensemble_submodels: dict,
                                    precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 
     return ensemble_model
+
+
+def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
+    """
+    https://mlflow.org/docs/latest/auth/index.html#using-credentials-file
+    """
+    pwd = os.getcwd()
+    secrets_dir = os.path.join(pwd, '..', 'secrets')
+    if not os.path.exists(secrets_dir):
+        raise IOError('Cannot found secrets folder ({}), thus cannot authenticate to MLflow'.format(secrets_dir))
+    else:
+        credentials_file = os.path.join(secrets_dir, fname_creds)
+        if not os.path.exists(credentials_file):
+            raise IOError('Cannot found credentials file ({}), '
+                          'thus cannot authenticate to MLflow'.format(credentials_file))
+        else:
+            # https://stackoverflow.com/a/8884638
+            logger.info(" reading MLflow credentials from file '{}'".format(fname_creds))
+            credentials = configparser.ConfigParser()
+            credentials.read(credentials_file)
+
+    # I guess you could have slightly nicer weay to handle sensitive information
+    os.environ['MLFLOW_TRACKING_USERNAME'] = credentials['mlflow']['mlflow_tracking_username']
+    os.environ['MLFLOW_TRACKING_PASSWORD'] = credentials['mlflow']['mlflow_tracking_password']

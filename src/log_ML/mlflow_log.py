@@ -7,25 +7,28 @@ import configparser
 def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     """
     https://mlflow.org/docs/latest/auth/index.html#using-credentials-file
-    """
-    pwd = os.getcwd()
-    secrets_dir = os.path.join(pwd, '..', 'secrets')
-    if not os.path.exists(secrets_dir):
-        raise IOError('Cannot found secrets folder ({}), thus cannot authenticate to MLflow'.format(secrets_dir))
-    else:
-        credentials_file = os.path.join(secrets_dir, fname_creds)
-        if not os.path.exists(credentials_file):
-            raise IOError('Cannot found credentials file ({}), '
-                          'thus cannot authenticate to MLflow'.format(credentials_file))
-        else:
-            # https://stackoverflow.com/a/8884638
-            logger.info(" reading MLflow credentials from file '{}'".format(fname_creds))
-            credentials = configparser.ConfigParser()
-            credentials.read(credentials_file)
+    https://mlflow.org/docs/latest/auth/index.html#using-environment-variables
+    For your own DAGSHUB MLflow server, you need to set the environment variables:
+    (Click Remote -> and you see your info)
+    export MLFLOW_TRACKING_USERNAME=username
+    export MLFLOW_TRACKING_PASSWORD=password
 
-    # I guess you could have slightly nicer weay to handle sensitive information
-    os.environ['MLFLOW_TRACKING_USERNAME'] = credentials['mlflow']['mlflow_tracking_username']
-    os.environ['MLFLOW_TRACKING_PASSWORD'] = credentials['mlflow']['mlflow_tracking_password']
+    For Github Action use, these are defined in your repo secrets then
+    """
+    env_vars_set = True
+    MLFLOW_TRACKING_USERNAME = os.getenv('MLFLOW_TRACKING_USERNAME')
+    if MLFLOW_TRACKING_USERNAME is None:
+        logger.warning('Cannot find MLFLOW_TRACKING_USERNAME environment variable, '
+                       'cannot log training results to cloud! Using local MLflow server!')
+        env_vars_set = False
+
+    MLFLOW_TRACKING_PASSWORD = os.getenv('MLFLOW_TRACKING_PASSWORD')
+    if MLFLOW_TRACKING_PASSWORD is None:
+        logger.warning('Cannot find MLFLOW_TRACKING_PASSWORD environment variable, '
+                       'cannot log training results to cloud! Using local MLflow server!')
+        env_vars_set = False
+
+    return env_vars_set
 
 
 def init_mlflow_run(local_server_path: str,
@@ -61,15 +64,15 @@ def init_mlflow_logging(config: dict,
     if mlflow_config['TRACKING']['enable']:
         logger.info('MLflow | Initializing MLflow Experiment tracking')
         if mlflow_config['server_URI'] is not None:
-            logger.info('MLflow | Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
-            tracking_uri = mlflow_config['server_URI']
-            mlflow.set_tracking_uri(tracking_uri)
-            authenticate_mlflow()
+            env_vars_set = authenticate_mlflow()
+            if not env_vars_set:
+                tracking_uri = mlflow_local_mlflow_init(config)
+            else:
+                logger.info('MLflow | Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
+                tracking_uri = mlflow_config['server_URI']
+                mlflow.set_tracking_uri(tracking_uri)
         else:
-            # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
-            tracking_uri = config['run']['output_mlflow_dir']
-            os.makedirs(tracking_uri, exist_ok=True)
-            mlflow.set_tracking_uri(tracking_uri)
+            tracking_uri = mlflow_local_mlflow_init(config)
 
         logger.info('MLflow | Logging to a local MLflow Server: "{}"'.format(tracking_uri))
         # TODO! Is there a way to have MLflow wait for longer periods, or go to offline state
@@ -79,6 +82,7 @@ def init_mlflow_logging(config: dict,
                                                      experiment_name=experiment_name,
                                                      run_name=run_name)
         except Exception as e:
+            logger.error('Failed to initialize the MLflow logging!')
             raise IOError('Failed to initialize the MLflow logging!\n'
                           ' - if you are using Dagshub MLflow, did you set the environment variables (your credentials?\n'
                           '   https://dagshub.com/docs/integration_guide/mlflow_tracking/#3-set-up-your-credentials\n'
@@ -108,6 +112,15 @@ def init_mlflow_logging(config: dict,
     mlflow_dict_omegaconf = mlflow_dicts_to_omegaconf_dict(experiment, active_run)
 
     return mlflow_dict_omegaconf, mlflow_dict
+
+
+def mlflow_local_mlflow_init(config) -> str:
+    # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
+    tracking_uri = config['run']['output_mlflow_dir']
+    os.makedirs(tracking_uri, exist_ok=True)
+    mlflow.set_tracking_uri(tracking_uri)
+
+    return tracking_uri
 
 
 def mlflow_log_dataset(mlflow_config: dict,
