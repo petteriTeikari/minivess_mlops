@@ -4,7 +4,7 @@
 #   Poetry environment or the Dockerfile changes
 # * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
 #   auto-built everytime the `src` and ` ml_tests` code has updates
-name: Docker Image (Environment) CI
+name: Docker (Environment)
 
 on:
   # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-including-paths

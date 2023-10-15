@@ -1,5 +1,5 @@
 # Based on the "env_docker-image.yml" (that builds "petteriteikari/minivess-mlops-env:latest")
-name: Docker Image (App) CI
+name: Docker (App)
 
 on:
   push:

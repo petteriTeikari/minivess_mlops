@@ -1,4 +1,4 @@
-name: Test dataload CI
+name: Test (Dataload)
 
 on:
   push:
@@ -22,7 +22,8 @@ jobs:
           docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
       # RUN THE CODE WITH THE DOCKER IMAGE: petteriteikari/minivess-mlops-env:latest
       - name: execute py script in Docker
-        run: docker run --rm petteriteikari/minivess-mlops:latest \ # Docker Image
-          && python run_training.py  \ # Python script
-          && -c task_config.yaml -run test_dataload # Input arguments
+        run: >
+          docker run --rm petteriteikari/minivess-mlops:latest 
+          python run_training.py 
+          -c task_config.yaml -run test_dataload # Input arguments
 
