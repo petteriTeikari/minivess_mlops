@@ -19,5 +19,8 @@ jobs:
         run:
           docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
       # RUN THE CODE WITH THE DOCKER IMAGE: petteriteikari/minivess-mlops-env:latest
-      - name: execute py script # run main.py
-        run: python run_training.py -c task_config.yaml -run test_dataload
+      - name: execute py script in Docker
+        run: docker run --rm petteriteikari/minivess-mlops:latest \ # Docker Image
+          && python run_training.py  \ # Python script
+          && -c task_config.yaml -run test_dataload # Input arguments
+
