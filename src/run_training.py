@@ -47,11 +47,11 @@ def parse_args_to_dict():
                         help="Use 'train' for the actual training, 'test_xxx' are meant for CI/CD tasks,"
                              "and debug is for development with very tiny subsets of data")
     parser.add_argument('-data', '--data_dir', type=str, required=False,
-                        default='/mnt/minivess_mlops_artifacts/data',
+                        default='/mnt/minivess-dvc-cache',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
     parser.add_argument('-output', '--output_dir', type=str, required=False,
-                        default='/mnt/minivess_mlops_artifacts/output',
+                        default='/mnt/minivess-artifacts',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,

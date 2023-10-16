@@ -34,7 +34,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
     # https://github.com/phusion/baseimage-docker/issues/319#issuecomment-1107760238
     apt-get install -y --no-install-recommends apt-utils && \
-    apt install software-properties-common curl -y && \
+    apt install software-properties-common curl unzip groff -y && \
     apt-get install git-all -y && \
     # https://pythonspeed.com/articles/base-image-python-docker-images/
     add-apt-repository ppa:deadsnakes/ppa && \
@@ -46,6 +46,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     # apt remove --purge -y python3.10 && \
     # python3 --version && \
     apt install -y s3fs
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+	./aws/install
 
 # not sure if really optimal "multi-staging"?
 FROM base as minivess-base
@@ -86,6 +90,12 @@ RUN if [ "$PROD_IMAGE" = "dev" ] ; then \
 # Install the required packages finally
 # ENV PATH="${PATH}:$HOME/.local/bin"
 RUN pip install --no-cache-dir -r $HOME/requirements.txt
+
+# TODO!
+#    Attempting uninstall: cryptography
+# => => #     Found existing installation: cryptography 3.4.8
+# => => #     Not uninstalling cryptography at /usr/lib/python3/dist-packages, outside environment /usr
+# => => #     Can't uninstall 'cryptography'. No files were found to uninstall.
 
 # Not sure if this is very optimal for multi-stage builds? or if this naming hierarchy is needed?
 FROM minivess-base as minivess-base-gpu

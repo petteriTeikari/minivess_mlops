@@ -1,7 +1,7 @@
 [core]
     remote = remote_storage
 [cache]
-    dir = /mnt/minivess_mlops_artifacts/data/dvc_shared_cache
+    dir = /mnt/minivess-dvc-cache
     type = "reflink,symlink,hardlink,copy"
     shared = group
 ['remote "remote_storage"']

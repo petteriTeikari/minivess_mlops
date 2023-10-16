@@ -51,7 +51,7 @@ def import_dataset(data_config: dict,
     dataset_cfg = data_config['DATA_SOURCE'][dataset_name]
 
     if not os.path.exists(data_dir):
-        os.makedirs(data_dir, exist_ok=True)
+        os.mkdir(data_dir)
         logger.info('Data directory did not exist in "{}", creating it', data_dir)
 
     if not check_if_key_in_dict(data_config['DATA_SOURCE'], dataset_name):

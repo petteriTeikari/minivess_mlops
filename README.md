@@ -1,6 +1,9 @@
 # MiniVess MLOps
 
-[![Docker Image (Environment) CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml) [![Test dataload CI](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml)
+[![Docker (Environment)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml)
+[![Docker (App)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/app_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/app_docker-image.yml)
+<br>[![Test (Dataload)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml)
+
 
 (in-progress) MLOPS boilerplate code for more end-to-end reproducible pipeline for the dataset published in the article:
 
@@ -25,13 +28,23 @@ and usage instructions are provided when the code is more ready for "beta releas
 
 ### Data
 
-Create local dir `minivess_mlops_artifacts` e.g. to `~` (Home directory) and symlink that to 
-a mount point (so you have the same path for Docker and local devel):
+You need 2 folders set up: 1) for the DVC cache (with the input data), 2) for the output artifacts (models, figures, MLflow/WANDB temp files, etc.)
+
+Easier to have both local development and Docker work is to symlink your local folders to the following '/mnt':
 
 ```
-sudo ln -s ~/minivess_mlops_artifacts/ /mnt/minivess_mlops_artifacts
+sudo ln -s ~/minivess_mlops_artifacts/minivess-dvc-cache /mnt/minivess-dvc-cache
+sudo ln -s ~/minivess_mlops_artifacts/minivess-artifacts /mnt/minivess-artifacts
 ```
 
+With the Docker, you would like the mapping to be like this (and DVC needs authentication 
+to `s3://minivessdataset` where the "human-readable" Minivess dataset is, and `DVC` must 
+be able to `pull`):
+
+```
+s3://minivess-dvc-cache : /mnt/minivess-dvc-cache
+s3://minivess-artifacts : /mnt/minivess-artifacts
+```
 
 ### Training a segmentor
 

@@ -19,7 +19,6 @@ from pydantic.v1.utils import deep_update
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
-from src.utils.general_utils import diff_OmegaDicts
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
