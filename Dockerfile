@@ -31,7 +31,8 @@ VOLUME ["/mnt/minivess_mlops_artifacts/data", "/mnt/minivess_mlops_artifacts/out
 
 # Switch to non-privileged user from superuser
 USER $USER
-
-COPY --chown=$USER:$USER ml_tests ./ml_tests
-COPY --chown=$USER:$USER src ./src
+# https://dzone.com/articles/clone-code-into-containers-how
+# COPY --chown=$USER:$USER ml_tests ./ml_tests
+# COPY --chown=$USER:$USER src ./src
+RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
 WORKDIR /app/src
