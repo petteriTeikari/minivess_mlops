@@ -30,10 +30,8 @@ jobs:
     - name: Check Docker Compose version
       run: docker-compose --version
     - name: Build the Docker image
-      run: docker compose -f docker-compose.yml build --progress=plain # --no-cache
-      env:
-        AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}}
-        AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}}
-
+      run: docker compose -f docker-compose.yml build --progress=plain \ 
+        --build-arg "AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}}" 
+        --build-arg "AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-train:latest

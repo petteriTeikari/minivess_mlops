@@ -14,9 +14,13 @@ FROM petteriteikari/minivess-mlops-env:latest as base
 ENV USER minivessuser
 ENV HOME /home/$USER
 ARG AWS_ACCESS_KEY_ID
-#RUN echo $AWS_ACCESS_KEY_ID
+RUN echo $AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
-#RUN echo $AWS_SECRET_ACCESS_KEY
+RUN echo $AWS_SECRET_ACCESS_KEY
+
+# https://stackoverflow.com/a/65517579
+#ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+#ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
 USER root
 RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
@@ -43,6 +47,7 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
 
+RUN echo $AWS_ACCESS_KEY_ID
 RUN dvc remote modify remote_storage access_key_id ${AWS_ACCESS_KEY_ID}
 RUN dvc remote modify remote_storage secret_access_key ${AWS_SECRET_ACCESS_KEY}
 RUN dvc pull
