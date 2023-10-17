@@ -31,18 +31,21 @@ jobs:
       - name: Set up ".passwd-s3fs"
         run: echo ${{secrets.AWS_ACCESS_KEY_ID}}:${{secrets.AWS_SECRET_ACCESS_KEY}} \
           > ${HOME}/.passwd-s3fs && chmod 600 ${HOME}/.passwd-s3fs
+      - name: Create directories for mounting S3 volumes
+        run: mkdir ${HOME}/minivess-dvc-cache && \ 
+          mkdir ${HOME}/minivess-artifacts && \
+          sudo chmod 777 ${HOME}/minivess-dvc-cache && \
+          sudo chmod 777 ${HOME}/minivess-artifacts
       - name: Mount S3 data volume (DVC Shared Cache) to a local instance
         # to upgrade later with the Docker Compose?
         # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run: mkdir ${HOME}/minivess-dvc-cache && \ 
-          s3fs minivess-dvc-cache ${HOME}/minivess-dvc-cache -o passwd_file=${HOME}/.passwd-s3fs \
-         -o dbglevel=info -f -o curldbg
+        run: s3fs minivess-dvc-cache ${HOME}/minivess-dvc-cache \ 
+          -o passwd_file=${HOME}/.passwd-s3fs -o dbglevel=info -f -o curldbg
       - name: Mount S3 artifacts volume to a local instance
         # to upgrade later with the Docker Compose?
         # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run: mkdir ${HOME}/minivess-artifacts && \ 
-          s3fs minivess-artifacts ${HOME}/minivess-artifacts -o passwd_file=${HOME}/.passwd-s3fs \
-         -o dbglevel=info -f -o curldbg
+        run: s3fs minivess-artifacts ${HOME}/minivess-artifacts \ 
+          -o passwd_file=${HOME}/.passwd-s3fs -o dbglevel=info -f -o curldbg
       # https://towardsdatascience.com/dvc-github-actions-automatically-rerun-modified-components-of-a-pipeline-a3632519dc42
       - name: Pull data from DVC
         run:
