@@ -13,14 +13,12 @@ FROM petteriteikari/minivess-mlops-env:latest as base
 # https://stackoverflow.com/a/63643361/18650369
 ENV USER minivessuser
 ENV HOME /home/$USER
-#ARG AWS_ACCESS_KEY_ID
-#RUN echo $AWS_ACCESS_KEY_ID
-#ARG AWS_SECRET_ACCESS_KEY
-#RUN echo $AWS_SECRET_ACCESS_KEY
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
 
 # https://stackoverflow.com/a/65517579
-#ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-#ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
 USER root
 RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
@@ -28,7 +26,13 @@ RUN chown $USER:$USER $HOME
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python3 && \
-    ln -sf /usr/bin/python3.8 /usr/bin/python
+    ln -sf /usr/bin/python3.8 /usr/bin/python && \
+    # TODO! move this to the "env" and remove the s3fs \
+    apt update && \
+    apt install wget -y && \
+    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb && \
+    apt-get install -y ./mount-s3.deb && \
+    mount-s3 --version
 
 RUN mkdir /app
 RUN chown $USER:$USER /app
