@@ -45,7 +45,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python && \
     # apt remove --purge -y python3.10 && \
     # python3 --version && \
-    apt install -y s3fs
+    apt install -y s3fs # s3fs-fuse
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \

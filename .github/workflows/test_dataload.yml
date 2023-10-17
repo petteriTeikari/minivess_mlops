@@ -20,17 +20,35 @@ jobs:
           docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
       - name: pull Docker image
         run: docker pull petteriteikari/minivess-mlops:latest
-#      - name: Configure AWS credentials
-#        uses: aws-actions/configure-aws-credentials@v1
-#        with:
-#          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
-#          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      - name: Set up ".passwd-s3fs"
+        run: echo ${{secrets.AWS_ACCESS_KEY_ID}}:${{secrets.AWS_SECRET_ACCESS_KEY}} \
+          > ${HOME}/.passwd-s3fs && chmod 600 ${HOME}/.passwd-s3fs
+      - name: Mount S3 data volume (DVC Shared Cache) to a local instance
+        # to upgrade later with the Docker Compose?
+        # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
+        run: mkdir ${HOME}/minivess-dvc-cache \ 
+          s3fs minivess-dvc-cache ${HOME}/minivess-dvc-cache -o passwd_file=${HOME}/.passwd-s3fs \
+         -o dbglevel=info -f -o curldbg
+      - name: Mount S3 artifacts volume to a local instance
+        # to upgrade later with the Docker Compose?
+        # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
+        run: mkdir ${HOME}/minivess-artifacts \ 
+          s3fs minivess-artifacts ${HOME}/minivess-artifacts -o passwd_file=${HOME}/.passwd-s3fs \
+         -o dbglevel=info -f -o curldbg
       - name: Execute "run_training.py" for testing data loading
         env:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
           MLFLOW_PASSWORD: ${{secrets.MLFLOW_PASSWORD}}
         run: >
-          docker run --rm petteriteikari/minivess-mlops:latest 
-          python run_training.py 
-          -c task_config.yaml -run test_dataload # Input arguments
+          docker run --rm \ 
+          -v ${HOME}/minivess-artifacts:/mnt/minivess-artifacts \ 
+          -v ${HOME}/minivess-dvc-cache:/mnt/minivess-dvc-cache \
+          petteriteikari/minivess-mlops-train:latest \
+          python run_training.py \ 
+          -c task_config.yaml -run test_dataload # Pythion Input arguments
 
