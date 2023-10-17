@@ -22,8 +22,11 @@ jobs:
         DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
       run:
         docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
-    - name: Upgrade Docker Compose to 2.x
-      run: sudo apt update && sudo apt install docker-compose-plugin
+    - name: Upgrade Docker Compose to 2.x # https://github.com/marketplace/actions/docker-compose-setup
+      uses: ndeloof/install-compose-action@v0.0.1
+      with:
+        version: v2.3.3 # defaults to 'latest'
+        legacy: true # will also install in PATH as `docker-compose`
     - name: Check Docker Compose version
       run: docker-compose --version
     - name: Build the Docker image
