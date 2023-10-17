@@ -23,6 +23,6 @@ jobs:
       run:
         docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag petteriteikari/minivess-mlops:latest --no-cache
+      run: docker-compose build # --no-cache
     - name: Push the image to Dockerhub
-      run: docker push petteriteikari/minivess-mlops:latest
+      run: docker push petteriteikari/minivess-mlops-train:latest
