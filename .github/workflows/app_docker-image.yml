@@ -17,6 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: dockerhub login
+      # TODO!
+      #  WARNING! Using --password via the CLI is insecure. Use --password-stdin.
+      #  WARNING! Your password will be stored unencrypted in /home/runner/.docker/config.json.
       env:
         DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
         DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
@@ -30,8 +33,6 @@ jobs:
     - name: Check Docker Compose version
       run: docker-compose --version
     - name: Build the Docker image
-      run: docker compose -f docker-compose.yml build --progress=plain \ 
-        --build-arg "AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}}" 
-        --build-arg "AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}}" --no-cache
+      run: docker compose -f docker-compose.yml build --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-train:latest
