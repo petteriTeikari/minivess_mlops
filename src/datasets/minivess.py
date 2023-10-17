@@ -52,6 +52,8 @@ def fetch_dataset_with_dvc(fetch_params: dict,
                            dataset_name_lowercase: str,
                            repo_dir: str):
 
+    # TODO! This is now based on "dvc pull" by Github Actions or manual, but you could try
+    #  to get the Python programmatic API to work too (or have "dvc pull" from subprocess)
     dataset_dir = get_dvc_files_of_repo(repo_dir=repo_dir,
                                        dataset_name_lowercase=dataset_name_lowercase,
                                        fetch_params=fetch_params,

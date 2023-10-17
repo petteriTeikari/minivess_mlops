@@ -51,11 +51,11 @@ def get_dvc_files_of_repo(repo_dir: str,
         # this has been done automatically
         dvc_files = None
 
-    download_dvc_data(dvc_dataset_location=dvc_dataset_location,
-                      local_path=local_path,
-                      local_download_duplicate=local_download_duplicate,
-                      skip_already_downloaded=skip_already_downloaded,
-                      fs=fs)
+    # download_dvc_data(dvc_dataset_location=dvc_dataset_location,
+    #                   local_path=local_path,
+    #                   local_download_duplicate=local_download_duplicate,
+    #                   skip_already_downloaded=skip_already_downloaded,
+    #                   fs=fs)
 
     return local_path
 
@@ -150,6 +150,28 @@ def check_dataset_definition(data_path: str,
                 logger.info(' {} | list #{}'.format(outs_key, i))
                 for param in list_item:
                     logger.info('  {} = {}'.format(param, list_item[param]))
+
+        # if your "dvc pull" worked ok, you should have the files (well links to actual files
+        # in the shared cache here) here in the data_path
+        dataset_dir = os.path.join(data_path, dataset)
+        if not os.path.exists(dataset_dir):
+            raise IOError('Cannot find the dataset dir "{}"\n'
+                          ' It might be that the "dvc pull" failed or you had not done that?\n'
+                          ' This folder is empty when pulling the git repo, and gets populated with linked files'
+                          'with the "dvc pull"'.format(dataset_dir))
+        else:
+            logger.info('Dataset dir "{}"'.format(dataset_dir))
+            dataset_dir_filelisting = os.listdir(dataset_dir)
+            logger.info('Dataset dir filelisting:')
+            for f in dataset_dir_filelisting:
+                logger.info('  {}'.format(f))
+
+            if dataset == 'minivess':
+                if 'raw' in dataset_dir_filelisting:
+                    raw_dir = os.path.join(dataset_dir, 'raw')
+                    raw_dir_filelisting = os.listdir(raw_dir)
+                    logger.info('Number of "Raw" files = {} '
+                                '(the volumetric 2-PM .nii.gz cubes)'.format(len(raw_dir_filelisting)))
 
 
 def get_dvc_cache_dir(dvc_repo_path: str):

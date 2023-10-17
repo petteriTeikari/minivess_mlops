@@ -13,9 +13,10 @@ FROM petteriteikari/minivess-mlops-env:latest as base
 # https://stackoverflow.com/a/63643361/18650369
 ENV USER minivessuser
 ENV HOME /home/$USER
-
-# https://medium.com/analytics-vidhya/docker-volumes-with-dvc-for-versioning-data-and-models-for-ml-projects-4885935db3ec
-
+ARG AWS_ACCESS_KEY_ID
+#RUN echo $AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+#RUN echo $AWS_SECRET_ACCESS_KEY
 
 USER root
 RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
@@ -42,4 +43,11 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
 
+RUN dvc remote modify remote_storage access_key_id ${AWS_ACCESS_KEY_ID}
+RUN dvc remote modify remote_storage secret_access_key ${AWS_SECRET_ACCESS_KEY}
+RUN dvc pull
+
 WORKDIR /app/src
+
+ENV PORT 8088
+EXPOSE $PORT

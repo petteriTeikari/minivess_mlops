@@ -1,0 +1,19 @@
+version: '3'
+services:
+  train:
+    image: petteriteikari/minivess-mlops-train:latest
+    container_name: petteriteikari/minivess-mlops-train
+    build:
+      dockerfile: Dockerfile
+      context: ./
+      args:
+        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID} # from .env
+        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY} #from .env
+    volumes:
+      - dvc-cache:/mnt/minivess-dvc-cache
+      - artifacts:/mnt/minivess-artifacts
+    ports:
+      - "8088:8088"
+volumes:
+  artifacts:
+  dvc-cache:
