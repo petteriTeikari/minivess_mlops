@@ -32,13 +32,13 @@ jobs:
       - name: Mount S3 data volume (DVC Shared Cache) to a local instance
         # to upgrade later with the Docker Compose?
         # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run: mkdir ${HOME}/minivess-dvc-cache \ 
+        run: mkdir ${HOME}/minivess-dvc-cache && \ 
           s3fs minivess-dvc-cache ${HOME}/minivess-dvc-cache -o passwd_file=${HOME}/.passwd-s3fs \
          -o dbglevel=info -f -o curldbg
       - name: Mount S3 artifacts volume to a local instance
         # to upgrade later with the Docker Compose?
         # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run: mkdir ${HOME}/minivess-artifacts \ 
+        run: mkdir ${HOME}/minivess-artifacts && \ 
           s3fs minivess-artifacts ${HOME}/minivess-artifacts -o passwd_file=${HOME}/.passwd-s3fs \
          -o dbglevel=info -f -o curldbg
       # https://towardsdatascience.com/dvc-github-actions-automatically-rerun-modified-components-of-a-pipeline-a3632519dc42
