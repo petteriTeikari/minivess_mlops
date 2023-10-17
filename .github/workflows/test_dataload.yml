@@ -32,7 +32,7 @@ jobs:
         run: echo ${{secrets.AWS_ACCESS_KEY_ID}}:${{secrets.AWS_SECRET_ACCESS_KEY}} \
           > ${HOME}/.passwd-s3fs && chmod 600 ${HOME}/.passwd-s3fs
       - name: Create directories for mounting S3 volumes
-        run:
+        run: | 
           sudo mkdir ${HOME}/minivess-dvc-cache
           sudo mkdir ${HOME}/minivess-artifacts
           sudo chmod 777 ${HOME}/minivess-dvc-cache
@@ -52,8 +52,7 @@ jobs:
       - name: Check diskspace before DVC pull
         run: sudo df -h
       - name: Pull data from DVC
-        run:
-          # dvc remote modify origin --local auth basic
+        run: |           
           dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           dvc pull
