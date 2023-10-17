@@ -16,12 +16,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: dockerhub login
-      env:
-        DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
-        DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
-      run:
-        docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Upgrade Docker Compose to 2.x # https://github.com/marketplace/actions/docker-compose-setup
       uses: ndeloof/install-compose-action@v0.0.1
       with:
@@ -32,6 +31,7 @@ jobs:
     - name: Build the Docker image
       run: AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
         AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
-        docker-compose -f docker-compose.yml build --progress=plain # --no-cache
+        docker compose -f docker-compose.yml build --progress=plain # --no-cache
+    # See e.g. https://github.com/docker/build-push-action/tree/v3#inputs
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-train:latest
