@@ -40,6 +40,13 @@ jobs:
         run: mkdir ${HOME}/minivess-artifacts \ 
           s3fs minivess-artifacts ${HOME}/minivess-artifacts -o passwd_file=${HOME}/.passwd-s3fs \
          -o dbglevel=info -f -o curldbg
+      # https://towardsdatascience.com/dvc-github-actions-automatically-rerun-modified-components-of-a-pipeline-a3632519dc42
+      - name: Pull data from DVC
+        run:
+          # dvc remote modify origin --local auth basic
+          dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          dvc pull
       - name: Execute "run_training.py" for testing data loading
         env:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
