@@ -19,7 +19,7 @@ jobs:
         run:
           docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
       - name: pull Docker image
-        run: docker pull petteriteikari/minivess-mlops:latest
+        run: docker pull petteriteikari/minivess-mlops-train:latest
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
