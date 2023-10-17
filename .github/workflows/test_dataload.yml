@@ -32,8 +32,8 @@ jobs:
         run: echo ${{secrets.AWS_ACCESS_KEY_ID}}:${{secrets.AWS_SECRET_ACCESS_KEY}} \
           > ${HOME}/.passwd-s3fs && chmod 600 ${HOME}/.passwd-s3fs
       - name: Create directories for mounting S3 volumes
-        run: mkdir ${HOME}/minivess-dvc-cache && \ 
-          mkdir ${HOME}/minivess-artifacts && \
+        run: sudo mkdir ${HOME}/minivess-dvc-cache && \ 
+          sudo mkdir ${HOME}/minivess-artifacts && \
           sudo chmod 777 ${HOME}/minivess-dvc-cache && \
           sudo chmod 777 ${HOME}/minivess-artifacts
       - name: Mount S3 data volume (DVC Shared Cache) to a local instance
@@ -47,12 +47,16 @@ jobs:
         run: s3fs minivess-artifacts ${HOME}/minivess-artifacts \ 
           -o passwd_file=${HOME}/.passwd-s3fs -o dbglevel=info -f -o curldbg
       # https://towardsdatascience.com/dvc-github-actions-automatically-rerun-modified-components-of-a-pipeline-a3632519dc42
+      - name: Check diskspace before DVC pull
+        run: sudo df -h
       - name: Pull data from DVC
         run:
           # dvc remote modify origin --local auth basic
           dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           dvc pull
+      - name: Check diskspace after DVC pull
+        run: sudo df -h
       - name: Execute "run_training.py" for testing data loading
         env:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
