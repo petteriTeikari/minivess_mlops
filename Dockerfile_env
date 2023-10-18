@@ -34,7 +34,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
     # https://github.com/phusion/baseimage-docker/issues/319#issuecomment-1107760238
     apt-get install -y --no-install-recommends apt-utils && \
-    apt install software-properties-common curl unzip groff -y && \
+    apt install software-properties-common curl unzip groff wget -y && \
     apt-get install git-all -y && \
     # https://pythonspeed.com/articles/base-image-python-docker-images/
     add-apt-repository ppa:deadsnakes/ppa && \
@@ -45,7 +45,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python && \
     # apt remove --purge -y python3.10 && \
     # python3 --version && \
-    apt install -y s3fs # s3fs-fuse
+    # apt install -y s3fs # s3fs-fuse \
+    # Or if you prefer mountpoint-s3
+    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb && \
+    apt-get install -y ./mount-s3.deb && \
+    rm ./mount-s3.deb && \
+    mount-s3 --version
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
@@ -125,7 +130,7 @@ FROM minivess-base as minivess-base-gpu
 #    fi
 
 # Placeholder type of layer before fixing the NVIDIA install
-RUN echo $DEPLOY_ENV
+RUN rm ./pyproject.toml ./poetry.lock # ./awsclic2.zip
 
 # TODO! Check if you can clean a bit the cache etc. to reduce the image size
 

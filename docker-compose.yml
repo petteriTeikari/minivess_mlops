@@ -6,11 +6,16 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./
+    environment:
+      - AWS_PROFILE=default
     volumes:
-      - dvc-cache:/mnt/minivess-dvc-cache
-      - artifacts:/mnt/minivess-artifacts
+      - ~/.aws:/home/minivessuser/.aws:ro
+      - ~/minivess-dvc-cache:/mnt/minivess-dvc-cache
+      - ~/minivess-artifacts:/mnt/minivess-artifacts
     ports:
       - "8088:8088"
 volumes:
-  artifacts:
-  dvc-cache:
+  aws:
+  minivess-dvc-cache:
+  minivess-artifacts:
+

@@ -26,29 +26,12 @@ jobs:
           aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
           aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           aws-region: eu-north-1
-      - name: Install s3fs
-        run: sudo apt update && sudo apt-get install s3fs && which s3fs
-      - name: Set up ".passwd-s3fs"
-        run: echo ${{secrets.AWS_ACCESS_KEY_ID}}:${{secrets.AWS_SECRET_ACCESS_KEY}} \
-          > ${HOME}/.passwd-s3fs && chmod 600 ${HOME}/.passwd-s3fs
-      - name: Create directories for mounting S3 volumes
-        run: | 
-          sudo mkdir ${HOME}/minivess-dvc-cache
-          sudo mkdir ${HOME}/minivess-artifacts
-          sudo chmod 777 ${HOME}/minivess-dvc-cache
-          sudo chmod 777 ${HOME}/minivess-artifacts
-      - name: Mount S3 data volume (DVC Shared Cache) to a local instance
-        # to upgrade later with the Docker Compose?
-        # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run:
-          s3fs minivess-dvc-cache ${HOME}/minivess-dvc-cache \ 
-          -o passwd_file=${HOME}/.passwd-s3fs -o dbglevel=info -f -o curldbg
-      - name: Mount S3 artifacts volume to a local instance
-        # to upgrade later with the Docker Compose?
-        # https://stackoverflow.com/questions/49379881/mount-s3fs-as-docker-volume?rq=3
-        run: s3fs minivess-artifacts ${HOME}/minivess-artifacts \ 
-          -o passwd_file=${HOME}/.passwd-s3fs -o dbglevel=info -f -o curldbg
-      # https://towardsdatascience.com/dvc-github-actions-automatically-rerun-modified-components-of-a-pipeline-a3632519dc42
+      - name: Create AWS credentials on-the-fly
+        run: |
+          mkdir -p ~/.aws
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id = ${{secrets.AWS_ACCESS_KEY_ID}}" >> ~/.aws/credentials
+          echo "aws_secret_access_key = ${{secrets.AWS_SECRET_ACCESS_KEY}}" >> ~/.aws/credentials
       - name: Check diskspace before DVC pull
         run: sudo df -h
       - name: Pull data from DVC
@@ -63,10 +46,13 @@ jobs:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
           MLFLOW_PASSWORD: ${{secrets.MLFLOW_PASSWORD}}
         run: >
-          docker run --rm \ 
-          -v ${HOME}/minivess-artifacts:/mnt/minivess-artifacts \ 
-          -v ${HOME}/minivess-dvc-cache:/mnt/minivess-dvc-cache \
-          petteriteikari/minivess-mlops-train:latest \
-          python run_training.py \ 
-          -c task_config.yaml -run test_dataload # Pythion Input arguments
+          docker run -it \ 
+          -v ${HOME}/.aws:/home/minivessuser/.aws:ro \ 
+          -e S3_ARTIFACTS=minivess-artifacts \    
+          -e DOCKER_ARTIFACTS=/mnt/minivess-artifacts \
+          -e S3_CACHE=minivess-dvc-cache \   
+          -e DOCKER_CACHE=/mnt/minivess-dvc-cache \    
+          --privileged --cap-add SYS_ADMIN --device /dev/fuse \ 
+          petteriteikari/minivess-mlops-train \
+          -c task_config.yaml -run test_dataload
 
