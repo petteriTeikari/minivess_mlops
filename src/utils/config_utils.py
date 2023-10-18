@@ -19,6 +19,7 @@ from pydantic.v1.utils import deep_update
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
+from src.utils.general_utils import print_dict_to_logger
 
 CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
 if not os.path.exists(CONFIG_DIR):
@@ -26,6 +27,8 @@ if not os.path.exists(CONFIG_DIR):
 BASE_CONFIG_DIR = os.path.join(CONFIG_DIR, 'base')
 if not os.path.exists(BASE_CONFIG_DIR):
     raise IOError('Cannot find the directory for (base) .yaml config files from "{}"'.format(BASE_CONFIG_DIR))
+
+
 
 
 def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
@@ -57,6 +60,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     config_hash = dict_hash(dictionary=config['config'])
     start_time = get_datetime_string()
     output_experiments_base_dir = os.path.join(config['ARGS']['output_dir'], 'experiments')
+    logger.info('Save the run-specific parameters to config["run"]')
     config['run'] = {
         'hyperparam_name': hyperparam_name,
         'hyperparam_base_name': hyperparam_name,
@@ -71,6 +75,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         'src_dir': os.getcwd(),
         'repo_dir': os.path.join(os.getcwd(), '..'),
     }
+    print_dict_to_logger(dict_in=config['run'], prefix=' ')
 
     # Init variables for 'run'
     config['run']['repeat_artifacts'] = {}
@@ -83,7 +88,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     # TODO! Fix this with the updated nesting, with some nicer recursive function for undefined depth
     config['hyperparameters_flat'] = None # flatten_nested_dictionary(dict_in=config['hyperparameters'])
 
-    if config['config']['LOGGING']['unique_hyperparam_name_with_hash'] == 1:
+    logger.info('Save the derived hyperparameters to config["hyperparameters"]')
+    logger.info(config['hyperparameters']) # TODO add to print_the_dict_to_logger() nested dicts as well
+
+    if config['config']['LOGGING']['unique_hyperparam_name_with_hash']:
         # i.e. whether you want a tiny change in dictionary content make this training to be grouped with
         # another existing (this is FALSE), or to be a new hyperparam name (TRUE) if you forgot for example to change
         # the hyperparam run name after some config changes. In some cases you would like to run the same experiment
@@ -92,6 +100,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         # e.g. from "'hyperparam_example_name'" ->
         #     "'hyperparam_example_name_9e0c146a68ec606442a6ec91265b11c3'"
         config['run']['hyperparam_name'] += '_{}'.format(config_hash)
+        config['run']['output_experiment_dir'] += '_{}'.format(config_hash)
+        logger.info('Unique hyperparam name with hash')
+        logger.info('  hyperparam_name = "{}"'.format(config['run']['hyperparam_name']))
+        logger.info('  output_experiment_dir = "{}"'.format(config['run']['output_experiment_dir']))
 
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
                   "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
@@ -101,6 +113,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         logger.add(config['run']['output_log_path'] ,
                    level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
     except Exception as e:
+        logger.error('Problem initializing the log file to the artifacts output, permission issues?? e = {}'.format(e))
         raise IOError('Problem initializing the log file to the artifacts output, have you created one? '
                       'do you have the permissions correct? See README.md for the "minivess_mlops_artifacts" creation'
                       'with symlink to /mnt \n error msg = {}'.format(e))

@@ -39,11 +39,34 @@ sudo ln -s ~/minivess_mlops_artifacts/minivess-artifacts /mnt/minivess-artifacts
 
 With the Docker, you would like the mapping to be like this (and DVC needs authentication 
 to `s3://minivessdataset` where the "human-readable" Minivess dataset is, and `DVC` must 
-be able to `pull`):
+be able to `pull`).
+
+The mapping could be done now as in `entrypoint.sh` 
+(explore the [best way to mount on startup](https://www.google.com/search?q=mount+s3+ubuntu+at+startup&oq=mount+s3+ubuntu+at+startup&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIKCAIQIRgWGB0YHjIKCAMQIRgWGB0YHtIBCDc2NTVqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8) 
+for local development? Or try to make as frictionless the approach so that both works locally and on cloud?):
+
+For the artifacts:
 
 ```
-s3://minivess-dvc-cache : /mnt/minivess-dvc-cache
-s3://minivess-artifacts : /mnt/minivess-artifacts
+sudo mkdir /mnt/minivess-dvc-cache
+sudo mkdir /mnt/minivess-artifacts
+sudo chown $USER:$USER /mnt/minivess-artifacts /mnt/minivess-dvc-cache
+mount-s3 --region eu-north-1  --allow-delete --allow-other minivess-artifacts /mnt/minivess-artifacts
+```
+
+Do you actually want to have the shared cache to be mounted 
+`mount-s3 --region eu-north-1  --allow-delete --allow-other minivess-dvc-cache /mnt/minivess-dvc-cache`? 
+Seems slow actually:
+
+```
+sudo ln -s ~/minivess-dvc-cache /mnt/minivess-dvc-cache
+```
+
+And if you need to manually unmount:
+
+```
+sudo umount /mnt/minivess-dvc-cache
+sudo umount /mnt/minivess-artifacts
 ```
 
 ### Training a segmentor

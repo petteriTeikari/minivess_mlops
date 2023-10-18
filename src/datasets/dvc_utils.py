@@ -8,6 +8,8 @@ from dvc.api import DVCFileSystem
 
 from loguru import logger
 
+from src.utils.general_utils import print_dict_to_logger
+
 
 def get_dvc_files_of_repo(repo_dir: str,
                           dataset_name_lowercase: str,
@@ -204,14 +206,6 @@ def get_dvc_config(dvc_path: str,
     def to_dict(config: configparser.ConfigParser) -> Dict[str, Dict[str, str]]:
         # https://stackoverflow.com/a/62166767
         return {section_name: dict(config[section_name]) for section_name in config.sections()}
-
-    def print_dict_to_logger(dict_in: dict, prefix:str = ''):
-        for k, v in dict_in.items():
-            logger.info('{}  {}: {}'.format(prefix, k, v))
-            # if isinstance(v, dict):
-            #     print_dict_to_logger(v, prefix='  ')
-            # else:
-            #     logger.info('{}  {}: {}'.format(prefix, k, v))
 
     config_path = os.path.join(dvc_path, config_fname)
     if os.path.exists(config_path):

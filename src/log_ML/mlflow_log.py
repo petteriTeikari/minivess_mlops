@@ -35,6 +35,7 @@ def init_mlflow_run(local_server_path: str,
                     experiment_name: str = "MINIVESS_segmentation",
                     run_name: str = "UNet3D"):
 
+        logger.debug('Set experiment name to "{}"'.format(experiment_name))
         experiment = mlflow.set_experiment(experiment_name)
         # mlflow.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
         logger.info(" experiment name: {}".format(experiment.experiment_id))
@@ -43,6 +44,7 @@ def init_mlflow_run(local_server_path: str,
         logger.info(" tags: {}".format(experiment.tags))
         logger.info(" lifecycle_stage: {}".format(experiment.lifecycle_stage))
 
+        logger.debug('Start MLflow run with name "{}"'.format(run_name))
         active_run = mlflow.start_run(run_name=run_name)
         logger.info(" runName: {}".format(active_run.data.tags['mlflow.runName']))
         logger.info(" run_id: {}".format(active_run.info.run_id))
@@ -82,7 +84,7 @@ def init_mlflow_logging(config: dict,
                                                      experiment_name=experiment_name,
                                                      run_name=run_name)
         except Exception as e:
-            logger.error('Failed to initialize the MLflow logging!')
+            logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
             raise IOError('Failed to initialize the MLflow logging!\n'
                           ' - if you are using Dagshub MLflow, did you set the environment variables (your credentials?\n'
                           '   https://dagshub.com/docs/integration_guide/mlflow_tracking/#3-set-up-your-credentials\n'

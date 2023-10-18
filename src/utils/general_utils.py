@@ -35,4 +35,10 @@ def diff_OmegaDicts(a, b, missing=KeyError):
     }
 
 
-
+def print_dict_to_logger(dict_in: dict, prefix:str = ''):
+    for k, v in dict_in.items():
+        logger.info('{}  {}: {}'.format(prefix, k, v))
+        # if isinstance(v, dict):
+        #     print_dict_to_logger(v, prefix='  ')
+        # else:
+        #     logger.info('{}  {}: {}'.format(prefix, k, v))
