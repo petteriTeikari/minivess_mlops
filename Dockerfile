@@ -28,10 +28,6 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
 
-#RUN dvc remote modify remote_storage access_key_id ${AWS_ACCESS_KEY_ID}
-#RUN dvc remote modify remote_storage secret_access_key ${AWS_SECRET_ACCESS_KEY}
-#RUN dvc pull
-
 WORKDIR /app/src
 
 ENV PORT 8088
@@ -43,10 +39,6 @@ RUN echo "user_allow_other" >> /etc/fuse.conf
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 
-# Run in foreground mode so that the container can be detached without exiting Mountpoint
-#ENTRYPOINT [ "entrypoint.sh" ]
-
 # Switch to non-privileged user from superuser
 USER $USER
-
 ENTRYPOINT [ "entrypoint.sh"]
