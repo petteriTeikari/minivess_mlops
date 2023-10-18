@@ -26,7 +26,10 @@ RUN chown $USER:$USER /mnt/minivess-artifacts /mnt/minivess-dvc-cache
 USER $USER
 
 # https://dzone.com/articles/clone-code-into-containers-how
-RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
+# TODO! add switch here to do either copy (local devel) or clone (remote)
+# RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
+COPY --chown=$USER:$USER ml_tests ./ml_tests
+COPY --chown=$USER:$USER src ./src
 
 WORKDIR /app/src
 

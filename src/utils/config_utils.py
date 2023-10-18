@@ -3,6 +3,8 @@ import sys
 import warnings
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
+from pwd import getpwuid
 
 from typing import Dict, Any
 import hashlib
@@ -33,6 +35,9 @@ if not os.path.exists(BASE_CONFIG_DIR):
 
 def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
                   hyperparam_name: str = None, log_level: str = "INFO"):
+
+    logger.info('Username = {}, UID = {}, GID = {}'.format(os.getenv('USER'), os.getuid(), os.getgid()))
+    debug_mounts(mounts_list=['/mnt/minivess-dvc-cache', '/mnt/minivess-artifacts'])
 
     base_config = import_config_from_yaml(config_file = base_config_file,
                                           config_dir = BASE_CONFIG_DIR,
@@ -381,3 +386,59 @@ def flatten_nested_dictionary(dict_in: dict, delim: str = '__') -> dict:
             dict_out[key1] = parse_non_dict(subentry)
 
     return dict_out
+
+
+def debug_mounts(mounts_list: list,
+                 try_to_write: bool = True):
+
+    for mount in mounts_list:
+        logger.debug('MOUNT: {}'.format(mount))
+        path = Path(mount)
+        owner = path.owner()
+        group = path.group()
+        logger.debug(f" owned by {owner}:{group} (owner:group)")
+        mount_obj = os.stat(mount)
+        oct_perm = oct(mount_obj.st_mode)[-4:]
+        logger.debug(f" owned by {mount_obj.st_uid}:{mount_obj.st_gid} (owner:group)")
+        logger.debug(f" mount permissions: {oct_perm}")
+        logger.debug(' read access = {}'.format(os.access(mount, os.R_OK)))  # Check for read access
+        logger.debug(' write access = {}'.format(os.access(mount, os.W_OK)))  # Check for write access
+        logger.debug(' execution access = {}'.format(os.access(mount, os.X_OK)))  # Check for execution access
+        logger.debug(' existence of dir = {}'.format(os.access(mount, os.F_OK)))  # Check for existence of file
+
+        if os.access(mount, os.W_OK):
+            logger.debug('Trying to write to the mount (write access was OK)')
+            path_out = os.path.join(mount, 'test_write.txt')
+
+            if os.path.exists(path_out):
+                # unlike normal filesystem, mountpoint-s3 does not allow overwriting files,
+                # so if it exists already we need to delete it first
+                logger.info('File {} already exists, deleting it first'.format(path_out))
+                try:
+                    os.remove(path_out)
+                except Exception as e:
+                    logger.error('Problem deleting file {}, e = {}'.format(path_out, e))
+                    raise IOError('Problem deleting file {}, e = {}'.format(path_out, e))
+
+            try:
+                file1 = open(path_out, "w")
+                file1.write('Hello debug world!')
+                file1.close()
+                logger.debug('File write succesful!')
+                mount_obj = os.stat(path_out)
+                logger.debug(' file_permission = {}, {}:{}'.
+                             format(oct(os.stat(path_out).st_mode)[-4:],
+                                    mount_obj.st_uid, mount_obj.st_gid))
+            except Exception as e:
+                logger.error('Problem with file write to {}, e = {}'.format(path_out, e))
+                raise IOError('Problem with file write to {}, e = {}'.format(path_out, e))
+
+            try:
+                if os.path.exists(path_out):
+                    os.remove(path_out)
+                    logger.debug('File delete succesful!')
+                else:
+                    logger.debug('Weirdly you do not have any file to delete even though write went through OK?')
+            except Exception as e:
+                logger.error('Problem deleting file {}, e = {}'.format(path_out, e))
+                raise IOError('Problem deleting file {}, e = {}'.format(path_out, e))
