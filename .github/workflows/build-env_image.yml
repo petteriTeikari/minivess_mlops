@@ -1,0 +1,36 @@
+# Build 2 different Docker Images :
+# * the "Environment" now refers to the image containing all the needed Ubuntu packages and Python libraries,
+#   and what you could use as an interpreter in PyCharm, and what you would like to auto-build only when 
+#   Poetry environment or the Dockerfile changes
+# * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
+#   auto-built everytime the `src` and ` ml_tests` code has updates
+name: Docker (Env)
+
+on:
+  # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-including-paths
+  push:
+    paths:
+      # Only need to build the image when Poetry environment or the Dockerfile itself has changed
+      # atm as no code is executed there, but the Docker is only used as a Pycharm Interpreter
+      - 'poetry.lock'
+      - 'pyproject.toml'
+      - 'Dockerfile_env'
+
+jobs:
+
+  build_env:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: dockerhub login
+      env:
+        DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
+        DOCKERHUB_PASSWORD: ${{secrets.DOCKERHUB_PASSWORD}}
+      run:
+        docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
+    - name: Build the Docker image
+      run: docker build . --file deployment/Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest --no-cache
+    - name: Push the image to Dockerhub
+      run: docker push petteriteikari/minivess-mlops-env:latest
