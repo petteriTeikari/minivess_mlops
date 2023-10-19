@@ -96,7 +96,7 @@ RUN if [ "$PROD_IMAGE" = "dev" ] ; then \
 # ENV PATH="${PATH}:$HOME/.local/bin"
 RUN pip install --no-cache-dir -r $HOME/requirements.txt
 
-# TODO!
+# TODO! Takes extra disk space probably
 #    Attempting uninstall: cryptography
 # => => #     Found existing installation: cryptography 3.4.8
 # => => #     Not uninstalling cryptography at /usr/lib/python3/dist-packages, outside environment /usr
