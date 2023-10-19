@@ -36,6 +36,8 @@ jobs:
         run: sudo df -h
       - name: Install DVC
         uses: iterative/setup-dvc@v1
+      - name: Create directory for DVC cache
+        run: mkdir -p /mnt/minivess-dvc-cache
       - name: Pull data from DVC
         run:
           #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -43,6 +45,8 @@ jobs:
           dvc pull
       - name: Check diskspace after DVC pull
         run: sudo df -h
+      - name: Create directory for artifacts
+        run: mkdir -p /mnt/minivess-artifacts
       - name: Testing data loading (training_run)
         env:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
