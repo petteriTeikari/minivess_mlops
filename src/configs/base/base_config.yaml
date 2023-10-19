@@ -62,12 +62,13 @@ config:
           # See https://docs.monai.io/en/stable/data.html#cachedataset
           MONAI_CACHEDATASET:
             CACHE_RATE: 1.0
-            NUM_WORKERS: 0
+            NUM_WORKERS: 1
           # The Vanilla one that does not cache anything, useful for example when
           # running some CI/CD tests on resource-constrained CPU instances, do not
           # use for actual training
-          MONAI_DATASET:
-            PLACEHOLDER_PARAM: 'placeholder'
+          # NOTE! not all the downstream code works with this option, just use cache_rate: 0.0
+#          MONAI_DATASET:
+#            PLACEHOLDER_PARAM: 'placeholder'
         # See below for explanations, think of using some hierarchical .yamls if this
         # gets very heavy and you start having a lot of different augmentation schemes
         # see Hydra and "Configuring Experiments"

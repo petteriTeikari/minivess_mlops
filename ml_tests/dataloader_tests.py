@@ -3,6 +3,7 @@ import random
 
 import monai.data
 import numpy as np
+import torch
 
 from loguru import logger
 
@@ -205,6 +206,15 @@ def ml_test_single_batch_dict(batch_data: dict,
                                   fake_a_nan=debug_testing))
 
     return batch_test_metrics, batch_tests
+
+
+def check_batch_type(batch_data: dict):
+
+    if not isinstance(batch_data['image'], torch.Tensor):
+        logger.error('Your batch data is not a torch.Tensor, but {}', type(batch_data['image']))
+        logger.error('This could happen when using the vanilla Dataset when the paths to files are here')
+        # Implement this if needed, but you might as well can use the CachedDataset with cache rate of 0.0
+        raise IOError('Your batch data is not a torch.Tensor, but {}'.format(type(batch_data['image'])))
 
 
 def ml_test_batch_nan_and_inf(batch_tensor: monai.data.MetaTensor,

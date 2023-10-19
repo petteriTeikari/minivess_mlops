@@ -1,8 +1,6 @@
 import glob
 import os
 
-import dvc.api
-
 from monai.data import CacheDataset, Dataset
 from loguru import logger
 from tqdm import tqdm
@@ -13,6 +11,7 @@ import random
 from ml_tests.dataset_tests import ml_test_dataset_for_allowed_types
 from ml_tests.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
+from src.utils.general_utils import print_memory_stats_to_logger
 
 
 def import_minivess_dataset(dataset_cfg: dict,
@@ -264,6 +263,7 @@ def define_minivess_dataset(dataset_config: dict,
                             debug_testing: bool):
 
     datasets, ml_test_dataset = {}, {}
+    print_memory_stats_to_logger()
     for i, split in enumerate(transforms.keys()):
         datasets[split], ml_test_dataset[split] = (
             create_dataset_per_split(dataset_config=dataset_config,
@@ -271,6 +271,11 @@ def define_minivess_dataset(dataset_config: dict,
                                      split_file_dict=split_file_dicts[split],
                                      transforms_per_split=transforms[split],
                                      debug_testing=debug_testing))
+
+        # Print the available memory after each dataset creation (you might run out of memory on your machine
+        # if you "cache too much" on a machine with not enough RAM)
+        print_memory_stats_to_logger()
+
 
     return datasets, ml_test_dataset
 
@@ -292,20 +297,28 @@ def create_dataset_per_split(dataset_config: dict,
         ml_test_dataset_for_allowed_types(split_file_dict=split_file_dict))
 
     if pytorch_dataset_type == 'MONAI_CACHEDATASET':
+        # TODO! for fancier RAM management, you could adaptively set the cache_rate here
+        #  based on the machine that you are running this on, add like a case with
+        #  "if ds_config[pytorch_dataset_type]['CACHE_RATE'] == 'max_avail'"
         ds = CacheDataset(data=split_file_dict,
                          transform=transforms_per_split,
                          cache_rate=ds_config[pytorch_dataset_type]['CACHE_RATE'],
                          num_workers=ds_config[pytorch_dataset_type]['NUM_WORKERS'])
         logger.info('Created MONAI CacheDataset, split = "{}" (n = {}, '
-                    'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
+                    'keys in dict = {}, cache_rate = {}, num_workers = {})',
+                    split, n_files, list(split_file_dict[0].keys()),
+                    ds_config[pytorch_dataset_type]['CACHE_RATE'],
+                    ds_config[pytorch_dataset_type]['NUM_WORKERS'])
 
     elif pytorch_dataset_type == 'MONAI_DATASET':
-        ds = Dataset(data=split_file_dict)
-        logger.info('Created MONAI (uncached) Dataset, split = "{}" (n={}, '
-                    'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
-        logger.warning('Use the vanilla MONAI Dataset mostly for debugging/Github Actions '
-                       'when you might easily run out of RAM')
-
+        logger.error('WARNING! You are using the vanilla MONAI Dataset, which does not work downstream from here')
+        raise NotImplementedError('Vanilla MONAI dataset not implemented, use CacheDataset instead with '
+                                  'cache_rate=0 if you have issues with RAM availability on your machine')
+        # ds = Dataset(data=split_file_dict)
+        # logger.info('Created MONAI (uncached) Dataset, split = "{}" (n={}, '
+        #             'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
+        # logger.warning('Use the vanilla MONAI Dataset mostly for debugging/Github Actions '
+        #                'when you might easily run out of RAM')
     else:
         raise NotImplementedError('Not implemented yet other dataset than Monai CacheDataset and Dataset, '
                                   'not = "{}"'.format(pytorch_dataset_type))

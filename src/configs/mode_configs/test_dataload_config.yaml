@@ -8,5 +8,5 @@ config:
     DATA_SOURCE:
       MINIVESS:
         DATASET:
-          # Use the non-caching vanilla Dataset
-          NAME: 'MONAI_DATASET'
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 0.0

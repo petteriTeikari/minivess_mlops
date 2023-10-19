@@ -1,4 +1,6 @@
 from copy import deepcopy
+
+import psutil
 from loguru import logger
 from omegaconf import OmegaConf
 
@@ -42,3 +44,9 @@ def print_dict_to_logger(dict_in: dict, prefix:str = ''):
         #     print_dict_to_logger(v, prefix='  ')
         # else:
         #     logger.info('{}  {}: {}'.format(prefix, k, v))
+
+
+def print_memory_stats_to_logger():
+    svmem = psutil.virtual_memory()
+    logger.debug('Memory usage: {}% ({:.2f}/{:.2f} GB)',
+                 svmem.percent, svmem.used/10**9, svmem.total/10**9)
