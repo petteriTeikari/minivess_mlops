@@ -53,7 +53,7 @@ jobs:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
           MLFLOW_PASSWORD: ${{secrets.MLFLOW_PASSWORD}}
         run: >
-          docker run \ 
+          docker run --rm \ 
           -v ${HOME}/.aws:/home/minivessuser/.aws:ro \ 
           -e S3_ARTIFACTS=minivess-artifacts \    
           -e DOCKER_ARTIFACTS=minivess-artifacts \
