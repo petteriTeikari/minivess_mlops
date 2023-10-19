@@ -18,8 +18,8 @@ RUN chown $USER:$USER /app
 WORKDIR /app
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-RUN mkdir /mnt/minivess-artifacts /mnt/minivess-dvc-cache
-RUN chown $USER:$USER /mnt/minivess-artifacts /mnt/minivess-dvc-cache
+RUN mkdir /mnt/minivess-artifacts /mnt/minivess-artifacts_local /mnt/minivess-dvc-cache
+RUN chown $USER:$USER /mnt/minivess-artifacts /mnt/minivess-artifacts_local /mnt/minivess-dvc-cache
 # VOLUME ["/mnt/minivess-dvc-cache", "/mnt/minivess-artifacts"]
 
 # Switch to non-privileged user from superuser
@@ -28,10 +28,7 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 # TODO! add switch here to do either copy (local devel) or clone (remote)
 # RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
-COPY --chown=$USER:$USER ml_tests ./ml_tests
-COPY --chown=$USER:$USER src ./src
-
-WORKDIR /app/src
+COPY --chown=$USER:$USER . .
 
 ENV PORT 8088
 EXPOSE $PORT
@@ -45,3 +42,5 @@ RUN chmod 755 /usr/local/bin/entrypoint.sh
 # Switch to non-privileged user from superuser
 USER $USER
 ENTRYPOINT [ "entrypoint.sh"]
+
+WORKDIR /app/src

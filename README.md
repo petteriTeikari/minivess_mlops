@@ -33,8 +33,9 @@ You need 2 folders set up: 1) for the DVC cache (with the input data), 2) for th
 Easier to have both local development and Docker work is to symlink your local folders to the following '/mnt':
 
 ```
-sudo ln -s ~/minivess_mlops_artifacts/minivess-dvc-cache /mnt/minivess-dvc-cache
-sudo ln -s ~/minivess_mlops_artifacts/minivess-artifacts /mnt/minivess-artifacts
+sudo ln -s $HOME/minivess-dvc-cache /mnt/minivess-dvc-cache
+sudo ln -s $HOME/minivess-artifacts /mnt/minivess-artifacts
+sudo ln -s $HOME/minivess-artifacts_local /mnt/minivess-artifacts_local
 ```
 
 With the Docker, you would like the mapping to be like this (and DVC needs authentication 

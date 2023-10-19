@@ -24,21 +24,34 @@ def get_dvc_files_of_repo(repo_dir: str,
     """
     if use_local_repo:
         dvc_repo_path = repo_dir
+        if not os.path.exists(dvc_repo_path):
+            logger.error('Cannot find the repo dir "{}"'.format(dvc_repo_path))
+            raise IOError('Cannot find the repo dir "{}"'.format(dvc_repo_path))
         fs = DVCFileSystem(repo_dir)
     else:
         dvc_repo_path = fetch_params['repo_url']
         fs = DVCFileSystem(dvc_repo_path, rev='main')
 
-    cache_dir = get_dvc_cache_dir(dvc_repo_path)
+    try:
+        cache_dir = get_dvc_cache_dir(dvc_repo_path)
+    except Exception as e:
+        logger.warning('Problem getting the DVC cache dir from DVC path "{}", e = {}'.format(dvc_repo_path, e))
     check_for_dvc_cache_existence(cache_dir)
-    debug_dvc_files(dvc_repo_path=dvc_repo_path,
-                    fs=fs,
-                    dataset=dataset_name_lowercase,
-                    cache_dir=cache_dir,
-                    use_local_repo=use_local_repo)
+
+    try:
+        debug_dvc_files(dvc_repo_path=dvc_repo_path,
+                        dataset=dataset_name_lowercase,
+                        cache_dir=cache_dir)
+    except Exception as e:
+        logger.warning('Problem debugging the DVC files, e = {}'.format(e))
 
     dvc_dataset_location = f"/{fetch_params['datapath_base']}/{dataset_name_lowercase}"
     local_path = os.path.join(repo_dir, fetch_params['datapath_base'], dataset_name_lowercase)
+
+    if not os.path.exists(local_path):
+        logger.error('Cannot find the dataset from = {} (did you do dvc pull?)'.format(local_path))
+        raise IOError('Cannot find the dataset from = {} (did you do dvc pull?)'.format(local_path))
+
     if use_fs_check:
         raise NotImplementedError('not working atm')
         # logger.info('DVC files (fs.find) from repo "{}"'.format(repo_dir))
@@ -92,9 +105,7 @@ def download_dvc_data(dvc_dataset_location: str,
 
 def debug_dvc_files(dvc_repo_path: str,
                     cache_dir: str,
-                    fs: DVCFileSystem,
-                    dataset: str,
-                    use_local_repo: bool):
+                    dataset: str):
 
     repo_filelisting = os.listdir(dvc_repo_path)
     logger.info('Repo filelisting:')
@@ -207,6 +218,20 @@ def get_dvc_config(dvc_path: str,
         # https://stackoverflow.com/a/62166767
         return {section_name: dict(config[section_name]) for section_name in config.sections()}
 
+    if not os.path.exists(dvc_path):
+        logger.error('Cannot find DVC path in the repo "{}", '
+                     'have you copied files to Docker correctly?'.format(dvc_path))
+        try:
+            logger.debug('Trying to list the files in base path of the repo')
+            base_path = os.path.join(dvc_path, '..')
+            repo_filelisting = os.listdir(base_path)
+            logger.info('Repo filelisting:')
+            for f in repo_filelisting:
+                logger.info('  {}'.format(f))
+        except Exception as e:
+            logger.error('Failed to list the files in base path {} of the repo, e = {}'.format(base_path, e))
+        raise IOError('Cannot find DVC path in the repo "{}")'.format(dvc_path))
+
     config_path = os.path.join(dvc_path, config_fname)
     if os.path.exists(config_path):
         dvc_config = configparser.ConfigParser()
@@ -214,9 +239,8 @@ def get_dvc_config(dvc_path: str,
         config_dict = to_dict(dvc_config)
         logger.info('DVC CONFIG:')
         print_dict_to_logger(config_dict)
-
     else:
-        logger.warning('Cannot find DVC config file from "{}"'.format(config_path))
+        logger.error('Cannot find DVC config file from "{}"'.format(config_path))
         config_dict = None
 
     return config_dict

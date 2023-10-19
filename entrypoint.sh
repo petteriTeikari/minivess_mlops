@@ -10,5 +10,6 @@ ls -ld ${DOCKER_ARTIFACTS}
 id -u $USER
 id -g $USER
 #touch ${DOCKER_ARTIFACTS}/test # checking if you can write to the mounted volume,
-#dvc pull
+ls
+dvc pull
 python run_training.py "$@"

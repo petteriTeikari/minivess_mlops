@@ -36,9 +36,6 @@ if not os.path.exists(BASE_CONFIG_DIR):
 def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
                   hyperparam_name: str = None, log_level: str = "INFO"):
 
-    logger.info('Username = {}, UID = {}, GID = {}'.format(os.getenv('USER'), os.getuid(), os.getgid()))
-    debug_mounts(mounts_list=['/mnt/minivess-dvc-cache', '/mnt/minivess-artifacts'])
-
     base_config = import_config_from_yaml(config_file = base_config_file,
                                           config_dir = BASE_CONFIG_DIR,
                                           config_type = 'base')
@@ -64,6 +61,14 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
 
     config_hash = dict_hash(dictionary=config['config'])
     start_time = get_datetime_string()
+
+    if args['skip_realtime_aws_write']:
+        logger.warning('Skipping realtime AWS S3 write, and writing run artifacts to a local non-mounted dir')
+        config['ARGS']['output_dir'] += '_local'
+
+    logger.info('Username = {}, UID = {}, GID = {}'.format(os.getenv('USER'), os.getuid(), os.getgid()))
+    debug_mounts(mounts_list=get_mounts_from_args(args=config['ARGS']))
+
     output_experiments_base_dir = os.path.join(config['ARGS']['output_dir'], 'experiments')
     logger.info('Save the run-specific parameters to config["run"]')
     config['run'] = {
@@ -80,6 +85,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
         'src_dir': os.getcwd(),
         'repo_dir': os.path.join(os.getcwd(), '..'),
     }
+
     print_dict_to_logger(dict_in=config['run'], prefix=' ')
 
     # Init variables for 'run'
@@ -388,11 +394,24 @@ def flatten_nested_dictionary(dict_in: dict, delim: str = '__') -> dict:
     return dict_out
 
 
+def get_mounts_from_args(args: dict) -> list:
+
+    logger.debug('Getting mount names from the args')
+    mounts = []
+    mounts.append(args['data_dir'])
+    mounts.append(args['output_dir'])
+
+    return mounts
+
+
 def debug_mounts(mounts_list: list,
                  try_to_write: bool = True):
 
     for mount in mounts_list:
         logger.debug('MOUNT: {}'.format(mount))
+        if not os.path.exists(mount):
+            logger.error('Mount "{}" does not exist!'.format(mount))
+            raise IOError('Mount "{}" does not exist!'.format(mount))
         path = Path(mount)
         owner = path.owner()
         group = path.group()

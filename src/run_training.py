@@ -2,6 +2,9 @@ import argparse
 import os
 
 import sys
+
+from src.utils.general_utils import print_dict_to_logger
+
 src_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.split(src_path)[0]
 sys.path.insert(0, project_path) # so that src. is imported correctly also in VSCode by default
@@ -54,6 +57,11 @@ def parse_args_to_dict():
                         default='/mnt/minivess-artifacts',
                         help="Where the data is downloaded, or what dir needs to be mounted when you run this"
                              "on Docker")
+    parser.add_argument('-aws-skip', '--skip_realtime_aws_write',
+                        type=bool, required=False, default=True,
+                        help="With 'True', skip writing to AWS S3 bucket in realtime if you have issues with"
+                             "the mounting (mountpoint-s3, s3fs, etc.), "
+                             "and maybe aws sync at the end of the run is enough for you")
     parser.add_argument('-rank', '--local_rank', type=int, required=False, default=0,
                         help="node rank for distributed training")
     # TODO! log_level
@@ -63,7 +71,11 @@ def parse_args_to_dict():
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
                              "you cannot meaningfully compare e.g. DICE score from dataset 1 to dataset 2")
-    return vars(parser.parse_args())
+    args_dict = vars(parser.parse_args())
+    logger.info('Parsed input arguments:')
+    print_dict_to_logger(args_dict, prefix='')
+
+    return args_dict
 
 
 if __name__ == '__main__':

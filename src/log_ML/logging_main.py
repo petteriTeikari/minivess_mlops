@@ -151,6 +151,8 @@ def log_crossvalidation_results(fold_results: dict,
     mlflow.end_run()
     logger.info('Done with the MLflow Logging!')
 
+    logger.warning('Placeholder to do AWS Sync or something if you want all the files to S3?')
+
     return logged_model_paths
 
 
