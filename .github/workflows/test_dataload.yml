@@ -34,6 +34,8 @@ jobs:
           echo "aws_secret_access_key = ${{secrets.AWS_SECRET_ACCESS_KEY}}" >> ~/.aws/credentials
       - name: Check diskspace before DVC pull
         run: sudo df -h
+      - name: Install DVC
+        uses: iterative/setup-dvc@v1
       - name: Pull data from DVC
         run:
           #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}

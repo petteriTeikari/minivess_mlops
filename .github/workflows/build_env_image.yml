@@ -31,6 +31,6 @@ jobs:
       run:
         docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
     - name: Build the Docker image
-      run: docker build deployment --file deployment/Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest --no-cache
+      run: docker build . --file deployment/Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-env:latest
