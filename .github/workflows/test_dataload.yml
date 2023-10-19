@@ -39,7 +39,7 @@ jobs:
       - name: Create directory for DVC cache
         run: mkdir -p minivess-dvc-cache
       - name: Pull data from DVC
-        run:
+        run: |
           #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           dvc config cache.dir minivess-dvc-cache
