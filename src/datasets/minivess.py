@@ -302,7 +302,7 @@ def create_dataset_per_split(dataset_config: dict,
     elif pytorch_dataset_type == 'MONAI_DATASET':
         ds = Dataset(data=split_file_dict)
         logger.info('Created MONAI (uncached) Dataset, split = "{}" (n={}, '
-                    'keys in dict = {})', split, n_files, list(split_file_dict[0].keys))
+                    'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
         logger.warning('Use the vanilla MONAI Dataset mostly for debugging/Github Actions '
                        'when you might easily run out of RAM')
 
