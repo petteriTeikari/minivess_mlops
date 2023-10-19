@@ -4,3 +4,9 @@ config:
   VERBOSE: True
   TRAINING:
     SKIP_TRAINING: True
+  DATA:
+    DATA_SOURCE:
+      MINIVESS:
+        DATASET:
+          # Use the non-caching vanilla Dataset
+          NAME: 'MONAI_DATASET'
