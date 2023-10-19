@@ -28,7 +28,7 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 # TODO! add switch here to do either copy (local devel) or clone (remote)
 # RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
-COPY --chown=$USER:$USER .. .
+COPY --chown=$USER:$USER . .
 
 ENV PORT 8088
 EXPOSE $PORT
@@ -36,7 +36,7 @@ EXPOSE $PORT
 USER root
 # https://github.com/ktruckenmiller/aws-mountpoint-s3/blob/main/Dockerfile
 RUN echo "user_allow_other" >> /etc/fuse.conf
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./deployment/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 
 # Switch to non-privileged user from superuser

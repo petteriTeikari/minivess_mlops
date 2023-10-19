@@ -4,8 +4,8 @@ services:
     image: petteriteikari/minivess-mlops-train:latest
     container_name: petteriteikari/minivess-mlops-train
     build:
-      dockerfile: Dockerfile
-      context: .
+      dockerfile: ./deployment/Dockerfile
+      context: ./..
     environment:
       - AWS_PROFILE=default
     volumes:

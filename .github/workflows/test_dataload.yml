@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  test_dataload:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo content
@@ -48,19 +48,15 @@ jobs:
         run: sudo df -h
       - name: Create directory for artifacts
         run: mkdir -p minivess-artifacts
+      - name: Print Docker version
+        run: docker version
       - name: Testing data loading (training_run)
         env:
           MLFLOW_USER: ${{secrets.MLFLOW_USERNAME}}
           MLFLOW_PASSWORD: ${{secrets.MLFLOW_PASSWORD}}
+        # With the mount, when the write permissions work
+        # docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro -e S3_ARTIFACTS=minivess-artifacts -e DOCKER_ARTIFACTS=/mnt/minivess-artifacts -e S3_CACHE=minivess-dvc-cache -e DOCKER_CACHE=/mnt/minivess-dvc-cache --privileged --cap-add SYS_ADMIN --device /dev/fuse petteriteikari/minivess-mlops-train -c task_config.yaml -run test_dataload
         run: >
-          docker run --rm \ 
-          -v ${HOME}/.aws:/home/minivessuser/.aws:ro \ 
-          -e S3_ARTIFACTS=minivess-artifacts \    
-          -e DOCKER_ARTIFACTS=minivess-artifacts \
-          -e S3_CACHE=minivess-dvc-cache \   
-          -e DOCKER_CACHE=minivess-dvc-cache \    
-          --privileged --cap-add SYS_ADMIN --device /dev/fuse \ 
-          petteriteikari/minivess-mlops-train \
-          -c task_config.yaml -run test_dataload \ 
-          -data minivess-dvc-cache -output minivess-artifacts
+          docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro petteriteikari/minivess-mlops-train -c task_config.yaml -run test_dataload
+          
 
