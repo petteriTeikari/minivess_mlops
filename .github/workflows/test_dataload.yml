@@ -1,10 +1,12 @@
 name: Test (Dataload)
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # At the moment this is part of the "CI suite", so you first build the image for training (build_train_image.yml),
+  # and you also want to test whether the data gets loaded again, and the training mechanics work
+  # i.e. this test does not need to be triggered by Push
+  # https://www.r-bloggers.com/2020/07/running-github-actions-sequentially/
+  repository_dispatch:
+    types: [ trigger-test-dataload ]
 
 jobs:
   test_dataload:
@@ -12,6 +14,8 @@ jobs:
     steps:
       - name: checkout repo content
         uses: actions/checkout@v2 # checkout the repository content
+        with:
+          ref: ${{ github.event.client_payload.sha }}
       - name: dockerhub login
         env:
           DOCKERHUB_USER: ${{secrets.DOCKERHUB_USERNAME}}
@@ -39,9 +43,9 @@ jobs:
       - name: Create directory for DVC cache
         run: mkdir -p minivess-dvc-cache
       - name: Pull data from DVC
-        run: |
-          #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |          
           dvc config cache.dir minivess-dvc-cache
           dvc pull
       - name: Check diskspace after DVC pull

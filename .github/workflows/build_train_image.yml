@@ -36,3 +36,11 @@ jobs:
       run: docker compose -f deployment/docker-compose.yml build --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-train:latest
+    - name: Trigger next workflow (test data)
+      if: success()
+      uses: peter-evans/repository-dispatch@v1
+      with:
+        token: ${{ secrets.REPO_GHA_PAT }}
+        repository: ${{ github.repository }}
+        event-type: trigger-test-dataload
+        client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
