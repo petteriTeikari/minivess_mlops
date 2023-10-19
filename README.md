@@ -1,7 +1,7 @@
 # MiniVess MLOps
 
-[![Docker (Environment)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/env_docker-image.yml)
-[![Docker (App)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/app_docker-image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/app_docker-image.yml)
+[![Docker (Env)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build-env_image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build-env_image.yml)
+[![Docker (Train)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build_train_image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build_train_image.yml)
 <br>[![Test (Dataload)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml)
 
 
