@@ -1,5 +1,5 @@
-# Based on the "env_docker-image.yml" (that builds "petteriteikari/minivess-mlops-env:latest")
-name: Docker (App)
+# Based on the "build_env_image.yml" (that builds "petteriteikari/minivess-mlops-env:latest")
+name: Docker (Train)
 
 on:
   push:
@@ -33,6 +33,6 @@ jobs:
     - name: Check Docker Compose version
       run: docker-compose --version
     - name: Build the Docker image
-      run: docker compose -f docker-compose.yml build --no-cache
+      run: docker compose -f deployment/docker-compose.yml build --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-train:latest

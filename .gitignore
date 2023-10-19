@@ -7,4 +7,4 @@
 /src/wandb/*
 /mlruns/*
 *.pdf
-/README_extra.md
+/tmp/README_extra.md

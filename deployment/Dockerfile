@@ -28,7 +28,7 @@ USER $USER
 # https://dzone.com/articles/clone-code-into-containers-how
 # TODO! add switch here to do either copy (local devel) or clone (remote)
 # RUN git clone https://github.com/petteriTeikari/minivess_mlops.git .
-COPY --chown=$USER:$USER . .
+COPY --chown=$USER:$USER .. .
 
 ENV PORT 8088
 EXPOSE $PORT

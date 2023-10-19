@@ -4,7 +4,7 @@
 #   Poetry environment or the Dockerfile changes
 # * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
 #   auto-built everytime the `src` and ` ml_tests` code has updates
-name: Docker (Environment)
+name: Docker (Env)
 
 on:
   # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-including-paths
@@ -31,6 +31,6 @@ jobs:
       run:
         docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
     - name: Build the Docker image
-      run: docker build . --file Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest --no-cache
+      run: docker build deployment --file deployment/Dockerfile_env --tag petteriteikari/minivess-mlops-env:latest --no-cache
     - name: Push the image to Dockerhub
       run: docker push petteriteikari/minivess-mlops-env:latest

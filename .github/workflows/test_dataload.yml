@@ -35,9 +35,9 @@ jobs:
       - name: Check diskspace before DVC pull
         run: sudo df -h
       - name: Pull data from DVC
-        run: |           
-          dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run:
+          #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           dvc pull
       - name: Check diskspace after DVC pull
         run: sudo df -h

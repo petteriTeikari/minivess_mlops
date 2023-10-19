@@ -69,7 +69,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 - && \
 # Install custom packages with Poetry
 # i.e. what Python packages you need to install to run the ML code
 # - "Alternatively, you can call Poetry explicitly with `/root/.local/bin/poetry`."
-COPY ./pyproject.toml ./poetry.lock ./
+COPY ../pyproject.toml ./poetry.lock ./
 
 # https://stackoverflow.com/a/54763270/18650369 for advanced example with "production" and "development" images:
 # * This way $YOUR_ENV will control which dependencies set will be installed: all (default)
