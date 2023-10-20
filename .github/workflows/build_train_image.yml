@@ -44,11 +44,3 @@ jobs:
         repository: ${{ github.repository }}
         event-type: trigger-test-dataload
         client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
-    - name: Trigger next workflow (test data)
-      if: success()
-      uses: peter-evans/repository-dispatch@v1
-      with:
-        token: ${{ secrets.REPO_GHA_PAT }}
-        repository: ${{ github.repository }}
-        event-type: trigger-test-train
-        client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
