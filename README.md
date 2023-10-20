@@ -3,6 +3,7 @@
 [![Docker (Env)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build-env_image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build-env_image.yml)
 [![Docker (Train)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build_train_image.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/build_train_image.yml)
 <br>[![Test (Dataload)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test_dataload.yml)
+[![Test (Train)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test:_train.yml/badge.svg)](https://github.com/petteriTeikari/minivess_mlops/actions/workflows/test:_train.yml)
 
 
 (in-progress) MLOPS boilerplate code for more end-to-end reproducible pipeline for the dataset published in the article:
