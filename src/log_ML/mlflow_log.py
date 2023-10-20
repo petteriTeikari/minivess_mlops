@@ -104,14 +104,14 @@ def init_mlflow_logging(config: dict,
         else:
             logger.info('MLflow | Writing dummy parameter')
             mlflow.log_param('dummy_key', 'dummy_value')
+        mlflow_dict = {'experiment': experiment, 'active_run': active_run}
+
+        # As we are using OmegaConf, you cannot just dump whatever stored in Dictionaries
+        mlflow_dict_omegaconf = mlflow_dicts_to_omegaconf_dict(experiment, active_run)
 
     else:
         logger.info('Skipping MLflow Experiment tracking')
-
-    mlflow_dict = {'experiment': experiment, 'active_run': active_run}
-
-    # As we are using OmegaConf, you cannot just dump whatever stored in Dictionaries
-    mlflow_dict_omegaconf = mlflow_dicts_to_omegaconf_dict(experiment, active_run)
+        mlflow_dict_omegaconf, mlflow_dict = None, None
 
     return mlflow_dict_omegaconf, mlflow_dict
 

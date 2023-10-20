@@ -146,22 +146,27 @@ def log_crossval_res(cv_results: dict,
                      logging_services: list,
                      config: dict):
 
-    logger.info('Logging AVERAGED Cross-Validation results')
-    log_cv_results(cv_results=cv_results,
-                   cv_dir_out=cv_averaged_output_dir,
-                   config=config,
-                   logging_services=logging_services,
-                   output_dir=output_dir)
+    if len(logging_services) == 0:
+        logger.warning('No logging (Experiment tracking such as MLflow or WANDB) '
+                       'services defined, skipping the logging!')
+        return None
+    else:
+        logger.info('Logging AVERAGED Cross-Validation results')
+        log_cv_results(cv_results=cv_results,
+                       cv_dir_out=cv_averaged_output_dir,
+                       config=config,
+                       logging_services=logging_services,
+                       output_dir=output_dir)
 
-    logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
-    model_paths = log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
-                                          ensembled_results=ensembled_results,
-                                          cv_dir_out=cv_ensembled_output_dir,
-                                          fold_results=fold_results,
-                                          experim_dataloaders=experim_dataloaders,
-                                          config=config,
-                                          logging_services=logging_services,
-                                          output_dir=output_dir)
+        logger.info('Logging ENSEMBLED Cross-Validation results to WANDB')
+        model_paths = log_cv_ensemble_results(cv_ensemble_results=cv_ensemble_results,
+                                              ensembled_results=ensembled_results,
+                                              cv_dir_out=cv_ensembled_output_dir,
+                                              fold_results=fold_results,
+                                              experim_dataloaders=experim_dataloaders,
+                                              config=config,
+                                              logging_services=logging_services,
+                                              output_dir=output_dir)
 
     return model_paths
 

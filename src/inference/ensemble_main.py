@@ -15,7 +15,7 @@ from src.inference.ensemble_utils import add_sample_results_to_ensemble_results,
 from src.inference.inference_utils import inference_sample, inference_best_repeat, \
     get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
-from src.utils.dataloder_utils import redefine_dataloader_for_inference
+from src.utils.dataloader_utils import redefine_dataloader_for_inference
 
 
 def reinference_dataloaders(input_dict: dict,

@@ -120,10 +120,13 @@ def define_dataset_and_dataloader(config: dict,
     logger.info('Done with the training preparation\n')
 
     # Test that you can use the constructed dataloaders actually
-    ml_test_dataloader_dict_integrity(dataloaders,
-                                      test_config=config['config']['TESTING']['DATALOADER'],
-                                      run_params=config['run'],
-                                      debug_testing=config['config']['TESTING']['DATALOADER']['debug_testing'])
+    if config['config']['TESTING']['DATALOADER']['DATA_VALIDITY']['enable']:
+        ml_test_dataloader_dict_integrity(dataloaders,
+                                          test_config=config['config']['TESTING']['DATALOADER'],
+                                          run_params=config['run'],
+                                          debug_testing=config['config']['TESTING']['DATALOADER']['debug_testing'])
+    else:
+        logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY"') # TO-OPTIMIZE the naming of these
 
     return datasets, dataloaders
 

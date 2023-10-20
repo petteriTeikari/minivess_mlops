@@ -62,7 +62,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     config_hash = dict_hash(dictionary=config['config'])
     start_time = get_datetime_string()
 
-    if args['skip_realtime_aws_write']:
+    if not config['ARGS']['s3_mount']:
         logger.warning('Skipping realtime AWS S3 write, and writing run artifacts to a local non-mounted dir')
         config['ARGS']['output_dir'] += '_local'
 
@@ -407,6 +407,7 @@ def get_mounts_from_args(args: dict) -> list:
 def debug_mounts(mounts_list: list,
                  try_to_write: bool = True):
 
+    #mounts_list = ['/home/petteri/artifacts']
     for mount in mounts_list:
         logger.debug('MOUNT: {}'.format(mount))
         if not os.path.exists(mount):
@@ -461,5 +462,3 @@ def debug_mounts(mounts_list: list,
                     raise IOError('Problem deleting file {}, e = {}'.format(path_out, e))
             else:
                 logger.debug('Weirdly you do not have any file to delete even though write went through OK?')
-
-    A = 1

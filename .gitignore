@@ -8,3 +8,4 @@
 /mlruns/*
 *.pdf
 /tmp/README_extra.md
+/src/mlruns/*
