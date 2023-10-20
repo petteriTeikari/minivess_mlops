@@ -49,7 +49,9 @@ config:
             PLACEHOLDER: 0
         # with run_mode = 'debug', pick first n samples of the split to speed things up
         SUBSET:
-          NAME: ???
+          NAME: 'ALL_SAMPLES'
+          ALL_SAMPLES:
+            PLACEHOLDER_PARAM: 'placeholder'
           # Number of first samples in the dataset
           DEBUG:
             TRAIN: 2

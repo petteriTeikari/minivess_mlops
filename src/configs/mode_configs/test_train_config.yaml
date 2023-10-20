@@ -2,3 +2,17 @@ NAME: 'test_train'
 # TODO! update the changed keys in the config
 config:
   VERBOSE: True
+  TRAINING:
+    NUM_EPOCHS: 1
+  DATA:
+    DATA_SOURCE:
+      MINIVESS:
+        DATASET:
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 0.0
+        SUBSET:
+          NAME: 'DEBUG'
+  LOGGING:
+    MLFLOW:
+      TRACKING:
+        enable: False

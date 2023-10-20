@@ -39,9 +39,15 @@ def import_minivess_dataset(dataset_cfg: dict,
     filelisting, dataset_stats = get_minivess_filelisting(dataset_dir)
     fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
 
-    if run_mode == 'debug':
-        minivess_debug_splits(fold_split_file_dicts,
-                              debug_subsets=dataset_cfg['SUBSET']['DEBUG'])
+    if dataset_cfg['SUBSET']['NAME'] == 'ALL_SAMPLES':
+        logger.info('Using all the samples for training, validation and testing')
+    else:
+        subset_cfg_name = dataset_cfg['SUBSET']['NAME']
+        subset_cfg = dataset_cfg['SUBSET'][subset_cfg_name]
+        logger.info('Using only a subset of the samples, Config = {}'.format(dataset_cfg['SUBSET']['NAME']))
+        minivess_debug_splits(fold_split_file_dicts=fold_split_file_dicts,
+                              subset_cfg=subset_cfg,
+                              subset_cfg_name=subset_cfg_name)
 
     return filelisting, fold_split_file_dicts, dataset_stats
 
@@ -330,13 +336,14 @@ def create_dataset_per_split(dataset_config: dict,
 
 
 def minivess_debug_splits(fold_split_file_dicts: dict,
-                          debug_subsets: dict):
+                          subset_cfg: dict,
+                          subset_cfg_name: str):
 
-    logger.warning('DEBUG MODE ON! Taking subsets of the data to speed things up (e.g. on CPU debug/development)')
+    logger.warning('You are not using the full fileset now! (subset method = {})'.format(subset_cfg_name))
     for fold in fold_split_file_dicts:
         for split in fold_split_file_dicts[fold]:
-            logger.warning('First {} samples for split = {}'.format(debug_subsets[split], split))
-            fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:debug_subsets[split]]
+            logger.warning('First {} samples for split = {}'.format(subset_cfg[split], split))
+            fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:subset_cfg[split]]
 
     return fold_split_file_dicts
 
