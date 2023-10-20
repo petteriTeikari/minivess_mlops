@@ -452,12 +452,14 @@ def debug_mounts(mounts_list: list,
                 logger.error('Problem with file write to {}, e = {}'.format(path_out, e))
                 raise IOError('Problem with file write to {}, e = {}'.format(path_out, e))
 
-            try:
-                if os.path.exists(path_out):
+            if os.path.exists(path_out):
+                try:
                     os.remove(path_out)
                     logger.debug('File delete succesful!')
-                else:
-                    logger.debug('Weirdly you do not have any file to delete even though write went through OK?')
-            except Exception as e:
-                logger.error('Problem deleting file {}, e = {}'.format(path_out, e))
-                raise IOError('Problem deleting file {}, e = {}'.format(path_out, e))
+                except Exception as e:
+                    logger.error('Problem deleting file {}, e = {}'.format(path_out, e))
+                    raise IOError('Problem deleting file {}, e = {}'.format(path_out, e))
+            else:
+                logger.debug('Weirdly you do not have any file to delete even though write went through OK?')
+
+    A = 1
