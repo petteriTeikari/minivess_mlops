@@ -6,8 +6,6 @@ ENV USER minivessuser
 ENV HOME /home/$USER
 
 USER root
-RUN useradd -m $USER && echo $USER:$USER | chpasswd && adduser $USER sudo
-RUN chown $USER:$USER $HOME
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python3 && \
