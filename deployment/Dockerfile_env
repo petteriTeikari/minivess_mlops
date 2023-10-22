@@ -1,5 +1,5 @@
 # Specify the parent image from which we build (20.04 comes with Python 3.8)
-FROM ubuntu:22.04 as base
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 as base
 
 # Input arguments, placeholder atm (if you need different img for local dev, and another for cloud)
 ARG DEPLOY_IN=local
@@ -65,7 +65,5 @@ RUN pip install --disable-pip-version-check --no-cache-dir -r $HOME/requirements
 # NVIDIA
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-
-
 
 USER $USER
