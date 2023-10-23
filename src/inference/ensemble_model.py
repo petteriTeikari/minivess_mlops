@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 from tqdm import tqdm
+from loguru import logger
 
 from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
     compute_split_metric_stats
@@ -74,7 +75,21 @@ def ensemble_repeats(inf_res: dict,
                      ensemble_params: dict,
                      var_type_key: str = 'arrays',
                      var_key: str = 'probs') -> dict:
-    input_data = inf_res[var_type_key][var_key]
+
+    if var_type_key in inf_res:
+        if var_key in inf_res[var_type_key]:
+            input_data = inf_res[var_type_key][var_key]
+        else:
+            logger.error('var_key = {}, not found in the var_type_key = {}, keys = {}'.
+                         format(var_key, var_type_key, inf_res[var_type_key].keys()))
+            raise IOError('var_key = {}, not found in the var_type_key = {}, keys = {}'.
+                          format(var_key, var_type_key, inf_res[var_type_key].keys()))
+    else:
+        logger.error('var_type_key = {}, not in the inference results, keys = {}'.
+                     format(var_type_key, inf_res.keys()))
+        raise IOError('var_type_key = {}, not in the inference results, keys = {}'.
+                      format(var_type_key, inf_res.keys()))
+
     ensemble_stats = compute_ensembled_response(input_data, ensemble_params)
 
     return ensemble_stats

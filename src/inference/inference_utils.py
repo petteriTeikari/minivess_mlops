@@ -47,7 +47,7 @@ def inference_sample(input_data,
                             {
                                 'dummy_scalar': np.array([0.5])
                             },
-                        'arays':
+                        'arrays':
                             {
                                 'logits': conv_metatensor_to_numpy(output),
                                 'probs': conv_metatensor_to_numpy(probability_mask),
