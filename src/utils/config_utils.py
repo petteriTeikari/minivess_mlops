@@ -14,19 +14,20 @@ from loguru import logger
 import collections.abc
 import torch.distributed as dist
 
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from pydantic.v1.utils import deep_update
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
 from src.utils.general_utils import print_dict_to_logger
 
-CONFIG_DIR = os.path.join(os.getcwd(), 'configs')
-if not os.path.exists(CONFIG_DIR):
-    raise IOError('Cannot find the directory for (task) .yaml config files from "{}"'.format(CONFIG_DIR))
-BASE_CONFIG_DIR = os.path.join(CONFIG_DIR, 'base')
+BASE_CONFIG_DIR = os.path.join(os.getcwd(), '..', 'configs')
 if not os.path.exists(BASE_CONFIG_DIR):
     raise IOError('Cannot find the directory for (base) .yaml config files from "{}"'.format(BASE_CONFIG_DIR))
+
+CONFIG_DIR = os.path.join(BASE_CONFIG_DIR, 'train_configs')
+if not os.path.exists(CONFIG_DIR):
+    raise IOError('Cannot find the directory for (task) .yaml config files from "{}"'.format(CONFIG_DIR))
 
 
 def import_config(args: dict,
@@ -45,7 +46,7 @@ def import_config(args: dict,
 
     if args['run_mode'] != 'train':
         config = update_config_for_non_train_mode(config,
-                                                  config_dir=os.path.join(CONFIG_DIR, 'mode_configs'),
+                                                  config_dir=os.path.join(BASE_CONFIG_DIR, 'runmode_configs'),
                                                   run_mode=args['run_mode'])
 
     config = config_manual_fixes(config)
@@ -174,21 +175,19 @@ def update_config_for_non_train_mode(config: dict,
 
 def update_base_with_task_config(task_config_file: str,
                                  config_dir: str,
-                                 base_config: dict) -> dict:
+                                 base_config: DictConfig) -> dict:
 
     # https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-    def update_config_dictionary(d: dict,
-                                 u: dict,
+    def update_config_dictionary(d: DictConfig,
+                                 u: DictConfig,
                                  input_is_omegaconf: bool = True,
-                                 method: str = 'pydantic'):
+                                 method: str = 'pydantic') -> DictConfig:
         if input_is_omegaconf:
             # TODO! examine OmegaConf.merge() and OmegaConf.update() for omegaConf native merge?
             d = OmegaConf.to_container(d, resolve=True)
             u = OmegaConf.to_container(u, resolve=True)
 
         if method == 'pydantic':
-            # print(d['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
-            # print(u['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
             d = deep_update(d, u)
         else:
             for k, v in u.items():
@@ -233,7 +232,7 @@ def update_base_with_task_config(task_config_file: str,
 def import_config_from_yaml(config_file: str = 'base_config.yaml',
                             config_dir: str = CONFIG_DIR,
                             config_type: str = 'base',
-                            load_method: str = 'OmegaConf'):
+                            load_method: str = 'OmegaConf') -> DictConfig:
 
     config_path = os.path.join(config_dir, config_file)
     if os.path.exists(config_path):

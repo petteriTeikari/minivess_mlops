@@ -5,7 +5,7 @@ from monai.data import MetaTensor
 from monai.inferers import sliding_window_inference
 from monai.transforms import Activations, AsDiscrete
 
-from src.deprecated_functions.depr_funcs import inference_dataloader
+from archived.depr_funcs import inference_dataloader
 from src.inference.ensemble_utils import merge_nested_dicts, get_metadata_for_sample_metrics
 from src.inference.metrics import get_sample_metrics_from_np_masks, get_sample_uq_metrics_from_ensemble_stats
 from src.log_ML.model_saving import import_model_from_path
