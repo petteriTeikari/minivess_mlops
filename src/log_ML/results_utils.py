@@ -52,7 +52,6 @@ def find_best_repeat(reordered_results: dict,
 
         return best_direction, idx, best_value
 
-
     for dataset in reordered_results:  # that it is trained on?
         best_repeat_dicts[dataset] = {}
         for tracked_metric in reordered_results[dataset]:
@@ -100,40 +99,40 @@ def reorder_crossvalidation_results(fold_results: dict):
                 repeat_results = archi_result[repeat_key]
                 repeat_best = repeat_results['best_dict']
 
-                for d, ds_name in enumerate(repeat_best):
-                    if ds_name not in res_out.keys():
-                        res_out[ds_name] = {}
+                for d, ds in enumerate(repeat_best):
+                    if ds not in res_out.keys():
+                        res_out[ds] = {}
 
-                    for m, metric in enumerate(repeat_best[ds_name]):
-                        if metric not in res_out[ds_name].keys():
-                            res_out[ds_name][metric] = {}
-                        repeat_best_eval = repeat_best[ds_name][metric]['eval_epoch_results']
+                    for m, metric in enumerate(repeat_best[ds]):
+                        if metric not in res_out[ds].keys():
+                            res_out[ds][metric] = {}
+                        repeat_best_eval = repeat_best[ds][metric]['eval_epoch_results']
 
                         for s, split in enumerate(repeat_best_eval):
-                            if split not in res_out[ds_name][metric].keys():
-                                res_out[ds_name][metric][split] = {}
+                            if split not in res_out[ds][metric].keys():
+                                res_out[ds][metric][split] = {}
 
-                            for d_e, ds_name_eval in enumerate(repeat_best_eval[split]):
-                                if ds_name_eval not in res_out[ds_name][metric][split].keys():
-                                    res_out[ds_name][metric][split][ds_name_eval] = {}
-                                eval_metrics = repeat_best_eval[split][ds_name_eval]
+                            for d_e, ds_eval in enumerate(repeat_best_eval[split]):
+                                if ds_eval not in res_out[ds][metric][split].keys():
+                                    res_out[ds][metric][split][ds_eval] = {}
+                                eval_metrics = repeat_best_eval[split][ds_eval]
 
                                 for t, var_type in enumerate(eval_metrics):
-                                    if var_type not in res_out[ds_name][metric][split][ds_name_eval].keys():
-                                        res_out[ds_name][metric][split][ds_name_eval][var_type] = {}
+                                    if var_type not in res_out[ds][metric][split][ds_eval].keys():
+                                        res_out[ds][metric][split][ds_eval][var_type] = {}
 
                                     for v, var_name in enumerate(eval_metrics[var_type]):
                                         value_in = convert_value_to_numpy_array(eval_metrics[var_type][var_name])
                                         # value_in will have a shape of (1,) for scalars and will be aggregating them
                                         # so that you will have (no_folds, no_repeats) np.arrays in the rearranged dict
-                                        if var_name not in res_out[ds_name][metric][split][ds_name_eval][
-                                            var_type].keys():
+                                        if var_name not in res_out[ds][metric][split][ds_eval][var_type].keys():
                                             value_array = np.zeros((no_of_folds, no_of_architectures, no_of_repeats))
-                                            res_out[ds_name][metric][split][ds_name_eval][var_type][
+                                            res_out[ds][metric][split][ds_eval][var_type][
                                                 var_name] = value_array
 
-                                        # res_out_tmp = res_out[ds_name][metric][split][ds_name_eval][var_type][var_name]
-                                        res_out[ds_name][metric][split][ds_name_eval][var_type][var_name][
+                                        # res_out_tmp =
+                                        # res_out[ds][metric][split][ds_eval][var_type][var_name]
+                                        res_out[ds][metric][split][ds_eval][var_type][var_name][
                                             f, a, r] = value_in
 
     return res_out
@@ -143,31 +142,31 @@ def compute_crossval_stats(fold_results_reordered: dict):
 
     res_out = {}
 
-    for d, ds_name in enumerate(fold_results_reordered):
-        if ds_name not in res_out.keys():
-            res_out[ds_name] = {}
+    for d, ds in enumerate(fold_results_reordered):
+        if ds not in res_out.keys():
+            res_out[ds] = {}
 
-        for m, metric in enumerate(fold_results_reordered[ds_name]):
-            if metric not in res_out[ds_name].keys():
-                res_out[ds_name][metric] = {}
-            best_metric = fold_results_reordered[ds_name][metric]
+        for m, metric in enumerate(fold_results_reordered[ds]):
+            if metric not in res_out[ds].keys():
+                res_out[ds][metric] = {}
+            best_metric = fold_results_reordered[ds][metric]
 
             for s, split in enumerate(best_metric):
-                if split not in res_out[ds_name][metric].keys():
-                    res_out[ds_name][metric][split] = {}
+                if split not in res_out[ds][metric].keys():
+                    res_out[ds][metric][split] = {}
 
-                for d_e, ds_name_eval in enumerate(best_metric[split]):
-                    if ds_name_eval not in res_out[ds_name][metric][split].keys():
-                        res_out[ds_name][metric][split][ds_name_eval] = {}
-                    eval_metrics = best_metric[split][ds_name_eval]
+                for d_e, ds_eval in enumerate(best_metric[split]):
+                    if ds_eval not in res_out[ds][metric][split].keys():
+                        res_out[ds][metric][split][ds_eval] = {}
+                    eval_metrics = best_metric[split][ds_eval]
 
                     for t, var_type in enumerate(eval_metrics):
-                        if var_type not in res_out[ds_name][metric][split][ds_name_eval].keys():
-                            res_out[ds_name][metric][split][ds_name_eval][var_type] = {}
+                        if var_type not in res_out[ds][metric][split][ds_eval].keys():
+                            res_out[ds][metric][split][ds_eval][var_type] = {}
 
                         for v, var_name in enumerate(eval_metrics[var_type]):
                             value_array_in = eval_metrics[var_type][var_name]
-                            res_out[ds_name][metric][split][ds_name_eval][var_type][var_name] = (
+                            res_out[ds][metric][split][ds_eval][var_type][var_name] = (
                                 compute_numpy_stats(value_array_in))
 
     return res_out
@@ -182,7 +181,7 @@ def compute_crossval_ensemble_stats(ensembled_results_reordered: dict):
             stats_out[split][ensemble_name] = {}
             for m_e, metric in enumerate(ensembled_results_reordered[split][ensemble_name]):
                 stats_out[split][ensemble_name][metric] = {}
-                for s, stat in enumerate(ensembled_results_reordered[split][ensemble_name][metric]):
+                for sk, stat in enumerate(ensembled_results_reordered[split][ensemble_name][metric]):
                     # the results might be confusing at first, as easiest just to loop with the same operations
                     # you get mean of n for example that might be quite useless. And mean of mean with dice just
                     # means that "1st mean" came from all the samples in the dataloader, and the "2nd mean" is
@@ -216,7 +215,7 @@ def reorder_ensemble_crossvalidation_results(ensembled_results,
                             stats_out[split_name][ensemble_name][metric] = {}
                         metric_stats_dict = ensemble_metrics[metric]
 
-                        for s, stat_key in enumerate(metric_stats_dict):
+                        for sk, stat_key in enumerate(metric_stats_dict):
                             stat_value = metric_stats_dict[stat_key]
                             stat_array = np.expand_dims(np.array(stat_value), axis=0)
                             if stat_key not in stats_out[split_name][ensemble_name][metric]:
@@ -257,4 +256,5 @@ def get_cv_sample_stats_from_ensemble(ensembled_results,
             # TO BE CONTINUED FROM HERE
 
     stats_out = 'not_implemented_yet'
+
     return stats_out

@@ -1,7 +1,7 @@
 import mlflow
 import torch
 from loguru import logger
-from mlflow.models import infer_signature, ModelSignature
+from mlflow.models import infer_signature
 from monai.utils import convert_to_tensor
 
 from src.inference.ensemble_model import ModelEnsemble
@@ -10,7 +10,7 @@ from src.utils.train_utils import get_first_batch_from_dataloaders_dict
 
 def get_model_from_mlflow_model_registry(model_uri):
     """
-    not pyfunc_model: https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
+    not https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
     pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version}")
     See this
     https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.load_model
@@ -42,9 +42,9 @@ def get_mlflow_model_signature_from_dataloader_dict(model_in: ModelEnsemble,
     # Inferring the input signature
     tensor_input = convert_to_tensor(batch_data['image'])
     numpy_input = tensor_input.numpy()
-    batch_sz, no_channels, dim1, dim2, dimZ = numpy_input.shape
-    numpy_input = numpy_input[0,:,:,:]
-    no_chans, dim1, dim2, dimZ = numpy_input.shape
+    batch_sz, no_channels, dim1, dim2, dimz = numpy_input.shape
+    numpy_input = numpy_input[0, :, :, :]
+    no_chans, dim1, dim2, dimz = numpy_input.shape
     model_output = model_in.predict_single_volume(image_tensor=tensor_input,
                                                   input_as_numpy=True,
                                                   return_mask=True)

@@ -7,6 +7,7 @@ from monai.metrics import compute_hausdorff_distance, compute_generalized_dice
 from monai.utils import convert_to_tensor
 from monai.networks.utils import one_hot
 
+
 def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.ndarray,
                                      eval_config: dict,
                                      include_background: bool = False,
@@ -22,9 +23,8 @@ def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.nd
     if 'hausdorff' in eval_config['METRICS']:
         t0 = time.time()
         metric = 'hausdorff'
-        sample_metrics['metrics'][metric] = (compute_hausdorff_distance(y_pred=y_pred_onehot, y=y_onehot,
-                                                                            include_background=include_background).
-                                                  detach().squeeze().numpy())
+        sample_metrics['metrics'][metric] = \
+            (compute_hausdorff_distance(y_pred=y_pred_onehot, y=y_onehot,    include_background=include_background).detach().squeeze().numpy())
         sample_metrics['metrics'][metric] = np.expand_dims(sample_metrics['metrics'][metric], axis=0)
         sample_metrics['timing'][metric] = np.array([time.time() - t0])
         metrics_computed += 1
@@ -32,9 +32,8 @@ def get_sample_metrics_from_np_masks(x: np.ndarray, y: np.ndarray, y_pred: np.nd
     if 'dice' in eval_config['METRICS']:
         t0 = time.time()
         metric = 'dice'
-        sample_metrics['metrics'][metric] = (compute_generalized_dice(y_pred=y_pred_onehot, y=y_onehot,
-                                                                          include_background=include_background).
-                                             detach().numpy())
+        sample_metrics['metrics'][metric] = \
+            (compute_generalized_dice(y_pred=y_pred_onehot, y=y_onehot, include_background=include_background).detach().numpy())
         sample_metrics['timing'][metric] = np.array([time.time() - t0])
         metrics_computed += 1
 
@@ -51,9 +50,8 @@ def prepare_for_metrics(y, y_pred, x):
         # https://stackoverflow.com/q/73451052
         return np.eye(5)[array].astype(dtype=int)
 
-    sample_metrics = {}
-    sample_metrics['metrics'] = {}
-    sample_metrics['timing'] = {}
+    sample_metrics = {'metrics': {},
+                      'timing': {}}
 
     assert len(y.shape) == 3, \
         'Assuming that the inputs are Numpy arrays with the possible channel and batch dim removed'
@@ -64,7 +62,7 @@ def prepare_for_metrics(y, y_pred, x):
     y_no_classes = len(np.unique(y))
 
     x = convert_to_tensor(np.expand_dims(x, axis=0), track_meta=True)
-    y = convert_to_tensor(np.expand_dims(y, axis=0), track_meta = True)  # e.g. (512,512,39) -> (1,512,512,39)
+    y = convert_to_tensor(np.expand_dims(y, axis=0), track_meta=True)  # e.g. (512,512,39) -> (1,512,512,39)
     y_pred = convert_to_tensor(np.expand_dims(y_pred, axis=0), track_meta=True)
 
     # 'BCHW[D]' (batch, channel (one hot), height, width, depth)
@@ -76,9 +74,8 @@ def prepare_for_metrics(y, y_pred, x):
 
 def get_sample_uq_metrics_from_ensemble_stats(ensemble_stat_results):
 
-    sample_metrics = {}
-    sample_metrics['metrics'] = {}
-    sample_metrics['timing'] = {}
+    sample_metrics = {'metrics': {},
+                      'timing': {}}
 
     # t0 = time.time()
     # metric = 'meanVar'  # quick'n'dirty estimate on how different are the predictions between repeats (submodels)

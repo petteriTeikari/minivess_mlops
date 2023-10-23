@@ -257,14 +257,13 @@ def ml_test_batch_nan_and_inf(batch_tensor: monai.data.MetaTensor,
                 if error_name not in batch_test_metrics:
                     batch_test_metrics = (
                         get_per_sample_naninf_stats(batch_test_metrics,
-                                                    error_name = error_name,
-                                                    error_sums = nan_sums,
-                                                    sample_idx = sample_idx,
-                                                    filepath = filepath,
-                                                    fname = fname,
-                                                    fname_wo_ext = fname_wo_ext,
-                                                    no_voxels = no_voxels))
-
+                                                    error_name=error_name,
+                                                    error_sums=nan_sums,
+                                                    sample_idx=sample_idx,
+                                                    filepath=filepath,
+                                                    fname=fname,
+                                                    fname_wo_ext=fname_wo_ext,
+                                                    no_voxels=no_voxels))
 
             if if_sample_has_infs[sample_idx]:
                 error_name = 'inf'

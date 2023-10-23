@@ -1,10 +1,6 @@
 import json
 import os
-
-import wandb
 from loguru import logger
-
-import numpy as np
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.log_utils import get_used_services
@@ -22,7 +18,7 @@ def log_cv_results(cv_results: dict,
                    cv_ensembled_output_dir: str):
 
     logger.info('Logging Cross-Validation-wise results')
-    logging_services = get_used_services(logging_cfg = config['config']['LOGGING'])
+    logging_services = get_used_services(logging_cfg=config['config']['LOGGING'])
     os.makedirs(cv_averaged_output_dir, exist_ok=True)
     os.makedirs(cv_ensembled_output_dir, exist_ok=True)
 

@@ -1,9 +1,7 @@
 import glob
 import os
-
-from monai.data import CacheDataset, Dataset
+from monai.data import CacheDataset
 from loguru import logger
-from tqdm import tqdm
 import requests
 import zipfile
 import random
@@ -29,7 +27,7 @@ def import_minivess_dataset(dataset_cfg: dict,
                                              repo_dir=config['run']['repo_dir'])
 
     elif fetch_method == 'EBrains':
-        dataset_dir = import_filelisting_EBrains(dataset_cfg=dataset_cfg,
+        dataset_dir = import_filelisting_ebrains(dataset_cfg=dataset_cfg,
                                                  data_dir=data_dir,
                                                  fetch_params=fetch_params)
 
@@ -60,15 +58,15 @@ def fetch_dataset_with_dvc(fetch_params: dict,
     # TODO! This is now based on "dvc pull" by Github Actions or manual, but you could try
     #  to get the Python programmatic API to work too (or have "dvc pull" from subprocess)
     dataset_dir = get_dvc_files_of_repo(repo_dir=repo_dir,
-                                       dataset_name_lowercase=dataset_name_lowercase,
-                                       fetch_params=fetch_params,
-                                       dataset_cfg=dataset_cfg)
+                                        dataset_name_lowercase=dataset_name_lowercase,
+                                        fetch_params=fetch_params,
+                                        dataset_cfg=dataset_cfg)
 
     return dataset_dir
 
 
-def import_filelisting_EBrains(dataset_cfg: dict,
-                               data_dir: dict,
+def import_filelisting_ebrains(dataset_cfg: dict,
+                               data_dir: str,
                                fetch_params: dict):
 
     logger.warning('Work on the EBrains method more if you want to use this,'
@@ -86,7 +84,6 @@ def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
         with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
             zip_ref.extractall(local_data_dir)
 
-
     def check_if_extracted_already(local_data_dir: str) -> bool:
         already_extracted = False
         if os.path.exists(local_data_dir):
@@ -95,14 +92,12 @@ def download_and_extract_minivess_dataset(input_url: str, data_dir: str,
                 already_extracted = True
         return already_extracted
 
-
     def download_zip(input_url: str):
         query_parameters = {"downloadformat": "zip"}
         response = requests.get(input_url, params=query_parameters)
         with open("gdp_by_country.zip", mode="wb") as file:
             ...
             file.write(response.content)
-
 
     input_filename = input_url.split('/')[-1]
     input_extension = '.zip'
@@ -165,7 +160,7 @@ def quick_and_dirty_minivess_clean_of_specific_file(images, labels, metadata, fn
 
 def get_minivess_filelisting(dataset_dir: str,
                              use_quick_and_dirty_rejection: bool = True,
-                             import_library = 'nibabel'):
+                             import_library: str = 'nibabel'):
 
     images = glob.glob(os.path.join(dataset_dir, 'raw', '*.nii.gz'))
     labels = glob.glob(os.path.join(dataset_dir, 'seg', '*.nii.gz'))
@@ -238,8 +233,8 @@ def get_random_splits_for_minivess(data_dicts: list, data_split_cfg: dict):
     # Split data for training and testing.
     random.Random(data_split_cfg['SEED']).shuffle(data_dicts)
     # FIXME! Put something more intelligent here later instead of hard-coded n for val and test
-    split_val_test = 7 # int(len(data_dicts) * .1)
-    split_train = len(data_dicts) - 2*split_val_test # int(len(data_dicts) * .8)
+    split_val_test = 7  # int(len(data_dicts) * .1)
+    split_train = len(data_dicts) - 2*split_val_test  # int(len(data_dicts) * .8)
 
     assert (split_train + split_val_test * 2 == len(data_dicts)), \
         'you lost some images during splitting, due to the int() operation most likely?\n' \
@@ -282,7 +277,6 @@ def define_minivess_dataset(dataset_config: dict,
         # if you "cache too much" on a machine with not enough RAM)
         print_memory_stats_to_logger()
 
-
     return datasets, ml_test_dataset
 
 
@@ -307,9 +301,9 @@ def create_dataset_per_split(dataset_config: dict,
         #  based on the machine that you are running this on, add like a case with
         #  "if ds_config[pytorch_dataset_type]['CACHE_RATE'] == 'max_avail'"
         ds = CacheDataset(data=split_file_dict,
-                         transform=transforms_per_split,
-                         cache_rate=ds_config[pytorch_dataset_type]['CACHE_RATE'],
-                         num_workers=ds_config[pytorch_dataset_type]['NUM_WORKERS'])
+                          transform=transforms_per_split,
+                          cache_rate=ds_config[pytorch_dataset_type]['CACHE_RATE'],
+                          num_workers=ds_config[pytorch_dataset_type]['NUM_WORKERS'])
         logger.info('Created MONAI CacheDataset, split = "{}" (n = {}, '
                     'keys in dict = {}, cache_rate = {}, num_workers = {})',
                     split, n_files, list(split_file_dict[0].keys()),

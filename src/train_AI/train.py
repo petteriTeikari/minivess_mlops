@@ -64,7 +64,7 @@ def training_script(hyperparam_name: str,
 
     logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
 
-    return {'fold_results':fold_results, 'ensembled_results': ensembled_results, 'config': config}
+    return {'fold_results': fold_results, 'ensembled_results': ensembled_results, 'config': config}
 
 
 def train_model_for_single_fold(fold_dataloaders: dict,
@@ -209,8 +209,6 @@ def train_single_model(dataloaders: dict,
     log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
                          repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
 
-
-
     results_out = {
                    'train_results': train_results,
                    'eval_results': eval_results,
@@ -246,7 +244,7 @@ def train_n_epochs_script(model, dataloaders,
 
         eval_epoch_results = {}
 
-        init_model = deepcopy(model) # for ML tests, track if model has changed
+        init_model = deepcopy(model)  # for ML tests, track if model has changed
         if epoch == start_epoch:
             model_test_metrics0, model_tests0 = (
                 model_tests_main(model,
@@ -300,12 +298,12 @@ def train_n_epochs_script(model, dataloaders,
 
 
 def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, scaler, training_config,
-                 train_loader, metric_dict, dataset_dummy_key: str = 'MINIVESS'):
+                  train_loader, metric_dict, dataset_dummy_key: str = 'MINIVESS'):
 
     # https://github.com/Project-MONAI/tutorials/blob/2183d45f48c53924b291a16d72f8f0e0b29179f2/acceleration/distributed_training/brats_training_ddp.py#L317
     model.train()
-    epoch_eval_res = init_epoch_dict(epoch, loaders = {dataset_dummy_key: train_loader}, split_name='TRAIN')
-    epoch_trn_res = init_epoch_dict(epoch, loaders = {dataset_dummy_key: train_loader}, split_name='TRAIN')
+    epoch_eval_res = init_epoch_dict(epoch, loaders={dataset_dummy_key: train_loader}, split_name='TRAIN')
+    epoch_trn_res = init_epoch_dict(epoch, loaders={dataset_dummy_key: train_loader}, split_name='TRAIN')
     batch_losses = []
     batch_szs = []
 
@@ -314,7 +312,7 @@ def train_1_epoch(model, device, epoch, loss_function, optimizer, lr_scheduler, 
     for batch_idx, batch_data in enumerate(train_loader):
         optimizer.zero_grad()
         loss = train_1_batch(model, device, batch_data, loss_function,
-                             amp_on=training_config['PRECISION']=='AMP')
+                             amp_on=training_config['PRECISION'] == 'AMP')
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
@@ -343,9 +341,9 @@ def train_1_batch(model, device, batch_data, loss_function, amp_on: bool = True)
 
     if amp_on:
         with torch.cuda.amp.autocast():
-            outputs = model(batch_data["image"].to(device)) # .to(device) here instead of "ToDeviced"
+            outputs = model(batch_data["image"].to(device))  # .to(device) here instead of "ToDeviced"
             # "ToDeviced" lead to GPU memory glitches, inspect this later?
-            loss = loss_function(outputs, batch_data["label"].to(device)) # .to(device) here instead of "ToDeviced"
+            loss = loss_function(outputs, batch_data["label"].to(device))  # .to(device) here instead of "ToDeviced"
     else:
         outputs = model(batch_data["image"].to(device))  # .to(device) here instead of "ToDeviced"
         # "ToDeviced" lead to GPU memory glitches, inspect this later?

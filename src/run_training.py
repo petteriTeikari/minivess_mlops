@@ -5,29 +5,32 @@ import time
 
 from src.train_AI.experiment import run_train_experiment
 from src.utils.general_utils import print_dict_to_logger
-
-src_path = os.path.dirname(os.path.abspath(__file__))
-project_path = os.path.split(src_path)[0]
-sys.path.insert(0, project_path) # so that src. is imported correctly also in VSCode by default
-
 from src.utils.config_utils import import_config
 
+from loguru import logger
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 # __init__.py:127: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage
 # will be the only storage class. This should only matter to you if you are using storages directly.
 # To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
 
-# TOEXPLORE! MLflow uses pydantic and it throws: Field "model_server_url" has conflict with protected namespace "model_".
+src_path = os.path.dirname(os.path.abspath(__file__))
+project_path = os.path.split(src_path)[0]
+sys.path.insert(0, project_path)  # so that src. is imported correctly also in VSCode by default
+
+# TOEXPLORE! MLflow uses pydantic and it throws: Field "model_server_url"
+# has conflict with protected namespace "model_".
 #  Field "model_server_url" has conflict with protected namespace "model_".
 
 # Control logger level here, make it nicer later, include the level as an input argument to the script
 # https://github.com/Delgan/loguru/issues/138#issuecomment-1491571574
-from loguru import logger
 LOG_MIN_LEVEL = "DEBUG"
+
 
 def my_filter(record):
     return record["level"].no >= logger.level(LOG_MIN_LEVEL).no
+
+
 logger.remove()
 logger.add(sys.stderr, filter=my_filter)
 # LOG_MIN_LEVEL = "DEBUG"
@@ -88,7 +91,7 @@ if __name__ == '__main__':
 
         # Import the config
         args = parse_args_to_dict()
-        config = import_config(args, task_config_file = args['task_config_file'],
+        config = import_config(args, task_config_file=args['task_config_file'],
                                hyperparam_name=hyperparam_name, log_level=LOG_MIN_LEVEL)
 
         run_results = run_train_experiment(config=config,

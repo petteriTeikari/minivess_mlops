@@ -1,17 +1,15 @@
 import os
 import sys
-import warnings
+
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from pwd import getpwuid
 
 from typing import Dict, Any
 import hashlib
 import json
 
 import torch
-import yaml
 from loguru import logger
 import collections.abc
 import torch.distributed as dist
@@ -31,18 +29,19 @@ if not os.path.exists(BASE_CONFIG_DIR):
     raise IOError('Cannot find the directory for (base) .yaml config files from "{}"'.format(BASE_CONFIG_DIR))
 
 
+def import_config(args: dict,
+                  task_config_file: str,
+                  base_config_file: str = 'base_config.yaml',
+                  hyperparam_name: str = None,
+                  log_level: str = "INFO"):
 
+    base_config = import_config_from_yaml(config_file=base_config_file,
+                                          config_dir=BASE_CONFIG_DIR,
+                                          config_type='base')
 
-def import_config(args, task_config_file: str, base_config_file: str = 'base_config.yaml',
-                  hyperparam_name: str = None, log_level: str = "INFO"):
-
-    base_config = import_config_from_yaml(config_file = base_config_file,
-                                          config_dir = BASE_CONFIG_DIR,
-                                          config_type = 'base')
-
-    config = update_base_with_task_config(task_config_file = task_config_file,
-                                          config_dir = CONFIG_DIR,
-                                          base_config = base_config)
+    config = update_base_with_task_config(task_config_file=task_config_file,
+                                          config_dir=CONFIG_DIR,
+                                          base_config=base_config)
 
     if args['run_mode'] != 'train':
         config = update_config_for_non_train_mode(config,
@@ -97,10 +96,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     # to make the dashboards cleaner, or alternatively you can just dump the whole config['config']
     config['hyperparameters'] = define_hyperparam_run_params(config)
     # TODO! Fix this with the updated nesting, with some nicer recursive function for undefined depth
-    config['hyperparameters_flat'] = None # flatten_nested_dictionary(dict_in=config['hyperparameters'])
+    config['hyperparameters_flat'] = None  # flatten_nested_dictionary(dict_in=config['hyperparameters'])
 
     logger.info('Save the derived hyperparameters to config["hyperparameters"]')
-    logger.info(config['hyperparameters']) # TODO add to print_the_dict_to_logger() nested dicts as well
+    logger.info(config['hyperparameters'])  # TODO add to print_the_dict_to_logger() nested dicts as well
 
     if config['config']['LOGGING']['unique_hyperparam_name_with_hash']:
         # i.e. whether you want a tiny change in dictionary content make this training to be grouped with
@@ -121,7 +120,7 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     log_file = 'log_{}.txt'.format(hyperparam_name)
     config['run']['output_log_path'] = os.path.join(config['run']['output_experiment_dir'], log_file)
     try:
-        logger.add(config['run']['output_log_path'] ,
+        logger.add(config['run']['output_log_path'],
                    level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
     except Exception as e:
         logger.error('Problem initializing the log file to the artifacts output, permission issues?? e = {}'.format(e))
@@ -137,10 +136,10 @@ def import_config(args, task_config_file: str, base_config_file: str = 'base_con
     sys.stderr = sys.stdout
 
     # Initialize ML logging (experiment tracking)
-    config['run']['mlflow'], mlflow_dict =  init_mlflow_logging(config=config,
-                                                                mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                                                experiment_name = config['ARGS']['project_name'],
-                                                                run_name = config['run']['hyperparam_name'])
+    config['run']['mlflow'], mlflow_dict = init_mlflow_logging(config=config,
+                                                               mlflow_config=config['config']['LOGGING']['MLFLOW'],
+                                                               experiment_name=config['ARGS']['project_name'],
+                                                               run_name=config['run']['hyperparam_name'])
 
     return config
 
@@ -173,7 +172,9 @@ def update_config_for_non_train_mode(config: dict,
     return config
 
 
-def update_base_with_task_config(task_config_file: str, config_dir: str, base_config: dict):
+def update_base_with_task_config(task_config_file: str,
+                                 config_dir: str,
+                                 base_config: dict) -> dict:
 
     # https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
     def update_config_dictionary(d: dict,
@@ -186,8 +187,8 @@ def update_base_with_task_config(task_config_file: str, config_dir: str, base_co
             u = OmegaConf.to_container(u, resolve=True)
 
         if method == 'pydantic':
-            #print(d['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
-            #print(u['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
+            # print(d['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
+            # print(u['config']['DATA']['DATALOADER']['SKIP_DATALOADER'])
             d = deep_update(d, u)
         else:
             for k, v in u.items():
@@ -209,13 +210,13 @@ def update_base_with_task_config(task_config_file: str, config_dir: str, base_co
 
     # Task config now contains only subset of keys (of the base config), i.e. the parameters
     # that you change (no need to redefine all possible parameters)
-    task_config = import_config_from_yaml(config_file = task_config_file,
-                                          config_dir = config_dir,
-                                          config_type = 'task')
+    task_config = import_config_from_yaml(config_file=task_config_file,
+                                          config_dir=config_dir,
+                                          config_type='task')
 
     # update the base config now with the task config (i.e. the keys that have changed)
-    config = update_config_dictionary(d = base_config,
-                                      u = task_config)
+    config = update_config_dictionary(d=base_config,
+                                      u=task_config)
     # logger.info('Updated the base config with a total of {} changed keys from the task config', no_of_updates)
     # diff = diff_OmegaDicts(a=base_config, b=config) # TODO!
     # TODO! Need to check also whether you have a typo in dict, or some extra nesting, and the desired
@@ -288,7 +289,6 @@ def hash_config_dictionary(dict_in: dict):
     """
 
 
-
 def dict_hash(dictionary: Dict[str, Any]) -> str:
     """
     MD5 hash of a dictionary.
@@ -304,6 +304,7 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
         hash_out = dhash.hexdigest()
     except Exception as e:
         logger.warning('Problem getting the hash of the config dictionary, error = {}'.format(e))
+        hash_out = None
     return hash_out
 
 
@@ -407,7 +408,7 @@ def get_mounts_from_args(args: dict) -> list:
 def debug_mounts(mounts_list: list,
                  try_to_write: bool = True):
 
-    #mounts_list = ['/home/petteri/artifacts']
+    # mounts_list = ['/home/petteri/artifacts']
     for mount in mounts_list:
         logger.debug('MOUNT: {}'.format(mount))
         if not os.path.exists(mount):

@@ -4,8 +4,8 @@ from loguru import logger
 from src.inference.ensemble_main import reinference_dataloaders
 from src.log_ML.log_crossval import log_cv_results
 from src.log_ML.log_epochs import log_epoch_for_tensorboard
-from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, compute_crossval_stats, \
-    reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, get_cv_sample_stats_from_ensemble, \
+from src.log_ML.results_utils import average_repeat_results, reorder_crossvalidation_results, \
+    compute_crossval_stats, reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, \
     get_best_repeat_result
 from src.log_ML.s3_utils import sync_artifacts_to_s3
 from src.log_ML.wandb_log import log_wandb_repeat_results, log_wandb_ensemble_results
@@ -21,6 +21,7 @@ def log_epoch_results(train_epoch_results, eval_epoch_results,
                                                  epoch, config, output_dir, output_artifacts)
 
     return output_artifacts
+
 
 def log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
                          repeat_idx: int, fold_name: str, repeat_name: str):
@@ -138,6 +139,8 @@ def log_crossvalidation_results(fold_results: dict,
     if ensembled_results_reordered is not None:
         cv_ensemble_results = compute_crossval_ensemble_stats(ensembled_results_reordered)
         # sample_cv_results = get_cv_sample_stats_from_ensemble(ensembled_results)
+    else:
+        cv_ensemble_results = None
 
     if config['config']['LOGGING']['WANDB']['enable']:
         log_wandb_repeat_results(fold_results=fold_results,
@@ -146,7 +149,7 @@ def log_crossvalidation_results(fold_results: dict,
     else:
         logger.info('Skipping repeat-level WANDB Logging!')
 
-    if ensembled_results_reordered is not None:
+    if cv_ensemble_results is not None:
         if config['config']['LOGGING']['WANDB']['enable']:
             log_wandb_ensemble_results(ensembled_results=ensembled_results,
                                        output_dir=config['run']['output_base_dir'],
@@ -213,17 +216,16 @@ def log_best_reinference_metrics(best_repeat_metrics: dict,
                                 mlflow.log_metric(metric_main, value)
                                 logger.info('{} (main) | "{}": {:.3f}'.format(service, metric_main, value))
 
+
 def correct_key_for_main_result(metric_name: str, fold_name: str,
                                 tracked_metric: str, metric: str,
                                 split: str, dataset: str,
                                 metric_cfg: dict):
 
     if tracked_metric == metric_cfg['tracked_metric']  \
-        and metric == metric_cfg['metric'] and dataset == metric_cfg['dataset']:
+            and metric == metric_cfg['metric'] and dataset == metric_cfg['dataset']:
 
         metric_type = metric_name.split('/')[1].split('_')[0]
         metric_name = fold_name + '/' + metric_type + '_' + split
 
     return metric_name
-
-

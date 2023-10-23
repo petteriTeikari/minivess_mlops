@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import torch
-from monai.data import ThreadDataLoader, partition_dataset, decollate_batch
+from monai.data import decollate_batch
 from monai.inferers import sliding_window_inference
 from monai.metrics import DiceMetric
 from monai.transforms import (
@@ -20,8 +20,9 @@ def evaluate_datasets_per_epoch(model, device, epoch, dataloaders,
     epoch_metrics = init_epoch_dict(epoch, dataloaders[split_name], split_name=split_name)
     for j, dataset_name in enumerate(dataloaders[split_name].keys()):
         dataloader = dataloaders[split_name][dataset_name]
-        epoch_metrics[dataset_name] = evaluate_1_epoch(dataloader, model, split_name, dataset_name,
-                                         training_config, metric_dict, device, epoch_metrics[dataset_name])
+        epoch_metrics[dataset_name] = (
+            evaluate_1_epoch(dataloader, model, split_name, dataset_name,
+                             training_config, metric_dict, device, epoch_metrics[dataset_name]))
 
     return epoch_metrics
 
@@ -52,7 +53,7 @@ def evaluate_1_epoch(dataloader, model, split_name, dataset_name,
 
         # FIXME! Actually use the config for these to determine which are tracked
         epoch_metrics_per_dataset['scalars']['dice'] = dice_metric.aggregate().item()
-        #epoch_metrics_per_dataset['scalars']['dice_batch'] = float(dice_metric_batch.aggregate().detach().cpu())
+        # epoch_metrics_per_dataset['scalars']['dice_batch'] = float(dice_metric_batch.aggregate().detach().cpu())
         dice_metric.reset()
         dice_metric_batch.reset()
 

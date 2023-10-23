@@ -1,5 +1,4 @@
 import os
-import warnings
 from loguru import logger
 
 from torch.utils.tensorboard import SummaryWriter
@@ -16,7 +15,7 @@ def log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
         os.makedirs(output_artifacts['epoch_level']['tb_dir'], exist_ok=True)
     except Exception as e:
         logger.warning('Problem creating Tensorboard artifact directory to "{}",'
-                      '\nerror={}'.format(output_artifacts['epoch_level']['tb_dir'], e))
+                       '\nerror={}'.format(output_artifacts['epoch_level']['tb_dir'], e))
 
     # Create the Tensorboard writer if it does not yet exist (on epoch 0) on the artifact directory
     if 'tb_writer' not in list(output_artifacts['epoch_level'].keys()):
@@ -52,12 +51,12 @@ def log_epoch_tb_metrics(results_dict: dict,
     if metric_type == 'train':
         split_name = 'TRAINING'
         output_artifacts = log_epoch_tb_per_split(split_dict=results_dict,
-                                                 split_name=split_name,
-                                                 metric_type=metric_type,
-                                                 epoch=epoch,
-                                                 config=config,
-                                                 out_dir=out_dir,
-                                                 output_artifacts=output_artifacts)
+                                                  split_name=split_name,
+                                                  metric_type=metric_type,
+                                                  epoch=epoch,
+                                                  config=config,
+                                                  out_dir=out_dir,
+                                                  output_artifacts=output_artifacts)
     elif metric_type == 'evaluation':
         for split_name in results_dict.keys():
             output_artifacts = log_epoch_tb_per_split(split_dict=results_dict[split_name],

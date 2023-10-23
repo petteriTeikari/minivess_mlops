@@ -47,7 +47,7 @@ def pick_test_dataloader(experim_dataloaders: dict,
     return dataloader_reference, ensembled_results_reference
 
 
-def test_mlflow_Models_reproduction(ensemble_filepaths: dict,
+def test_mlflow_models_reproduction(ensemble_filepaths: dict,
                                     ensemble_model,
                                     mlflow_model_log: dict,
                                     ensembled_results: dict,
@@ -67,14 +67,13 @@ def test_mlflow_Models_reproduction(ensemble_filepaths: dict,
         test_results['local'] = None
 
     if 'CHECK_MLFLOW_MODELS' in test_config:
-        test_results['MLflow_Models'] = mlflow_Models_tests(model_info=mlflow_model_log['log_model'],
+        test_results['MLflow_Models'] = mlflow_models_tests(model_info=mlflow_model_log['log_model'],
                                                             test_config=test_config,
                                                             ensemble_name=ensemble_name,
                                                             experim_dataloaders=experim_dataloaders,
                                                             ensembled_results=ensembled_results)
     else:
         test_results['MLflow_Models'] = None
-
 
     return test_results
 
@@ -114,7 +113,7 @@ def local_model_tests(ensemble_model: ModelEnsemble,
     return results
 
 
-def mlflow_Models_tests(model_info: mlflow.models.model.ModelInfo,
+def mlflow_models_tests(model_info: mlflow.models.model.ModelInfo,
                         test_config: dict,
                         ensemble_name: str,
                         experim_dataloaders: dict,
@@ -134,8 +133,8 @@ def mlflow_Models_tests(model_info: mlflow.models.model.ModelInfo,
         ensemble_weights = ensemble_model.get_model_weights()
         reference_weights = get_weight_vectors_from_best_dicts(best_dicts=ensemble_model.model_best_dicts)
         results[test_name] = test_compare_weights(test=ensemble_weights,
-                                                 reference=reference_weights,
-                                                 compare_name='mlflow_weight_check')
+                                                  reference=reference_weights,
+                                                  compare_name='mlflow_weight_check')
     else:
         results[test_name] = None
 

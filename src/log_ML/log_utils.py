@@ -1,17 +1,11 @@
-import json
 import os
 import tempfile
-import warnings
-from functools import singledispatch
-
 import omegaconf
 from omegaconf import OmegaConf
 from loguru import logger
 
 import numpy as np
-import wandb.sdk.wandb_run
 import yaml
-
 
 
 def convert_value_to_numpy_array(value_in):
@@ -45,12 +39,12 @@ def compute_numpy_stats(value_array_in: np.ndarray):
         # (you could do the same filtering downstream with the 'n' though as well)
         stats_dict['stdev'] = np.nan
 
-
     return stats_dict
 
 
 def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 'train_results'):
 
+    no_steps = np.nan
     try:
         res = results[result_type]
         for split in res:
@@ -72,7 +66,6 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
 
     except Exception as e:
         logger.warning('Problem getting number of steps ("{}"), e = {}'.format(result_type, e))
-        no_steps = np.nan
 
     return no_steps
 

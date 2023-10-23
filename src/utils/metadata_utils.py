@@ -1,6 +1,4 @@
 import subprocess
-import time
-import warnings
 from platform import python_version, release, system, processor
 import re
 from loguru import logger
@@ -75,12 +73,10 @@ def get_library_versions() -> dict:
 
 def get_monai_config(flatten_dict: bool = True, clean_for_omegaconf: bool = True):
 
-    monai_dict = {}
-
-    monai_dict['MONAI_libs'] = get_optional_config_values()
-    monai_dict['libs'] = get_config_values()
-    monai_dict['system'] = get_system_info()
-    monai_dict['GPU'] = get_gpu_info()
+    monai_dict = {'MONAI_libs': get_optional_config_values(),
+                  'libs': get_config_values(),
+                  'system': get_system_info(),
+                  'GPU': get_gpu_info()}
 
     # Manual fix for Pytorch version as it comes out as "TorchVersion" and not as a str that would work with OmegaConf
     if 'Pytorch' in monai_dict['libs']:

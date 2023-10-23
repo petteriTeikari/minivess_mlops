@@ -54,10 +54,13 @@ def save_models_if_improved(best_dicts, epoch,
                     best_dict = best_dicts[dataset][metric]
                     model_improved, current_value, best_value_so_far = \
                         check_if_value_improved(eval_epoch_results, eval_results,
-                                                best_dict = best_dict,
-                                                validation_config=validation_config, dataset=dataset,
-                                                metric=metric, epoch=epoch,
-                                                split_key=split_key, results_type=results_type,
+                                                best_dict=best_dict,
+                                                validation_config=validation_config,
+                                                dataset=dataset,
+                                                metric=metric,
+                                                epoch=epoch,
+                                                split_key=split_key,
+                                                results_type=results_type,
                                                 best_op=validation_config['METRICS_TO_TRACK_OPERATORS'][m_idx])
 
                     if model_improved:
@@ -90,8 +93,8 @@ def save_models_if_improved(best_dicts, epoch,
 
 
 def check_if_value_improved(eval_epoch_results: dict, eval_results: dict, best_dict: dict,
-                             validation_config: dict, dataset: str, metric: str, epoch: int,
-                             split_key = 'VAL', results_type = 'scalars', best_op:str = 'max'):
+                            validation_config: dict, dataset: str, metric: str, epoch: int,
+                            split_key: str = 'VAL', results_type: str = 'scalars', best_op: str = 'max'):
 
     assert len(validation_config['METRICS_TO_TRACK']) == len(validation_config['METRICS_TO_TRACK_OPERATORS']), \
         'You should have as many metrics (e.g. Dice, Hausdorff Distance) ' \
@@ -118,7 +121,7 @@ def check_if_value_improved(eval_epoch_results: dict, eval_results: dict, best_d
 
 def get_current_metric_value(eval_epoch_results: dict, eval_results: dict,
                              validation_config: dict, dataset: str, metric: str, epoch: int,
-                             split_key = 'VAL', results_type = 'scalars') -> float:
+                             split_key: str = 'VAL', results_type: str = 'scalars') -> float:
 
     if validation_config['EMA_SMOOTH']:
         # smooth the history to avoid spurious noisy metrics, and taking the value of current epoch
@@ -141,19 +144,6 @@ def model_improved_script(best_dict: dict,
     values (that you track in the results) associated with the best model. Like what was some other metric when
     your Dice was the best for this model, what figure you had saved for this best model, what dataframe containing
     some tabular data had for this best model, etc.
-
-    :param best_dict:
-    :param current_value:
-    :param best_value_so_far:
-    :param model:
-    :param optimizer:
-    :param lr_scheduler:
-    :param epoch:
-    :param output_dir:
-    :param dataset:
-    :param metric:
-    :param validation_config:
-    :return:
     """
 
     # get weights from the last layer, later to be used to test whether the model is
@@ -185,7 +175,7 @@ def model_improved_script(best_dict: dict,
     path_out = os.path.join(model_dir, model_fname_base + '.pth')
     torch.save(checkpoint, path_out)
     try:
-        filesize = (os.stat(path_out).st_size) / (1024 * 1024)
+        filesize = os.stat(path_out).st_size / 1024**2
     except Exception as e:
         # if happens, not a big deal, you are not just displaying the size correctly
         logger.warning('Problem getting model file size from disk to display, e = {}'.format(e))
@@ -193,11 +183,12 @@ def model_improved_script(best_dict: dict,
 
     logger.debug('epoch #{} | "{}" improved from {:.4f} to {:.4f} (dataset = {}) '
                  '-> saving this to disk (model size = {:.1f} MB)'.
-                 format(epoch+1, metric, best_value_so_far, current_value, dataset,filesize))
+                 format(epoch+1, metric, best_value_so_far, current_value, dataset, filesize))
 
-    dict_out = {}
-    dict_out['model'] = {'model_path': path_out,
-                         'test_weights_vector': best_dict['weights_vector']}
+    dict_out = {'model':
+                    {'model_path': path_out,
+                     'test_weights_vector': best_dict['weights_vector']}
+                }
 
     return dict_out
 

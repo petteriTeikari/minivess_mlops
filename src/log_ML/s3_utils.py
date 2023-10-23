@@ -1,6 +1,7 @@
 import os
 from loguru import logger
 
+
 def sync_artifacts_to_s3(experiment_artifacts_dir: str,
                          bucket_name: str = 'minivess-artifacts',
                          config: dict = None):

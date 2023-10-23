@@ -1,11 +1,7 @@
-import configparser
 import os
 import time
-from typing import Dict
-
 import yaml
 from dvc.api import DVCFileSystem
-
 from loguru import logger
 
 from src.utils.general_utils import print_dict_to_logger
@@ -36,6 +32,7 @@ def get_dvc_files_of_repo(repo_dir: str,
         cache_dir = get_dvc_cache_dir(dvc_repo_path)
     except Exception as e:
         logger.warning('Problem getting the DVC cache dir from DVC path "{}", e = {}'.format(dvc_repo_path, e))
+        cache_dir = None
     check_for_dvc_cache_existence(cache_dir)
 
     try:
@@ -137,6 +134,7 @@ def debug_dvc_files(dvc_repo_path: str,
             logger.info('DVC cache dir = "{}"'.format(cache_dir))
         except Exception as e:
             logger.warning('Cannot find DVC cache dir from config, e = {}'.format(e))
+            cache_path = None
 
         try:
             cached_filedirs = os.listdir(cache_path)
@@ -210,7 +208,8 @@ def check_for_dvc_cache_existence(cache_dir: str):
 
 
 def get_dvc_config(dvc_path: str,
-                   config_fname = 'config'):
+                   config_fname: dict = 'config'):
+
     import configparser
     from typing import Dict
 
@@ -229,7 +228,7 @@ def get_dvc_config(dvc_path: str,
             for f in repo_filelisting:
                 logger.info('  {}'.format(f))
         except Exception as e:
-            logger.error('Failed to list the files in base path {} of the repo, e = {}'.format(base_path, e))
+            logger.error('Failed to list the files in base path of the repo, e = {}'.format(e))
         raise IOError('Cannot find DVC path in the repo "{}")'.format(dvc_path))
 
     config_path = os.path.join(dvc_path, config_fname)

@@ -1,12 +1,10 @@
 import os
-
 import wandb
 import mlflow
-import omegaconf
 from loguru import logger
 
 from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
-from src.log_ML.log_model_registry import log_ensembles_to_MLflow, log_ensembles_to_WANDB
+from src.log_ML.log_model_registry import log_ensembles_to_mlflow, log_ensembles_to_wandb
 from src.log_ML.log_utils import write_config_as_yaml
 
 
@@ -57,7 +55,6 @@ def log_config_artifacts(log_name: str,
     if 'MLflow' in logging_services:
         mlflow.log_dict(loaded_dict, artifact_file=os.path.split(path_out)[1])
 
-
     logger.info('{} | ENSEMBLED Cross-Validation results | Loguru log saved as .txt'.format(logging_services))
     path_out = config['run']['output_log_path']
     if 'WANDB' in logging_services:
@@ -85,15 +82,14 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
 
     log_outputs = {}
     if 'WANDB' in logging_services:
-        log_ensembles_to_WANDB(ensemble_models_flat=ensemble_models_flat,
+        log_ensembles_to_wandb(ensemble_models_flat=ensemble_models_flat,
                                config=config,
                                wandb_run=wandb_run,
                                test_loading=test_loading)
 
-
     if 'MLflow' in logging_services:
         log_outputs['MLflow'] = (
-            log_ensembles_to_MLflow(ensemble_models_flat=ensemble_models_flat,
+            log_ensembles_to_mlflow(ensemble_models_flat=ensemble_models_flat,
                                     experim_dataloaders=experim_dataloaders,
                                     ensembled_results=ensembled_results,
                                     cv_ensemble_results=cv_ensemble_results,

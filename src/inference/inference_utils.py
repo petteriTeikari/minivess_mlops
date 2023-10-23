@@ -1,16 +1,12 @@
-from copy import deepcopy
-
 import monai.data
 import numpy as np
 import torch
 from monai.data import MetaTensor
 from monai.inferers import sliding_window_inference
 from monai.transforms import Activations, AsDiscrete
-from tqdm import tqdm
 
 from src.deprecated_functions.depr_funcs import inference_dataloader
-from src.inference.ensemble_utils import merge_nested_dicts, get_metadata_for_sample_metrics, \
-    add_sample_metrics_to_split_results, compute_split_metric_stats
+from src.inference.ensemble_utils import merge_nested_dicts, get_metadata_for_sample_metrics
 from src.inference.metrics import get_sample_metrics_from_np_masks, get_sample_uq_metrics_from_ensemble_stats
 from src.log_ML.model_saving import import_model_from_path
 
@@ -24,12 +20,6 @@ def inference_sample(input_data,
     See e.g. https://docs.monai.io/en/stable/inferers.html
              https://github.com/davidiommi/Ensemble-Segmentation/blob/main/predict_single_image.py
              https://github.com/Project-MONAI/tutorials/blob/main/modules/cross_validation_models_ensemble.ipynb
-    :param model:
-    :param dataloader:
-    :param config:
-    :param device:
-    :param auto_mixedprec:
-    :return:
     """
 
     if input_from == 'dict':
@@ -39,7 +29,7 @@ def inference_sample(input_data,
     else:
         raise IOError('Unknown input_from = {}'.format(input_from))
 
-    if precision == 'AMP':  ## AMP
+    if precision == 'AMP':  # AMP
         with torch.cuda.amp.autocast():
             output = sliding_window_inference(inputs=inputs.to(device), **metric_dict)
     else:
@@ -50,14 +40,14 @@ def inference_sample(input_data,
     probability_mask = activ(output)
 
     # probabilities -> binary mask
-    discret = AsDiscrete(threshold=0.5)  ## FIXME: get this threshold from config so you can set it more dynamically
+    discret = AsDiscrete(threshold=0.5)  # FIXME: get this threshold from config so you can set it more dynamically
     binary_mask = discret(probability_mask)
 
     inference_output = {'scalars':
                             {
                                 'dummy_scalar': np.array([0.5])
                             },
-                        'arrays':
+                        'arays':
                             {
                                 'logits': conv_metatensor_to_numpy(output),
                                 'probs': conv_metatensor_to_numpy(probability_mask),
@@ -77,9 +67,7 @@ def conv_metatensor_to_numpy(metatensor_in: MetaTensor) -> np.ndarray:
         numpy_array = metatensor_in.detach().numpy()
     assert len(numpy_array.shape) == 5, ('Code tested only for 5D tensors at the moment, '
                                          'now your metatensor is {}D').format(len(numpy_array.shape))
-    return numpy_array[0,0,:,:,:]  # quick and dirty for single-channel and batch_sz = 1 tensors
-
-
+    return numpy_array[0, 0, :, :, :]  # quick and dirty for single-channel and batch_sz = 1 tensors
 
 
 def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
@@ -92,7 +80,6 @@ def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
                                              dataset: str,
                                              tracked_metric: str):
         return metric_dict_in['repeat_best_dict'][dataset][tracked_metric]['model']['model_path']
-
 
     no_samples = len(dataloader.sampler)
     split_metrics, split_metrics_stat = {}, {}
@@ -140,7 +127,8 @@ def get_inference_metrics(y_pred: np.ndarray,
             # if you have inferenced multiple repeats (or you have done MC Dropout or something)
             # you have some variance of each pixel and not just a y_pred mask:
             ensemble_uq_metrics = get_sample_uq_metrics_from_ensemble_stats(ensemble_stat_results)
-            ensemble_metrics = merge_nested_dicts(ensemble_metrics, ensemble_uq_metrics) # {**ensemble_metrics, **ensemble_uq_metrics}
+            ensemble_metrics = merge_nested_dicts(ensemble_metrics, ensemble_uq_metrics)
+            # {**ensemble_metrics, **ensemble_uq_metrics}
 
         ensemble_metrics['metadata'] = (
             get_metadata_for_sample_metrics(metadata=batch_data['metadata']))

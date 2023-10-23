@@ -1,15 +1,10 @@
 import time
-import warnings
 from copy import deepcopy
-
 from loguru import logger
 import numpy as np
 import torch
-import torch.distributed as dist
-
 from monai.losses import DiceFocalLoss
 from monai.optimizers import Novograd
-from monai.utils import convert_to_tensor
 
 from src.utils.general_utils import check_if_key_in_dict
 
@@ -76,17 +71,18 @@ def set_model_training_params(model, device, scaler, training_config: dict, conf
 
     return loss_function, optimizer, lr_scheduler
 
+
 def init_epoch_dict(epoch: int, loaders, split_name: str, subsplit_name: str = 'MINIVESS') -> dict:
 
     # TOADD You could make this a class actually?
     results_out = {}
     for loader_key in loaders:
         epoch_dict = {
-                      'scalars': {}, # e.g. Dice per epoch (this could have "metric_" prefix?)
-                      'arrays': {}, # e.g. batch-wise losses per epoch
-                      'metadata_scalars': {}, # e.g. learning rate, timing info, metadata for the training itself
-                      #'figures': {}, # e.g. .png files on disk or figure handle
-                      #'dataframes': {}, # e.g. Polars dataframes
+                      'scalars': {},  # e.g. Dice per epoch (this could have "metric_" prefix?)
+                      'arrays': {},  # e.g. batch-wise losses per epoch
+                      'metadata_scalars': {},  # e.g. learning rate, timing info, metadata for the training itself
+                      # 'figures': {},  # e.g. .png files on disk or figure handle
+                      # 'dataframes': {},  # e.g. Polars dataframes
                      }
         results_out[loader_key] = epoch_dict
 
@@ -108,6 +104,7 @@ def collect_epoch_results(train_epoch_results: dict, eval_epoch_results: dict,
                                                        epoch=epoch)
 
     return train_results, eval_results
+
 
 def combine_epoch_and_experiment_dicts(epoch_results: dict, experiment_results: dict,
                                        loop_type: str, epoch: int) -> dict:
@@ -144,7 +141,6 @@ def convert_scalars_to_arrays(experiment_results: dict):
                         experiment_results[split][dataset][var_type][scalar_key] = (
                             np.array(experiment_results[split][dataset][var_type][scalar_key])[np.newaxis])
 
-
     return experiment_results
 
 
@@ -164,9 +160,8 @@ def add_epoch_results_to_experiment_results(experim_res: dict, epoch_res: dict,
         else:
             if epoch == 1:
                 logger.warning('Note if you have anything stored at results_type = "{}", '
-                              'they do not get autocollected over epochs at the moment,\n'
-                              'only the keys in "arrays" and "scalars" subdictionaries are correctly implemented'.
-                              format(results_type))
+                               'they do not get autocollected over epochs at the moment,\n'
+                               'only the keys in "arrays" and "scalars" subdictionaries are correctly implemented'.format(results_type))
             to_be = 'implemented the other types if you get them'
 
     return experim_res

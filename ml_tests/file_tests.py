@@ -1,11 +1,8 @@
 import os
-import warnings
 from itertools import compress
 
 import numpy as np
-from tqdm import tqdm
 import nibabel as nib
-
 from loguru import logger
 
 from ml_tests.ml_tests import ml_test_data_not_corrupted
@@ -53,7 +50,6 @@ def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: lis
                 'n': len(list_of_sizes)
                 }
 
-
     def get_spatial_size_range(info_of_files, key_size: str = 'volume_shape'):
         x, y, z = [], [], []
         for info_of_file in info_of_files:
@@ -76,7 +72,8 @@ def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: lis
                     print_string += '{}={} '.format(stat_key, value_in)
             logger.info(print_string)
             if key_in == 'z':
-                logger.info(' Note! When you are applying crops, your minimum z size is = {} voxels, '
+                logger.info('When you are applying crops, '
+                            'your minimum z size is = {} voxels, ' \
                             'and thus your crops must be smaller than this in z-dimension'.format(size_stats[key_in]['min']))
 
     size_stats = get_spatial_size_range(info_of_files)
@@ -86,12 +83,7 @@ def nibabel_summary_of_all_files(info_of_files: list, read_problem_of_files: lis
 
 
 def nibabel_file_checker(filepath: str, debug_verbose: bool = False):
-    """
-    See e.g. https://nipy.org/nibabel/nifti_images.html
-    :param filepath: full path on the disk
-    :param verbose: if you want to display stuff like image res, etc.
-    :return:
-    """
+
     fname = os.path.split(filepath)[1]
     try:
         n1_img = nib.load(filepath)

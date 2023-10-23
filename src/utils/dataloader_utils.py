@@ -11,12 +11,6 @@ def define_datasets(config: dict,
                     fold_split_file_dicts: dict,
                     debug_testing: bool = False):
     """
-    :param config: dict
-        as imported form the task .yaml
-    :param dataset_dirs: dict
-        dictionary containing the directories associated with each of the dataset that you want to use
-    :return:
-
     Each of the validation and test split now contain dicts
         # * If you would like to for example track the model improvement using a multiple validation splits, e.g.
         #   Dice was best at epoch 23 for Dataset A, and at epoch 55 for Dataset B, and you have 2 different
@@ -84,7 +78,7 @@ def redefine_dataloader_for_inference(dataloader_batched,
 
         if dataset_name == 'MINIVESS':
             dataset = Dataset(data=split_file_dict,
-                         transform=transforms)
+                              transform=transforms)
         else:
             raise NotImplementedError('Only implemented minivess dataset now!, '
                                       'not = "{}"'.format(config['config']['DATA']['DATASET_NAME']))
@@ -111,7 +105,6 @@ def define_dataset_and_dataloader(config: dict,
                                fold_split_file_dicts=fold_split_file_dicts,
                                debug_testing=config['config']['TESTING']['DATASET']['debug_testing'])
 
-
     dataloaders = define_dataloaders(datasets, config,
                                      dataloader_config=config['config']['DATA']['DATALOADER'])
 
@@ -126,7 +119,8 @@ def define_dataset_and_dataloader(config: dict,
                                           run_params=config['run'],
                                           debug_testing=config['config']['TESTING']['DATALOADER']['debug_testing'])
     else:
-        logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY"') # TO-OPTIMIZE the naming of these
+        logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY"')
+        # TO-OPTIMIZE the naming of these
 
     return datasets, dataloaders
 
@@ -142,8 +136,7 @@ def quick_and_dirty_training_dataloader_creation(datasets, dataloaders,
                 'and multiple VAL/TEST splits in dictionary')
     datasets[fold_name] = datasets[fold_name][dataset_name]
 
-    dataloaders_out = {}
-    dataloaders_out[fold_name] = {}
+    dataloaders_out = {'fold_name': {}}
     # this is now a single dictionary. Not sure if there is an use case where you would like to
     # simultaneously have two training dataloaders?
     dataloaders_out[fold_name]['TRAIN'] = dataloaders[fold_name][dataset_name]['TRAIN']

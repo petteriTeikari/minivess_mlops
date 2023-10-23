@@ -42,7 +42,7 @@ def add_sample_metrics_to_split_results(sample_metrics: dict,
                 dataloader_metrics_tmp[var_type][var] = (
                     np.concatenate((dataloader_metrics_tmp[var_type][var],
                                    sample_metric_expanded),
-                                    axis=0))
+                                   axis=0))
 
     return dataloader_metrics_tmp
 
@@ -64,7 +64,8 @@ def get_metadata_for_sample_metrics(metadata: dict) -> dict:
         }
     except Exception as e:
         logger.warning('Problem getting the metadata? error = "{}",\n'
-                      'This tested now only for MINIVESS that has the filepath in the metadata'.format(e))
+                       'This tested now only for MINIVESS that has the filepath in the metadata'.format(e))
+        sample_metadata = None
 
     return sample_metadata
 
@@ -88,7 +89,7 @@ def compute_split_metric_stats(dataloader_metrics: dict,
     dataloader_stats = {}
 
     for var_type in dataloader_metrics:
-        if var_type in var_types_to_keep:  ## hard to compute stats for metadata for example
+        if var_type in var_types_to_keep:  # hard to compute stats for metadata for example
             dataloader_stats[var_type] = {}
             for var in dataloader_metrics[var_type]:
                 dataloader_stats[var_type][var] = {}
@@ -100,10 +101,9 @@ def compute_split_metric_stats(dataloader_metrics: dict,
 
 def compute_stats_of_array_in_dict(input_data: np.ndarray) -> dict:
 
-    stats_out = {}
-    stats_out['n'] = input_data.shape[0]
-    stats_out['mean'] = np.mean(input_data)
-    stats_out['var'] = np.var(input_data)
+    stats_out = {'n': input_data.shape[0],
+                 'mean': np.mean(input_data),
+                 'var': np.var(input_data)}
 
     return stats_out
 

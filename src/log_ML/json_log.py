@@ -2,9 +2,7 @@
 # https://ellisvalentiner.com/post/serializing-numpyfloat32-json/
 # (some more background from https://stackoverflow.com/a/64155446)
 import datetime
-
 import numpy as np
-import json
 from functools import singledispatch
 
 

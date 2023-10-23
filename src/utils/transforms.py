@@ -18,6 +18,7 @@ from monai.transforms import (
 
 import numpy
 
+
 def define_transforms(dataset_config: dict,
                       transform_config_per_dataset: dict,
                       transform_config: dict,
@@ -25,10 +26,10 @@ def define_transforms(dataset_config: dict,
 
     transforms = {}
     for i, split in enumerate(transform_config_per_dataset.keys()):
-        transforms[split] = get_transforms_per_split(device = device,
-                                                     transform_cfg_name_per_split = transform_config_per_dataset[split],
-                                                     split = split,
-                                                     transform_config = transform_config)
+        transforms[split] = get_transforms_per_split(device=device,
+                                                     transform_cfg_name_per_split=transform_config_per_dataset[split],
+                                                     split=split,
+                                                     transform_config=transform_config)
 
     return transforms
 
@@ -37,7 +38,7 @@ def get_transforms_per_split(device, transform_cfg_name_per_split: str,
                              split: str = 'TRAIN', transform_config: dict = None):
 
     if transform_cfg_name_per_split == 'BASIC_AUG':
-        transforms = basic_aug(device) # eliminate the if/elif/else and parse directly from str?
+        transforms = basic_aug(device)  # eliminate the if/elif/else and parse directly from str?
     elif transform_cfg_name_per_split == 'NO_AUG':
         transforms = no_aug(device)
     else:
@@ -82,11 +83,8 @@ def basic_aug(device):
 
 def no_aug(device: str,
            for_inference: bool = False):
-    """
-    This is mainly used for inference / evaluation
-    :param device:
-    :return:
-    """
+    # This is mainly used for inference / evaluation
+
     if for_inference:
         # no random cropping, doing inference for the original shape with a batch size of 1
         transforms = Compose(

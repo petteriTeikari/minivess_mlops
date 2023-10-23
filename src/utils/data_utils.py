@@ -23,7 +23,6 @@ def import_datasets(data_config: dict,
                 dict_out[fold_name][dataset_name] = fold_split_file_dicts[dataset_name][fold_name]
         return dict_out
 
-
     datasets_to_import = data_config['DATA_SOURCE']['DATASET_NAMES']
     logger.info('Importing the following datasets: {}', datasets_to_import)
     dataset_filelistings, fold_split_file_dicts = {}, {}

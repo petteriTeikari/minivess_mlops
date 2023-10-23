@@ -1,20 +1,9 @@
 import os
-from copy import deepcopy
-
-import mlflow
-import numpy as np
-import torch
 from loguru import logger
-from omegaconf import OmegaConf
 
-from tqdm import tqdm
-
-from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_dataloader
-from src.inference.ensemble_utils import add_sample_results_to_ensemble_results, add_sample_metrics_to_split_results, \
-    compute_split_metric_stats, get_ensemble_name, get_submodel_name, get_architecture_from_submodel_name
-from src.inference.inference_utils import inference_sample, inference_best_repeat, \
-    get_inference_metrics
-from src.log_ML.model_saving import import_model_from_path
+from src.inference.ensemble_model import inference_ensemble_dataloader
+from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
+from src.inference.inference_utils import inference_best_repeat
 from src.utils.dataloader_utils import redefine_dataloader_for_inference
 
 
@@ -39,7 +28,7 @@ def reinference_dataloaders(input_dict: dict,
             logger.info('Inference for split "{}"'.format(split))
             if isinstance(dataloaders[split], dict):
                 # i.e. this is either VAL or TEST. You could validate (save best model) based on multiple datasets if
-                # desired at some point, and similarly you could have n external datasets that you would like to evaluate
+                # desired at some point, similarly you could have n external datasets that you would like to evaluate
                 # and see how well you generalize for 3rd party data (out-of-distribution data, OOD)
                 for dataset_name in dataloaders[split]:
                     logger.info('Dataset "{}"'.format(dataset_name))
@@ -75,10 +64,10 @@ def reinference_dataloaders(input_dict: dict,
                                                                config=config)
                 if model_scheme == 'ensemble_from_repeats':
                     results_out[split] = inference_ensembles_dataloader(dataloader=dataloader,
-                                                                       split=split,
-                                                                       archi_results=input_dict,
-                                                                       config=config,
-                                                                       device=device)
+                                                                        split=split,
+                                                                        archi_results=input_dict,
+                                                                        config=config,
+                                                                        device=device)
                 elif model_scheme == 'best_repeats':
                     results_out[split] = inference_best_repeat(dataloader=dataloader,
                                                                split=split,
@@ -91,7 +80,6 @@ def reinference_dataloaders(input_dict: dict,
 
         else:
             logger.debug('Skipping split = {}'.format(split))
-
 
     return results_out
 

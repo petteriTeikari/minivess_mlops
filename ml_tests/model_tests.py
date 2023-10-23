@@ -4,8 +4,8 @@ import weightwatcher as ww
 from src.utils.model_utils import get_nested_layers, filter_layer_names, create_pseudomodel_from_filtered_layers
 
 
-def model_tests_main(model, # after epoch
-                     initial_model, # model beginning of the epoch
+def model_tests_main(model,  # after epoch
+                     initial_model,  # model beginning of the epoch
                      test_config: dict,
                      first_epoch: bool = False):
 
@@ -63,12 +63,12 @@ def weightwatchers_tests(model,
                 logger.info('{} supported convolution layers found for WeightWarcher '
                             '(note! does not support 3D convolutions atm)'.format(len(conv_layers)))
             watcher = ww.WeightWatcher(model=pseudomodel)
-            details = watcher.analyze() # nothing outputted for conv2d even, TODO! examine this
+            details = watcher.analyze()  # nothing outputted for conv2d even, TODO! examine this
             summary = watcher.get_summary(details)
 
         else:
             if first_epoch:
                 logger.info('No convolution layers (wildcard = "{}") found for WeightWarcher '
-                        '(note! does not support 3D convolutions atm)'.format(layer_name_wildcards))
+                            '(note! does not support 3D convolutions atm)'.format(layer_name_wildcards))
 
     return summary

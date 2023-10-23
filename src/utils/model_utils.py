@@ -115,8 +115,8 @@ def create_pseudomodel_from_filtered_layers(layers: list):
     def list_of_layers_to_ordered_dict(layers: list) -> OrderedDict:
         # https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html#sequential
         list_of_tuples = list_to_list_of_tuples(layers)
-        dict = OrderedDict(list_of_tuples)
-        return dict
+        dict_out = OrderedDict(list_of_tuples)
+        return dict_out
 
     model = nn.Sequential(list_of_layers_to_ordered_dict(layers))
 

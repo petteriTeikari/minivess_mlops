@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 import glob
 
 import mlflow
@@ -8,7 +7,7 @@ from loguru import logger
 import wandb
 
 from src.log_ML.log_config import log_config_artifacts
-from src.log_ML.log_utils import get_number_of_steps_from_repeat_results, write_config_as_yaml
+from src.log_ML.log_utils import get_number_of_steps_from_repeat_results
 from src.log_ML.mlflow_log import mlflow_cv_artifacts
 
 
@@ -32,7 +31,7 @@ def log_wandb_repeat_results(fold_results: dict,
                                                    group=config['run']['hyperparam_name'],
                                                    job_type='repeat',
                                                    param_conf=config['config'],
-                                                   dir=output_dir,
+                                                   dir_out=output_dir,
                                                    tags=['tag1', 'tag2'])
                 except Exception as e:
                     raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
@@ -53,7 +52,7 @@ def wandb_log_repeat(wandb_run, fold_name: str, repeat_name: str, log_name: str,
     if log_models_with_repeat:
         artifact_type = 'model'  # This is "reserved name", and if you want to use Model Registry, keep this naming
         artifact = wandb.Artifact(name=log_name, type=artifact_type)
-        wandb_log_models_from_model_dir(wandb_run, artifact, model_path = results['output_artifacts']['model_dir'])
+        wandb_log_models_from_model_dir(wandb_run, artifact, model_path=results['output_artifacts']['model_dir'])
         wandb_run.log_artifact(artifact)
     else:
         # Saves some disk space and is conceptually simpler if you only log the models
@@ -67,11 +66,11 @@ def wandb_log_repeat(wandb_run, fold_name: str, repeat_name: str, log_name: str,
 def wandb_init_wrapper(project: str = None,
                        name: str = None,
                        group: str = None,
-                       dir: str = None,
+                       dir_out: str = None,
                        job_type: str = 'repeat',
                        param_conf: dict = None,
                        notes: str = None,
-                       tags = None) -> wandb.sdk.wandb_run.Run:
+                       tags=None) -> wandb.sdk.wandb_run.Run:
 
     os.makedirs(dir, exist_ok=True)
 
@@ -85,14 +84,14 @@ def wandb_init_wrapper(project: str = None,
     # logger.info('Initialize Weights and Biases logging, \n'
     #             'project = "{}"'.format(project))
     try:
-        wandb_run = wandb.init(project = project,
-                               job_type = job_type,
-                               group = group,
-                               name = name,
-                               dir = dir,
-                               notes = notes,
-                               tags = tags,
-                               config = param_conf,
+        wandb_run = wandb.init(project=project,
+                               job_type=job_type,
+                               group=group,
+                               name=name,
+                               dir=dir,
+                               notes=notes,
+                               tags=tags,
+                               config=param_conf,
                                save_code=True)
     except Exception as e:
         raise IOError('Problem initializing WANDB, e = {}'.format(e))
@@ -114,7 +113,7 @@ def log_wandb_ensemble_results(ensembled_results: dict,
                                            group=config['run']['hyperparam_name'],
                                            job_type='ensemble',
                                            param_conf=config['config'],
-                                           dir=output_dir,
+                                           dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
             raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
@@ -177,7 +176,7 @@ def log_cv_results(cv_results: dict,
                    logging_services: list,
                    output_dir: str,
                    stat_keys_to_reject: tuple = ('n',),
-                   metrics_to_metadata: tuple = ('time_',), # quick n dirty method to keep times from metrics
+                   metrics_to_metadata: tuple = ('time_',),  # quick n dirty method to keep times from metrics
                    var_types: tuple = ('scalars', 'metadata_scalars')):
 
     log_name = 'CV_averaged'
@@ -188,7 +187,7 @@ def log_cv_results(cv_results: dict,
                                            group=config['run']['hyperparam_name'],
                                            job_type='CV',
                                            param_conf=config['config'],
-                                           dir=output_dir,
+                                           dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
             raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
@@ -207,10 +206,10 @@ def log_cv_results(cv_results: dict,
                                         v = cv_results[dataset][tracked_metric][split][ds_eval][var_type][var][stat_key]
                                         metric_name = 'CV_{}/{}/{}_{}'.format(split, dataset, var, stat_key)
 
-                                        log_cv_metric(logging_services = logging_services,
-                                                      metric_name = metric_name,
-                                                      value = v,
-                                                      metrics_to_metadata = metrics_to_metadata)
+                                        log_cv_metric(logging_services=logging_services,
+                                                      metric_name=metric_name,
+                                                      value=v,
+                                                      metrics_to_metadata=metrics_to_metadata)
 
                                         # TOADD! Add the main metric definition here as well
                                         # NOTE!  ['MLflow', 'WANDB'] | "CV_VAL/MINIVESS/time_e , reject the timing?
@@ -226,6 +225,7 @@ def log_cv_results(cv_results: dict,
 
     if 'MLflow' in logging_services:
         mlflow_cv_artifacts(log_name=log_name, local_artifacts_dir=cv_dir_out)
+
 
 def log_cv_metric(logging_services: list, metric_name: str, value,
                   metrics_to_metadata: tuple = None,
@@ -259,7 +259,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                             config: dict,
                             logging_services: list,
                             output_dir: str,
-                            stat_keys_to_reject: tuple = ('n'),
+                            stat_keys_to_reject: tuple = ('n', ),
                             stat_key2: str = 'mean'):
 
     log_name = 'CV_ensembled'
@@ -270,7 +270,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                            group=config['run']['hyperparam_name'],
                                            job_type='CV_ENSEMBLE',
                                            param_conf=config['config'],
-                                           dir=output_dir,
+                                           dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
             raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
@@ -289,7 +289,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                         value = stat_dict[stat_key2]
                         metric_name = 'CV-ENSEMBLE_{}/{}/{}_{}'.format(split, ensemble_name, metric, stat_key)
 
-                        log_CV_ensemble_metric(logging_services=logging_services,
+                        log_cv_ensemble_metric(logging_services=logging_services,
                                                metric_name=metric_name,
                                                value=value)
 
@@ -309,13 +309,13 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                        wandb_run=wandb_run)
 
     if 'WANDB' in logging_services:
-        wandb.finish() # end of WANDB logging here
+        wandb.finish()  # end of WANDB logging here
         logger.info('Done with the WANDB Logging!')
 
     return model_paths
 
 
-def log_CV_ensemble_metric(logging_services: list, metric_name: str, value):
+def log_cv_ensemble_metric(logging_services: list, metric_name: str, value):
 
     logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
     if 'WANDB' in logging_services:
@@ -327,7 +327,7 @@ def log_CV_ensemble_metric(logging_services: list, metric_name: str, value):
 
 def wandb_log_metrics_of_repeat(wandb_run, results):
 
-    no_train_batches = get_number_of_steps_from_repeat_results(results, result_type = 'train_results')
+    no_train_batches = get_number_of_steps_from_repeat_results(results, result_type='train_results')
     no_train_epochs = get_number_of_steps_from_repeat_results(results, result_type='eval_results')
     wandb_log_array(res=results['eval_results'], result_type='eval_results', no_steps=no_train_epochs)
 
@@ -378,4 +378,3 @@ def wandb_log_ensemble_per_fold(wandb_run, fold_name: str, log_name: str,
                         metric_name = 'ENSEMBLE_{}/{}/{}_{}'.format(split, ensemble_name, metric, var_key)
                         logger.info('WANDB | "{}": {:.3f}'.format(metric_name, value))
                         wandb.log({metric_name: value}, step=0)
-

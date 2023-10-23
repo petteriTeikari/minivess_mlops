@@ -1,5 +1,6 @@
 from loguru import logger
 
+
 def add_boolean_and_metric_strings_to_summary(metrics: dict,
                                               booleans: dict,
                                               report_string: str,
@@ -17,8 +18,8 @@ def add_boolean_and_metric_strings_to_summary(metrics: dict,
             for key in params_to_print:
                 try:
                     report_string += f'{base_tab}\t\t{key} = {problem_dict[key]}\n'
-                except:
-                    logger.warning('cannot find desired key = "{}" in the problem_dict'.format(key))
+                except Exception as e:
+                    logger.warning('cannot find desired key = "{}" in the problem_dict, e = {}'.format(key, e))
         all_tests_ok = all_tests_ok and test_boolean
 
     return report_string, all_tests_ok

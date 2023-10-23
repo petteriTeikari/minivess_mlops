@@ -22,13 +22,13 @@ def inference_ensemble_dataloader(models_of_ensemble: dict,
 
     # Create the ensembleModel class with all the submodels of the ensemble
     ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
-                                  validation_config=config['config']['VALIDATION'],
-                                  ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                  validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
-                                  device=device,
-                                  eval_config=config['config']['VALIDATION_BEST'],
-                                  # TODO! this could be architecture-specific
-                                  precision='AMP') #config['config']['TRAINING']['PRECISION'])
+                                   validation_config=config['config']['VALIDATION'],
+                                   ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
+                                   validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
+                                   device=device,
+                                   eval_config=config['config']['VALIDATION_BEST'],
+                                   # TODO! this could be architecture-specific
+                                   precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 
     ensemble_results = inference_ensemble_with_dataloader(ensemble_model,
                                                           dataloader=dataloader,
@@ -64,7 +64,7 @@ def inference_ensemble_with_dataloader(ensemble_model,
     return {'samples': dataloader_metrics, 'stats': dataloader_metrics_stat}
 
 
-def get_monai_param_dict_from_OmegaConf(validation_params, model) -> dict:
+def get_monai_param_dict_from_omegaconf(validation_params, model) -> dict:
     monai_metric_dict = OmegaConf.to_container(validation_params)  # OmegaConf -> Dict
     monai_metric_dict['predictor'] = model
     return monai_metric_dict
@@ -82,11 +82,11 @@ def ensemble_repeats(inf_res: dict,
 
 def compute_ensembled_response(input_data: np.ndarray,
                                ensemble_params) -> dict:
-    variable_stats = {}
-    variable_stats['scalars'] = {}
+
+    variable_stats = {'scalars': {}}
     variable_stats['scalars']['n_samples'] = input_data.shape[0]  # i.e. number of repeats / submodels
 
-    variable_stats['arrays'] = {}
+    variable_stats = {'arrays': {}}
     variable_stats['arrays']['mean'] = np.mean(input_data, axis=0)  # i.e. number of repeats / submodels
     variable_stats['arrays']['var'] = np.var(input_data, axis=0)  # i.e. number of repeats / submodels
     variable_stats['arrays']['UQ_epistemic'] = np.nan
@@ -98,7 +98,7 @@ def compute_ensembled_response(input_data: np.ndarray,
             (variable_stats['arrays']['mean'] > ensemble_params['mask_threshold']).astype('float32'))
     else:
         # majority_voting_here
-        raise NotImplementedError('Unknown ensemble method = {}'.format())
+        raise NotImplementedError('Unknown ensemble method = {}'.format(ensemble_params['method']))
 
     return variable_stats
 
@@ -154,7 +154,7 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
         inference_results = {}
         for submodel_name in self.models:
             model = self.models[submodel_name]
-            monai_metric_dict = get_monai_param_dict_from_OmegaConf(self.validation_params, model)
+            monai_metric_dict = get_monai_param_dict_from_omegaconf(self.validation_params, model)
             sample_res = inference_sample(input_data,
                                           metric_dict=monai_metric_dict,
                                           device=self.device,
@@ -167,9 +167,8 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
 
         return inference_results
 
-
     def predict_single_volume(self,
-                              image_tensor: Union[np.ndarray,torch.Tensor],
+                              image_tensor: Union[np.ndarray, torch.Tensor],
                               input_as_numpy: bool = False,
                               return_mask: bool = True,
                               add_channel_to_output: bool = True):
@@ -190,7 +189,7 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
             mask_out = ensemble_stat_results['arrays']['mask']
             if add_channel_to_output:
                 if isinstance(mask_out, np.ndarray):
-                    mask_out = mask_out[np.newaxis,:,:,:]
+                    mask_out = mask_out[np.newaxis, :, :, :]
                 else:
                     raise NotImplementedError('Check what are the dims for torch.Tensor output')
             return mask_out
@@ -198,11 +197,10 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
             # This contains pixel-wise probabilities, uncertainty estimates, etc in a dictionary
             return ensemble_stat_results
 
-
     def predict_with_gt(self,
-                       batch_data,
-                       input_from: str = 'dict',
-                       return_mask: bool = False):
+                        batch_data,
+                        input_from: str = 'dict',
+                        return_mask: bool = False):
         """
         You can use this during the training when you know the ground truth,
         and the batch_data is the dictionary from the dataloader
@@ -231,7 +229,6 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
             return dict_out['ensemble_stat_results']['arrays']['mask']
         else:
             return dict_out
-
 
     def get_model_weights(self):
 

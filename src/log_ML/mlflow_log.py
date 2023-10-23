@@ -2,7 +2,7 @@ import os
 
 import mlflow
 from loguru import logger
-import configparser
+
 
 def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     """
@@ -16,14 +16,14 @@ def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     For Github Action use, these are defined in your repo secrets then
     """
     env_vars_set = True
-    MLFLOW_TRACKING_USERNAME = os.getenv('MLFLOW_TRACKING_USERNAME')
-    if MLFLOW_TRACKING_USERNAME is None:
+    mlflow_tracking_username = os.getenv('MLFLOW_TRACKING_USERNAME')
+    if mlflow_tracking_username is None:
         logger.warning('Cannot find MLFLOW_TRACKING_USERNAME environment variable, '
                        'cannot log training results to cloud! Using local MLflow server!')
         env_vars_set = False
 
-    MLFLOW_TRACKING_PASSWORD = os.getenv('MLFLOW_TRACKING_PASSWORD')
-    if MLFLOW_TRACKING_PASSWORD is None:
+    mlflow_tracking_password = os.getenv('MLFLOW_TRACKING_PASSWORD')
+    if mlflow_tracking_password is None:
         logger.warning('Cannot find MLFLOW_TRACKING_PASSWORD environment variable, '
                        'cannot log training results to cloud! Using local MLflow server!')
         env_vars_set = False
@@ -35,21 +35,22 @@ def init_mlflow_run(local_server_path: str,
                     experiment_name: str = "MINIVESS_segmentation",
                     run_name: str = "UNet3D"):
 
-        logger.debug('Set experiment name to "{}"'.format(experiment_name))
-        experiment = mlflow.set_experiment(experiment_name)
-        # mlflow.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
-        logger.info(" experiment name: {}".format(experiment.experiment_id))
-        logger.info(" experiment_id: {}".format(experiment.experiment_id))
-        logger.info(" artifact Location: {}".format(experiment.artifact_location))
-        logger.info(" tags: {}".format(experiment.tags))
-        logger.info(" lifecycle_stage: {}".format(experiment.lifecycle_stage))
+    logger.debug('Set experiment name to "{}"'.format(experiment_name))
+    experiment = mlflow.set_experiment(experiment_name)
+    # mlflow.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
+    logger.info(" experiment name: {}".format(experiment.experiment_id))
+    logger.info(" experiment_id: {}".format(experiment.experiment_id))
+    logger.info(" artifact Location: {}".format(experiment.artifact_location))
+    logger.info(" tags: {}".format(experiment.tags))
+    logger.info(" lifecycle_stage: {}".format(experiment.lifecycle_stage))
 
-        logger.debug('Start MLflow run with name "{}"'.format(run_name))
-        active_run = mlflow.start_run(run_name=run_name)
-        logger.info(" runName: {}".format(active_run.data.tags['mlflow.runName']))
-        logger.info(" run_id: {}".format(active_run.info.run_id))
-        logger.info(" source.type: {}".format(active_run.data.tags['mlflow.source.type']))
-        return experiment, active_run
+    logger.debug('Start MLflow run with name "{}"'.format(run_name))
+    active_run = mlflow.start_run(run_name=run_name)
+    logger.info(" runName: {}".format(active_run.data.tags['mlflow.runName']))
+    logger.info(" run_id: {}".format(active_run.info.run_id))
+    logger.info(" source.type: {}".format(active_run.data.tags['mlflow.source.type']))
+
+    return experiment, active_run
 
 
 def init_mlflow_logging(config: dict,
@@ -59,8 +60,6 @@ def init_mlflow_logging(config: dict,
     """
     see e.g. https://github.com/Project-MONAI/tutorials/blob/main/experiment_management/spleen_segmentation_mlflow.ipynb
     https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded
-    :param config:
-    :return:
     """
 
     if mlflow_config['TRACKING']['enable']:
@@ -70,7 +69,7 @@ def init_mlflow_logging(config: dict,
             if not env_vars_set:
                 tracking_uri = mlflow_local_mlflow_init(config)
             else:
-                logger.info('MLflow | Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
+                logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
                 tracking_uri = mlflow_config['server_URI']
                 mlflow.set_tracking_uri(tracking_uri)
         else:
@@ -86,7 +85,7 @@ def init_mlflow_logging(config: dict,
         except Exception as e:
             logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
             raise IOError('Failed to initialize the MLflow logging!\n'
-                          ' - if you are using Dagshub MLflow, did you set the environment variables (your credentials?\n'
+                          ' - did you set the environment variables for Dagshub MLflow (your credentials?\n'
                           '   https://dagshub.com/docs/integration_guide/mlflow_tracking/#3-set-up-your-credentials\n'
                           '    e.g. export MLFLOW_TRACKING_USERNAME=<username>\n'
                           '         export MLFLOW_TRACKING_PASSWORD=<password/token>\n'
@@ -142,22 +141,21 @@ def mlflow_dicts_to_omegaconf_dict(experiment, active_run):
 
     def convert_indiv_dict(object_in, prefix: str = None):
         dict_out = {}
-        for property, value in vars(object_in).items():
+        for k, value in vars(object_in).items():
 
-            if property[0] == '_': # remove the _
-                property = property[1:]
+            if k[0] == '_':  # remove the _
+                k = k[1:]
 
             if prefix is not None:
-                key_out = prefix + property
+                key_out = prefix + k
             else:
-                key_out = property
+                key_out = k
 
             # at the moment, just output the string values, as in names and paths
             if isinstance(value, str):
                 dict_out[key_out] = value
 
         return dict_out
-
 
     experiment_out = convert_indiv_dict(object_in=experiment)
     mlflow_dict_out = {**experiment_out, **active_run.data.tags}

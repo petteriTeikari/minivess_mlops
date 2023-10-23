@@ -1,20 +1,17 @@
 import os
 import time
-from copy import deepcopy
-
 from loguru import logger
 import mlflow
-import torch
 import wandb
 from mlflow.models import ModelSignature
 
-from src.inference.ensemble_model import ModelEnsemble, inference_ensemble_with_dataloader
-from src.log_ML.mlflow_log import define_mlflow_model_uri, define_artifact_name, define_metamodel_name
-from src.log_ML.mlflow_tests import test_mlflow_Models_reproduction
+from src.inference.ensemble_model import ModelEnsemble
+from src.log_ML.mlflow_log import define_mlflow_model_uri, define_metamodel_name
+from src.log_ML.mlflow_tests import test_mlflow_models_reproduction
 from src.log_ML.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
 
 
-def log_ensembles_to_MLflow(ensemble_models_flat: dict,
+def log_ensembles_to_mlflow(ensemble_models_flat: dict,
                             experim_dataloaders: dict,
                             ensembled_results: dict,
                             cv_ensemble_results: dict,
@@ -73,7 +70,7 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                 logger.info('MLflow | Test that you can download model from the '
                             'Model Registry and that they are reproducible')
                 test_results = (
-                    test_mlflow_Models_reproduction(ensemble_filepaths=ensemble_models_flat[ensemble_name],
+                    test_mlflow_models_reproduction(ensemble_filepaths=ensemble_models_flat[ensemble_name],
                                                     ensemble_model=ensemble_models[ensemble_name],
                                                     mlflow_model_log=mlflow_model_log[ensemble_name],
                                                     ensembled_results=ensembled_results,
@@ -93,6 +90,7 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                            'implement something later if you have multiple validation datasets and/or'
                            'multiple metrics. And would you only want to register the "best model" out of these?\n'
                            'The metrics for each ensemble is either way logged to mlflow UI')
+            test_results = None
 
     # 'mlflow_model_log': mlflow_model_log
     return {'test_results': test_results}
@@ -112,20 +110,22 @@ def mlflow_metamodel_logging(ensemble_model,
     """
     mlflow_model_log = {}
     t0 = time.time()
-    metamodel_name = define_metamodel_name(ensemble_name, hyperparam_name = run_params_dict['hyperparam_name'])
+    metamodel_name = define_metamodel_name(ensemble_name,
+                                           hyperparam_name=run_params_dict['hyperparam_name'])
 
     # Log model
     # https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.log_model
     logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
                 format(ensemble_name, metamodel_name))
 
+    validation_params = config['config']['VALIDATION']['VALIDATION_PARAMS']
     mlflow_model_log['log_model'] = (
         mlflow.pyfunc.log_model(artifact_path=metamodel_name,
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
                                                            models_from_paths=True,
                                                            validation_config=config['config']['VALIDATION'],
                                                            ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                                           validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
+                                                           validation_params=validation_params,
                                                            device=config['config']['MACHINE']['IN_USE']['device'],
                                                            eval_config=config['config']['VALIDATION_BEST'],
                                                            # TODO! need to make this adaptive based on submodel
@@ -170,7 +170,7 @@ def mlflow_metamodel_logging(ensemble_model,
     return mlflow_model_log
 
 
-def log_ensembles_to_WANDB(ensemble_models_flat: dict,
+def log_ensembles_to_wandb(ensemble_models_flat: dict,
                            config: dict,
                            wandb_run: wandb.sdk.wandb_run.Run,
                            test_loading: bool):
