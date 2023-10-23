@@ -136,7 +136,7 @@ def quick_and_dirty_training_dataloader_creation(datasets, dataloaders,
                 'and multiple VAL/TEST splits in dictionary')
     datasets[fold_name] = datasets[fold_name][dataset_name]
 
-    dataloaders_out = {'fold_name': {}}
+    dataloaders_out = {fold_name: {}}
     # this is now a single dictionary. Not sure if there is an use case where you would like to
     # simultaneously have two training dataloaders?
     dataloaders_out[fold_name]['TRAIN'] = dataloaders[fold_name][dataset_name]['TRAIN']
