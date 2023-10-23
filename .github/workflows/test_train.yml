@@ -1,4 +1,4 @@
-name: Test (Train)
+name: Test EE (Train)
 
 on:
   # At the moment this is part of the "CI suite", so you first build the image for training (build_train_image.yml),

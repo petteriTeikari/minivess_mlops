@@ -1,4 +1,4 @@
-name: Test (Data)
+name: Test EE (Data)
 
 on:
   # At the moment this is part of the "CI suite", so you first build the image for training (build_train_image.yml),
@@ -62,6 +62,7 @@ jobs:
         # docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro -e S3_ARTIFACTS=minivess-artifacts -e DOCKER_ARTIFACTS=/mnt/minivess-artifacts -e S3_CACHE=minivess-dvc-cache -e DOCKER_CACHE=/mnt/minivess-dvc-cache --privileged --cap-add SYS_ADMIN --device /dev/fuse petteriteikari/minivess-mlops-train -c task_config.yaml -run test_dataload
         run: >
           docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro petteriteikari/minivess-mlops-train -c task_config.yaml -run test_dataload -no-s3
+      # TODO! Could refactor this without this chaining
       - name: Trigger next workflow (test train)
         if: success()
         uses: peter-evans/repository-dispatch@v1
