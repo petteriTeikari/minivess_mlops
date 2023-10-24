@@ -56,7 +56,7 @@ def log_config_artifacts(log_name: str,
         mlflow.log_dict(loaded_dict, artifact_file=os.path.split(path_out)[1])
 
     logger.info('{} | ENSEMBLED Cross-Validation results | Loguru log saved as .txt'.format(logging_services))
-    path_out = config['run']['output_log_path']
+    path_out = exp_run['RUN']['output_log_path']
     if 'WANDB' in logging_services:
         artifact_log = wandb.Artifact(name='log', type='log')
         artifact_log.add_file(path_out)

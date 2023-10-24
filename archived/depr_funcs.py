@@ -169,7 +169,7 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                                      best_dict=best_dict,
                                      model_uri=model_uri,
                                      mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                     run_params_dict=config['run'],
+                                     run_params_dict=exp_run['RUN'],
                                      ensemble_name=ensemble_name,
                                      submodel_name=submodel_name))
 
@@ -242,7 +242,7 @@ def create_model_ensemble_from_mlflow_model_registry(ensemble_submodels: dict,
     models_of_ensemble = {}
     for j, submodel_name in enumerate(ensemble_submodels):
         artifact_name = define_artifact_name(ensemble_name, submodel_name,
-                                             hyperparam_name=config['run']['hyperparam_name'])
+                                             hyperparam_name=exp_run['RUN']['hyperparam_name'])
         model_uri_models = f"models:/{artifact_name}/{reg_models[submodel_name].version}"
         loaded_model = deepcopy(get_model_from_mlflow_model_registry(model_uri=model_uri_models))
         torch.save(dict(model=loaded_model), '{}.pth'.format(submodel_name))  # debug save

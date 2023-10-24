@@ -5,59 +5,71 @@ import numpy as np
 import torch
 from monai.losses import DiceFocalLoss
 from monai.optimizers import Novograd
+from omegaconf import DictConfig
 
 from src.utils.general_utils import check_if_key_in_dict
 
 
+def check_for_params_dict(cfg_tmp, name):
+    params = cfg_tmp.get(name)
+    if params is None:
+        return {}
+    else:
+        return params
+
+
 def choose_loss_function(training_config: dict, loss_config: dict):
-    loss_name = list(loss_config.keys())[0]
-    if check_if_key_in_dict(loss_config, loss_name):
-        # FIXME parse names to match any MONAI loss
-        loss_params = loss_config[loss_name]  # FIXME autouse these in the function call
+    try:
+        loss_name = loss_config['NAME']
+        loss_params = check_for_params_dict(cfg_tmp=loss_config, name=loss_name)
         if loss_name == 'DiceFocalLoss':
             loss_function = DiceFocalLoss(**loss_params)
         else:
             raise NotImplementedError('Unsupported loss_name = "{}"'.format(loss_name))
-    else:
-        raise IOError('Could not find loss config for loss_name = "{}"'.format(loss_name))
+    except Exception as e:
+        logger.error('Problem getting loss function, error = {}'.format(e))
+        raise IOError('Problem getting loss function, error = {}'.format(e))
 
     return loss_function
 
 
 def choose_optimizer(model, training_config: dict, optimizer_config: dict):
-    optimizer_name = list(optimizer_config.keys())[0]
-    if check_if_key_in_dict(optimizer_config, optimizer_name):
-        # FIXME parse names to match any MONAI/PyTorch optimizer
-        optimizer_params = optimizer_config[optimizer_name]  # FIXME autouse these in the function call
+    try:
+        optimizer_name = optimizer_config['NAME']
+        optimizer_params = check_for_params_dict(cfg_tmp=optimizer_config, name=optimizer_name)
         if optimizer_name == 'Novograd':
             optimizer = Novograd(model.parameters(), lr=training_config['LR'])
         else:
             raise NotImplementedError('Unsupported optimizer_name = "{}"'.format(optimizer_name))
-    else:
-        raise IOError('Could not find optimizer config for optimizer_name = "{}"'.format(optimizer_name))
+    except Exception as e:
+        logger.error('Problem getting optimizer, error = {}'.format(e))
+        raise IOError('Problem getting optimizer, error = {}'.format(e))
 
     return optimizer
 
 
 def choose_lr_scheduler(optimizer, training_config: dict, scheduler_config: dict):
-    scheduler_name = list(scheduler_config.keys())[0]
-    if check_if_key_in_dict(scheduler_config, scheduler_name):
-        # FIXME parse names to match any MONAI/Pytorch Scheduler
-        scheduler_params = scheduler_config[scheduler_name]  # FIXME autouse these in the function call
+    try:
+        scheduler_name = scheduler_config['NAME']
+        scheduler_params = check_for_params_dict(cfg_tmp=scheduler_config, name=scheduler_name)
         if scheduler_name == 'CosineAnnealingLR':
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
                                                                       T_max=training_config['NUM_EPOCHS'])
         else:
             raise NotImplementedError('Unsupported scheduler_name = "{}"'.format(scheduler_name))
-    else:
-        raise IOError('Could not find optimizer config for scheduler_name = "{}"'.format(scheduler_name))
+    except Exception as e:
+        logger.error('Problem getting scheduler, error = {}'.format(e))
+        raise IOError('Problem getting scheduler, error = {}'.format(e))
 
     return lr_scheduler
 
 
-def set_model_training_params(model, device, scaler, training_config: dict, config: dict):
+def set_model_training_params(model,
+                              device,
+                              scaler,
+                              training_config: dict,
+                              config: DictConfig):
 
-    # TODO! You could makle one function to replace these all?
     loss_function = choose_loss_function(training_config=training_config,
                                          loss_config=training_config['LOSS'])
 

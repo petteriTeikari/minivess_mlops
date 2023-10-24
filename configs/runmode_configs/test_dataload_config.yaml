@@ -1,5 +1,5 @@
+# @package _global_
 NAME: 'test_dataload'
-# TODO! update the changed keys in the config
 config:
   VERBOSE: True
   TRAINING:

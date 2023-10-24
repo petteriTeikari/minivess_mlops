@@ -1,10 +1,5 @@
 # Base config: Update relevant keys from this with your "task config"
 # Base exapmple (VISSL) see e.g. https://github.com/facebookresearch/vissl/blob/main/vissl/config/defaults.yaml
-defaults:
-  - _self_
-  # you must specify the base config you want to run
-  - config: ??? # check later Hydra/OmegaConf part
-
 VERSION: 0.01alpha
 NAME: 'base_config'
 
@@ -207,6 +202,8 @@ config:
       LR: 0.0001 # 1e-4 FIXME! Parse scientifc notations from .yaml correctly
       LOSS:
         NAME: 'DiceFocalLoss'
+        PARAMS:
+          placeholder: 0
       OPTIMIZER:
         NAME: 'Novograd'
       SCHEDULER:

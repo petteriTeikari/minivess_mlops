@@ -1,5 +1,6 @@
 import mlflow
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.inference.ensemble_main import reinference_dataloaders
 from src.log_ML.log_crossval import log_cv_results
@@ -31,7 +32,8 @@ def log_n_epochs_results(train_results, eval_results, best_dict, output_artifact
 
 def log_averaged_and_best_repeats(repeat_results: dict,
                                   fold_name: str,
-                                  config: dict,
+                                  config: DictConfig,
+                                  exp_run: dict,
                                   dataloaders: dict,
                                   device):
 
@@ -52,7 +54,7 @@ def log_averaged_and_best_repeats(repeat_results: dict,
         # e.g. you want to have Hausdorff distance here that you thought to be too heavy to compute while training
         best_repeat_metrics = reinference_dataloaders(input_dict=best_repeat_dicts,
                                                       config=config,
-                                                      artifacts_output_dir=config['run']['output_experiment_dir'],
+                                                      artifacts_output_dir=exp_run['RUN']['output_experiment_dir'],
                                                       dataloaders=dataloaders,
                                                       device=device,
                                                       model_scheme='best_repeats')
@@ -74,7 +76,8 @@ def log_averaged_and_best_repeats(repeat_results: dict,
                          fold_name=fold_name)
 
 
-def log_best_repeats(best_repeat_dicts: dict, config: dict,
+def log_best_repeats(best_repeat_dicts: dict,
+                     config: DictConfig,
                      splits: tuple = ('VAL', 'TEST'),
                      service: str = 'MLflow',
                      fold_name: str = None):
@@ -127,7 +130,8 @@ def log_best_repeats(best_repeat_dicts: dict, config: dict,
 def log_crossvalidation_results(fold_results: dict,
                                 ensembled_results: dict,
                                 experim_dataloaders: dict,
-                                config: dict,
+                                config: DictConfig,
+                                exp_run: dict,
                                 output_dir: str):
 
     # Reorder CV results and compute the stats, i.e. mean of 5 folds and 5 repeats per fold (n = 25)
@@ -144,7 +148,7 @@ def log_crossvalidation_results(fold_results: dict,
 
     if config['config']['LOGGING']['WANDB']['enable']:
         log_wandb_repeat_results(fold_results=fold_results,
-                                 output_dir=config['run']['output_base_dir'],
+                                 output_dir=exp_run['RUN']['output_base_dir'],
                                  config=config)
     else:
         logger.info('Skipping repeat-level WANDB Logging!')
@@ -152,7 +156,7 @@ def log_crossvalidation_results(fold_results: dict,
     if cv_ensemble_results is not None:
         if config['config']['LOGGING']['WANDB']['enable']:
             log_wandb_ensemble_results(ensembled_results=ensembled_results,
-                                       output_dir=config['run']['output_base_dir'],
+                                       output_dir=exp_run['RUN']['output_base_dir'],
                                        config=config)
 
         logged_model_paths = log_cv_results(cv_results=cv_results,
@@ -161,9 +165,9 @@ def log_crossvalidation_results(fold_results: dict,
                                             fold_results=fold_results,
                                             experim_dataloaders=experim_dataloaders,
                                             config=config,
-                                            output_dir=config['run']['output_base_dir'],
-                                            cv_averaged_output_dir=config['run']['cross_validation_averaged'],
-                                            cv_ensembled_output_dir=config['run']['cross_validation_ensembled'])
+                                            output_dir=exp_run['RUN']['output_base_dir'],
+                                            cv_averaged_output_dir=exp_run['RUN']['cross_validation_averaged'],
+                                            cv_ensembled_output_dir=exp_run['RUN']['cross_validation_ensembled'])
     else:
         logged_model_paths = None
 
@@ -178,7 +182,7 @@ def log_crossvalidation_results(fold_results: dict,
 
 
 def log_best_reinference_metrics(best_repeat_metrics: dict,
-                                 config: dict,
+                                 config: DictConfig,
                                  stat_key: str = 'split_metrics_stat',
                                  stat_value_to_log: str = 'mean',
                                  service: str = 'MLflow',

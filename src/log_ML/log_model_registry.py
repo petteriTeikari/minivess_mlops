@@ -57,7 +57,7 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             mlflow_model_log[ensemble_name] = (
                 mlflow_metamodel_logging(ensemble_model=ensemble_models[ensemble_name],
                                          model_paths=ensemble_models_flat[ensemble_name],
-                                         run_params_dict=config['run'],
+                                         run_params_dict=exp_run['RUN'],
                                          model_uri=model_uri,
                                          ensemble_name=ensemble_name,
                                          signature=signature,
@@ -131,7 +131,7 @@ def mlflow_metamodel_logging(ensemble_model,
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                pip_requirements=os.path.join(config['run']['repo_dir'], 'requirements.txt')
+                                pip_requirements=os.path.join(exp_run['RUN']['repo_dir'], 'requirements.txt')
                                 )
     )
 

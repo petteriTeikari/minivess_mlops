@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 import torch
+from omegaconf import DictConfig
 from tqdm import tqdm
 from loguru import logger
 
@@ -22,7 +23,8 @@ from src.utils.train_utils import init_epoch_dict, collect_epoch_results, set_mo
 
 def training_script(hyperparam_name: str,
                     experim_dataloaders: dict,
-                    config: dict,
+                    config: DictConfig,
+                    exp_run: dict,
                     machine_config: dict,
                     output_dir: str) -> dict:
 
@@ -31,15 +33,15 @@ def training_script(hyperparam_name: str,
     # Cross-validation loop (if used), i.e. when train/val splits change for each execution
     os.makedirs(output_dir, exist_ok=True)
     fold_results, ensembled_results = {}, {}
-    config['run']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
-    config['run']['cross_validation_averaged'] = os.path.join(config['run']['cross_validation'], 'averaged')
-    config['run']['cross_validation_ensembled'] = os.path.join(config['run']['cross_validation'], 'ensembled')
+    exp_run['RUN']['cross_validation'] = os.path.join(output_dir, 'cross_validation')
+    exp_run['RUN']['cross_validation_averaged'] = os.path.join(exp_run['RUN']['cross_validation'], 'averaged')
+    exp_run['RUN']['cross_validation_ensembled'] = os.path.join(exp_run['RUN']['cross_validation'], 'ensembled')
 
     for f, fold_name in enumerate(list(experim_dataloaders.keys())):
         logger.info('Training fold #{}/{}: {}'.format(f+1, len(experim_dataloaders.keys()), fold_name))
-        config['run']['fold_dir'][fold_name] = os.path.join(output_dir, fold_name)
-        # config['run']['repeat_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'repeats')
-        config['run']['ensemble_artifacts'][fold_name] = os.path.join(config['run']['fold_dir'][fold_name], 'ensemble')
+        exp_run['RUN']['fold_dir'][fold_name] = os.path.join(output_dir, fold_name)
+        # exp_run['RUN']['repeat_artifacts'][fold_name] = os.path.join(exp_run['RUN']['fold_dir'][fold_name], 'repeats')
+        exp_run['RUN']['ensemble_artifacts'][fold_name] = os.path.join(exp_run['RUN']['fold_dir'][fold_name], 'ensemble')
 
         # Quick'n'dirty placeholder to simulate diverse ensembles, i.e. when your submodels are not just
         # different repeats (as in different random starting points) but different model architectures, e.g.
@@ -47,19 +49,20 @@ def training_script(hyperparam_name: str,
         fold_results[fold_name], ensembled_results[fold_name] = \
             train_model_for_single_fold(fold_dataloaders=experim_dataloaders[fold_name],
                                         config=config,
-                                        # Note! these are now parsed from input .yaml
-                                        hyperparameters_config=config['hyperparameters'],
+                                        exp_run=exp_run,
+                                        hyperparameters_config=exp_run['HYPERPARAMETERS'],
                                         machine_config=machine_config,
-                                        output_dir=config['run']['fold_dir'][fold_name],
+                                        output_dir=exp_run['RUN']['fold_dir'][fold_name],
                                         fold_name=fold_name)
 
     logger.info('Done training all the {} folds'.format(len(experim_dataloaders)))
 
-    config['run']['logged_model_paths'] = (
+    exp_run['RUN']['logged_model_paths'] = (
         log_crossvalidation_results(fold_results=fold_results,
                                     ensembled_results=ensembled_results,
                                     experim_dataloaders=experim_dataloaders,
                                     config=config,
+                                    exp_run=exp_run,
                                     output_dir=output_dir))
 
     logger.info('Done training the hyperparameter config "{}"'.format(hyperparam_name))
@@ -68,7 +71,8 @@ def training_script(hyperparam_name: str,
 
 
 def train_model_for_single_fold(fold_dataloaders: dict,
-                                config: dict,
+                                config: DictConfig,
+                                exp_run: dict,
                                 hyperparameters_config: dict,
                                 machine_config: dict,
                                 output_dir: str,
@@ -85,14 +89,19 @@ def train_model_for_single_fold(fold_dataloaders: dict,
         logger.info('Training architecture #{}/{}: {}'.format(i+1, len(architecture_names), architecture_name))
         # Pick the proper architecture and training params per architecture so that
         # "train_model_for_single_architecture()" sees just the "normal model" to be trained for n repeats
-        training_config = hyperparameters_config['models'][architecture_name]['training']
-        model_config = hyperparameters_config['models'][architecture_name]['architecture']
+        try:
+            training_config = hyperparameters_config['models'][architecture_name]['training']
+            model_config = hyperparameters_config['models'][architecture_name]['architecture']
+        except Exception as e:
+            logger.error('Error with keys, e = "{}"'.format(e))
+            raise IOError('Error with keys, e = "{}"'.format(e))
 
         # TODO! Re-define dataloader on each iteration of the different architecture
         #  e..g. if you want to do diverse ensembles with each submodel with different augmentation
         archi_results[architecture_name] = \
             train_model_for_single_architecture(fold_dataloaders=fold_dataloaders,
                                                 config=config,
+                                                exp_run=exp_run,
                                                 training_config=training_config,
                                                 model_config=model_config,
                                                 machine_config=machine_config,
@@ -104,10 +113,10 @@ def train_model_for_single_fold(fold_dataloaders: dict,
     if config['config']['ENSEMBLE']['enable']:
         ensemble_results = reinference_dataloaders(input_dict=archi_results,
                                                    dataloaders=fold_dataloaders,
-                                                   artifacts_output_dir=config['run']['ensemble_artifacts'][
+                                                   artifacts_output_dir=exp_run['RUN']['ensemble_artifacts'][
                                                        fold_name],
                                                    config=config,
-                                                   device=machine_config['IN_USE']['device'],
+                                                   device=machine_config['device'],
                                                    model_scheme='ensemble_from_repeats')
         # Log inference
         service = ('MLflow' if config['config']['LOGGING']['MLFLOW']['TRACKING']['enable'] else None)
@@ -125,7 +134,8 @@ def train_model_for_single_fold(fold_dataloaders: dict,
 
 
 def train_model_for_single_architecture(fold_dataloaders: dict,
-                                        config: dict,
+                                        config: DictConfig,
+                                        exp_run: dict,
                                         training_config: dict,
                                         model_config: dict,
                                         machine_config: dict,
@@ -144,13 +154,13 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
         repeat_results[repeat_name] = \
             train_single_model(dataloaders=fold_dataloaders,
                                config=config,
+                               exp_run=exp_run,
                                training_config=training_config,
                                model_config=model_config,
                                machine_config=machine_config,
                                repeat_idx=repeat_idx,
                                repeat_name=repeat_name,
-                               device=machine_config['IN_USE']['device'],
-                               # output_dir=os.path.join(output_dir, archi_name, repeat_name),
+                               device=machine_config['device'],
                                archi_name=archi_name,
                                output_dir=os.path.join(output_dir, submodel_name),
                                fold_name=fold_name)
@@ -161,14 +171,16 @@ def train_model_for_single_architecture(fold_dataloaders: dict,
     log_averaged_and_best_repeats(repeat_results,
                                   fold_name=fold_name,
                                   config=config,
+                                  exp_run=exp_run,
                                   dataloaders=fold_dataloaders,
-                                  device=machine_config['IN_USE']['device'])
+                                  device=machine_config['device'])
 
     return repeat_results
 
 
 def train_single_model(dataloaders: dict,
-                       config: dict,
+                       config: DictConfig,
+                       exp_run: dict,
                        training_config: dict,
                        model_config: dict,
                        machine_config: dict,
@@ -192,15 +204,28 @@ def train_single_model(dataloaders: dict,
     # TODO! if you some LDAM-DRW type of scheme for class-imbalanced learning, you might re-define loss
     #  on each epoch as it is the only way to change to class weights dynamically?
     loss_function, optimizer, lr_scheduler = \
-        set_model_training_params(model, device, scaler, training_config, config)
+        set_model_training_params(model=model,
+                                  device=device,
+                                  scaler=scaler,
+                                  training_config=training_config,
+                                  config=config)
 
     # Train script
     train_results, eval_results, best_dict, output_artifacts = \
-        train_n_epochs_script(model, dataloaders,
-                              device, scaler,
-                              loss_function, optimizer, lr_scheduler,
-                              training_config, config, output_dir=output_dir,
-                              repeat_idx=repeat_idx, fold_name=fold_name, repeat_name=repeat_name)
+        train_n_epochs_script(model=model,
+                              dataloaders=dataloaders,
+                              device=device,
+                              scaler=scaler,
+                              loss_function=loss_function,
+                              optimizer=optimizer,
+                              lr_scheduler=lr_scheduler,
+                              training_config=training_config,
+                              config=config,
+                              exp_run=exp_run,
+                              output_dir=output_dir,
+                              repeat_idx=repeat_idx,
+                              fold_name=fold_name,
+                              repeat_name=repeat_name)
 
     # Post-train scripts (if done)
     post_train_n_epochs_script()
@@ -221,12 +246,21 @@ def train_single_model(dataloaders: dict,
     return results_out
 
 
-def train_n_epochs_script(model, dataloaders,
-                          device, scaler,
-                          loss_function, optimizer, lr_scheduler,
-                          training_config: dict, config: dict,
-                          start_epoch: int = 0, output_dir: str = None,
-                          repeat_idx: int = None, fold_name: str = None, repeat_name: str = None):
+def train_n_epochs_script(model,
+                          dataloaders,
+                          device,
+                          scaler,
+                          loss_function,
+                          optimizer,
+                          lr_scheduler,
+                          training_config: dict,
+                          config: DictConfig,
+                          exp_run: dict,
+                          start_epoch: int = 0,
+                          output_dir: str = None,
+                          repeat_idx: int = None,
+                          fold_name: str = None,
+                          repeat_name: str = None):
 
     # FIXME: get this from config
     metric_dict = {'roi_size': (64, 64, 8), 'sw_batch_size': 4, 'predictor': model, 'overlap': 0.6}

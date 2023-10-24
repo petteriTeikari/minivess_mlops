@@ -6,16 +6,19 @@ import requests
 import zipfile
 import random
 
+from omegaconf import DictConfig
+
 from ml_tests.dataset_tests import ml_test_dataset_for_allowed_types
 from ml_tests.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
 from src.utils.general_utils import print_memory_stats_to_logger
 
 
-def import_minivess_dataset(dataset_cfg: dict,
+def import_minivess_dataset(dataset_cfg: DictConfig,
                             data_dir: str,
                             run_mode: str,
-                            config: dict,
+                            config: DictConfig,
+                            exp_run: dict,
                             dataset_name: str,
                             fetch_method: str,
                             fetch_params: dict):
@@ -24,7 +27,7 @@ def import_minivess_dataset(dataset_cfg: dict,
         dataset_dir = fetch_dataset_with_dvc(fetch_params=fetch_params,
                                              dataset_cfg=dataset_cfg,
                                              dataset_name_lowercase=dataset_name.lower(),
-                                             repo_dir=config['run']['repo_dir'])
+                                             repo_dir=exp_run['RUN']['repo_dir'])
 
     elif fetch_method == 'EBrains':
         dataset_dir = import_filelisting_ebrains(dataset_cfg=dataset_cfg,

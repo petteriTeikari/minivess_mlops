@@ -1,11 +1,9 @@
 /.idea/*
 *.pyc
-/tmp_files/*
-/minivess_data/*
-/minivess_output/*
 /src/runs/*
 /src/wandb/*
+/src/mlruns/*
 /mlruns/*
 *.pdf
-/archived/README_extra.md
-/src/mlruns/*
+/archived/*
+/deployment/archived/*

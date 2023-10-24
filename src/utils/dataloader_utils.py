@@ -1,5 +1,6 @@
 from loguru import logger
 from monai.data import DataLoader, list_data_collate, Dataset
+from omegaconf import DictConfig
 
 from ml_tests.dataloader_tests import ml_test_dataloader_dict_integrity
 from ml_tests.dataset_tests import ml_test_dataset_summary
@@ -7,8 +8,9 @@ from src.datasets.minivess import define_minivess_dataset
 from src.utils.transforms import define_transforms, no_aug
 
 
-def define_datasets(config: dict,
+def define_datasets(config: DictConfig,
                     fold_split_file_dicts: dict,
+                    exp_run: dict,
                     debug_testing: bool = False):
     """
     Each of the validation and test split now contain dicts
@@ -39,7 +41,7 @@ def define_datasets(config: dict,
             transforms = define_transforms(dataset_config=dataset_config,
                                            transform_config_per_dataset=dataset_config['TRANSFORMS'],
                                            transform_config=config['config']['TRANSFORMS'],
-                                           device=config['config']['MACHINE']['IN_USE']['device'])
+                                           device=exp_run['MACHINE']['device'])
 
             if dataset_name == 'MINIVESS':
                 split_file_dicts = fold_split_file_dicts[fold_name][dataset_name]
@@ -99,13 +101,17 @@ def redefine_dataloader_for_inference(dataloader_batched,
     return dataloader
 
 
-def define_dataset_and_dataloader(config: dict,
-                                  fold_split_file_dicts: dict):
+def define_dataset_and_dataloader(config: DictConfig,
+                                  fold_split_file_dicts: dict,
+                                  exp_run: dict):
+
     datasets = define_datasets(config=config,
                                fold_split_file_dicts=fold_split_file_dicts,
+                               exp_run=exp_run,
                                debug_testing=config['config']['TESTING']['DATASET']['debug_testing'])
 
-    dataloaders = define_dataloaders(datasets, config,
+    dataloaders = define_dataloaders(datasets=datasets,
+                                     config=config,
                                      dataloader_config=config['config']['DATA']['DATALOADER'])
 
     # FIXME remove this eventually, and do not do quick and dirty stuff :)
@@ -116,10 +122,10 @@ def define_dataset_and_dataloader(config: dict,
     if config['config']['TESTING']['DATALOADER']['DATA_VALIDITY']['enable']:
         ml_test_dataloader_dict_integrity(dataloaders,
                                           test_config=config['config']['TESTING']['DATALOADER'],
-                                          run_params=config['run'],
+                                          run_params=exp_run['RUN'],
                                           debug_testing=config['config']['TESTING']['DATALOADER']['debug_testing'])
     else:
-        logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY"')
+        logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY")')
         # TO-OPTIMIZE the naming of these
 
     return datasets, dataloaders
@@ -148,7 +154,9 @@ def quick_and_dirty_training_dataloader_creation(datasets, dataloaders,
     return datasets, dataloaders_out
 
 
-def define_dataloaders(datasets: dict, config: dict, dataloader_config: dict):
+def define_dataloaders(datasets: dict,
+                       config: DictConfig,
+                       dataloader_config: dict):
 
     logger.info('Creating (MONAI/PyTorch) Dataloaders')
     dataloaders = {}

@@ -1,11 +1,13 @@
 import mlflow
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.inference.ensemble_utils import split_ensemble_name
 from src.log_ML.logging_main import correct_key_for_main_result
 
 
-def log_ensemble_results(ensemble_results, config: dict,
+def log_ensemble_results(ensemble_results,
+                         config: DictConfig,
                          stat_key: str = 'mean',
                          service: str = 'MLflow',
                          fold_name: str = None):

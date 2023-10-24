@@ -2,6 +2,7 @@ import os
 
 import mlflow
 from loguru import logger
+from omegaconf import DictConfig
 
 
 def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
@@ -117,7 +118,7 @@ def init_mlflow_logging(config: dict,
 
 def mlflow_local_mlflow_init(config) -> str:
     # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
-    tracking_uri = config['run']['output_mlflow_dir']
+    tracking_uri = exp_run['RUN']['output_mlflow_dir']
     os.makedirs(tracking_uri, exist_ok=True)
     mlflow.set_tracking_uri(tracking_uri)
 
@@ -128,7 +129,7 @@ def mlflow_log_dataset(mlflow_config: dict,
                        dataset_cfg: dict,
                        filelisting: dict,
                        fold_split_file_dicts: dict,
-                       config: dict):
+                       config: DictConfig):
     """
     https://mlflow.org/docs/latest/python_api/mlflow.data.html
     """

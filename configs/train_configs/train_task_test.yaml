@@ -1,5 +1,5 @@
 # @package _global_
-NAME: 'test_train'
+NAME: 'train_placeholder_cfg'
 config:
   VERBOSE: True
   TRAINING:
@@ -17,7 +17,7 @@ config:
   LOGGING:
     MLFLOW:
       TRACKING:
-        enable: False
+        enable: True
   TESTING:
     # We have ran the dataloader test before this, anbd the train test will not be run if
     # the dataloader test failed, so need to test this again

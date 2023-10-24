@@ -1,6 +1,7 @@
 import json
 import os
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.log_utils import get_used_services
@@ -12,7 +13,7 @@ def log_cv_results(cv_results: dict,
                    ensembled_results: dict,
                    fold_results: dict,
                    experim_dataloaders: dict,
-                   config: dict,
+                   config: DictConfig,
                    output_dir: str,
                    cv_averaged_output_dir: str,
                    cv_ensembled_output_dir: str):

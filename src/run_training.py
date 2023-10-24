@@ -3,7 +3,7 @@ import os
 import sys
 import time
 
-from src.train_AI.experiment import run_train_experiment
+from src.training.experiment import run_train_experiment, train_run_per_hyperparameters
 from src.utils.general_utils import print_dict_to_logger
 from src.utils.config_utils import import_config
 
@@ -39,7 +39,7 @@ logger.add(sys.stderr, filter=my_filter)
 def parse_args_to_dict():
     parser = argparse.ArgumentParser(description='Segmentation pipeline for Minivess dataset')
     parser.add_argument('-c', '--task_config-file', type=str, required=True,
-                        default='task_config.yaml',
+                        default='train_task_test.yaml',
                         help="Name of your task-specific .yaml file, e.g. 'config_test'")
     # TODO! base_config
     parser.add_argument('-run', '--run_mode', type=str, required=False,
@@ -78,23 +78,18 @@ def parse_args_to_dict():
 
 if __name__ == '__main__':
 
-    # TOADD! Actual hyperparameter config that defines the experiment to run
-    # this is now a placeholder for some list of configs with different hyperparams
+    # Placeholder for hyperparameter sweep, iterate through these
     hyperparam_runs = {'hyperparam_example_name'}
     hparam_run_results = {}
-
     t0 = time.time()
+    args = parse_args_to_dict()
 
-    # These are all parallel jobs, e.g. if you had 100 hyperparam combinations,
+    # These are all parallel jobs (in theory), e.g. if you had 100 hyperparam combinations,
     # you could spin 100 instances here and have your results in 100x the time
     for hyperparam_idx, hyperparam_name in enumerate(hyperparam_runs):
-
-        # Import the config
-        args = parse_args_to_dict()
-        config = import_config(args, task_config_file=args['task_config_file'],
-                               hyperparam_name=hyperparam_name, log_level=LOG_MIN_LEVEL)
-
-        run_results = run_train_experiment(config=config,
-                                           hyperparam_name=hyperparam_name)
+        logger.info('Starting hyperparam run {}/{}: {}'.format(hyperparam_idx + 1,
+                                                               len(hyperparam_runs),
+                                                               hyperparam_name))
+        hparam_run_results[hyperparam_name] = train_run_per_hyperparameters(args)
 
     logger.info('Done in {:.0f} seconds with the execution!'.format(time.time() - t0))

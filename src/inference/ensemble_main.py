@@ -1,5 +1,6 @@
 import os
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.inference.ensemble_model import inference_ensemble_dataloader
 from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
@@ -10,7 +11,7 @@ from src.utils.dataloader_utils import redefine_dataloader_for_inference
 def reinference_dataloaders(input_dict: dict,
                             dataloaders: dict,
                             artifacts_output_dir: str,
-                            config: dict,
+                            config: DictConfig,
                             device,
                             model_scheme: str = 'ensemble_from_repeats',
                             debug_mode: bool = False):
