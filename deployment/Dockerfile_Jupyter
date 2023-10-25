@@ -1,0 +1,23 @@
+# syntax = docker/dockerfile:1.3
+FROM petteriteikari/minivess-mlops-env:latest as base
+
+# See e.g. Creating Docker image(conda+Jupyter notebook) for Social Scientists
+# https://medium.com/geekculture/creating-docker-image-conda-jupyter-notebook-for-social-scientists-8c8b8b259a9a
+# https://docs.paperspace.com/gradient/containers/
+# https://github.com/gradient-ai/tensorflow-python/blob/master/Dockerfile
+ENV USER minivessuser
+ENV HOME /home/$USER
+
+USER root
+# https://docs.paperspace.com/gradient/containers/
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ln -sf /usr/bin/python3.8 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.8 /usr/bin/python && \
+    apt-get install -y --no-install-recommends python3-pip && \
+    pip3 install --upgrade pip && \
+    pip install jupyterlab
+
+ENV PORT 8888
+EXPOSE $PORT
+
+CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --ip 0.0.0.0 --no-browser --allow-root"]
