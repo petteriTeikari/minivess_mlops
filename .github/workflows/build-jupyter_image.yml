@@ -21,4 +21,4 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file deployment/Dockerfile_Jupyter --tag petteriteikari/minivess-mlops-jupyter:latest --no-cache
     - name: Push the image to Dockerhub
-      run: docker push petteriteikari/minivess-mlops-jupyter:latest:latest
+      run: docker push petteriteikari/minivess-mlops-jupyter:latest

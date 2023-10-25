@@ -15,6 +15,7 @@ on:
       - 'poetry.lock'
       - 'pyproject.toml'
       - 'deployment/Dockerfile_env'
+      - 'deployment/Dockerfile_Jupyter'
 
 jobs:
 
