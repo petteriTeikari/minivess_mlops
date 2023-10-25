@@ -66,16 +66,20 @@ def init_mlflow_logging(config: DictConfig,
 
     if mlflow_config['TRACKING']['enable']:
         logger.info('MLflow | Initializing MLflow Experiment tracking')
-        if mlflow_config['server_URI'] is not None:
-            env_vars_set = authenticate_mlflow()
-            if not env_vars_set:
-                tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+        try:
+            if config['config']['SERVICES']['MLFLOW']['server_URI'] is not None:
+                env_vars_set = authenticate_mlflow()
+                if not env_vars_set:
+                    tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+                else:
+                    logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
+                    tracking_uri = mlflow_config['server_URI']
+                    mlflow.set_tracking_uri(tracking_uri)
             else:
-                logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
-                tracking_uri = mlflow_config['server_URI']
-                mlflow.set_tracking_uri(tracking_uri)
-        else:
-            tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+                tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+        except Exception as e:
+            logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
+            raise IOError('Failed to initialize the MLflow logging! e = {}'.format(e))
 
         logger.info('MLflow | Logging to a local MLflow Server: "{}"'.format(tracking_uri))
         # TODO! Is there a way to have MLflow wait for longer periods, or go to offline state

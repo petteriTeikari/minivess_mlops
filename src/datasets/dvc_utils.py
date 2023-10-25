@@ -3,14 +3,16 @@ import time
 import yaml
 from dvc.api import DVCFileSystem
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.utils.general_utils import print_dict_to_logger
 
 
 def get_dvc_files_of_repo(repo_dir: str,
+                          repo_url: str,
                           dataset_name_lowercase: str,
                           fetch_params: dict,
-                          dataset_cfg: dict,
+                          dataset_cfg: DictConfig,
                           local_download_duplicate: bool = True,
                           use_local_repo: bool = True,
                           skip_already_downloaded: bool = True,
@@ -25,8 +27,8 @@ def get_dvc_files_of_repo(repo_dir: str,
             raise IOError('Cannot find the repo dir "{}"'.format(dvc_repo_path))
         fs = DVCFileSystem(repo_dir)
     else:
-        dvc_repo_path = fetch_params['repo_url']
-        fs = DVCFileSystem(dvc_repo_path, rev='main')
+        dvc_repo_path = repo_url
+        fs = DVCFileSystem(repo_url, rev='main')
 
     try:
         cache_dir = get_dvc_cache_dir(dvc_repo_path)
@@ -36,7 +38,7 @@ def get_dvc_files_of_repo(repo_dir: str,
     check_for_dvc_cache_existence(cache_dir)
 
     try:
-        debug_dvc_files(dvc_repo_path=dvc_repo_path,
+        debug_dvc_files(dvc_repo_path=repo_url,
                         dataset=dataset_name_lowercase,
                         cache_dir=cache_dir)
     except Exception as e:

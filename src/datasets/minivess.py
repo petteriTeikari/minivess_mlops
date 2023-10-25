@@ -27,6 +27,7 @@ def import_minivess_dataset(dataset_cfg: DictConfig,
         dataset_dir = fetch_dataset_with_dvc(fetch_params=fetch_params,
                                              dataset_cfg=dataset_cfg,
                                              dataset_name_lowercase=dataset_name.lower(),
+                                             repo_url=config['config']['SERVICES']['DVC']['repo_url'],
                                              repo_dir=exp_run['RUN']['repo_dir'])
 
     elif fetch_method == 'EBrains':
@@ -58,13 +59,15 @@ def import_minivess_dataset(dataset_cfg: DictConfig,
 
 
 def fetch_dataset_with_dvc(fetch_params: dict,
-                           dataset_cfg: dict,
+                           dataset_cfg: DictConfig,
                            dataset_name_lowercase: str,
+                           repo_url: str,
                            repo_dir: str):
 
     # TODO! This is now based on "dvc pull" by Github Actions or manual, but you could try
     #  to get the Python programmatic API to work too (or have "dvc pull" from subprocess)
     dataset_dir = get_dvc_files_of_repo(repo_dir=repo_dir,
+                                        repo_url=repo_url,
                                         dataset_name_lowercase=dataset_name_lowercase,
                                         fetch_params=fetch_params,
                                         dataset_cfg=dataset_cfg)

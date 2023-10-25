@@ -19,6 +19,8 @@ def train_run_per_hyperparameters(args: dict,
                                        exp_run=exp_run,
                                        hyperparam_name=exp_run['RUN']['hyperparam_name'])
 
+    return run_results
+
 
 def define_experiment_data(config: DictConfig,
                            exp_run: dict):
