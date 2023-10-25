@@ -193,6 +193,25 @@ def set_up_experiment_run(config: DictConfig,
     return exp_run
 
 
+def get_repo_dir(return_src: bool = False) -> str:
+    # quick and dirty
+    try:
+        repo_dir = os.path.join(os.getcwd())
+        base_path, last_subdir = os.path.split(repo_dir)
+        if last_subdir == 'src':
+            if return_src:
+                repo_dir = repo_dir
+            else:
+                repo_dir = base_path
+        else:
+            if return_src:
+                repo_dir = os.path.join(repo_dir, 'src')
+    except Exception as e:
+        raise IOError('Problem getting the repo dir (src={}), error = {}'.format(return_src, e))
+
+    return repo_dir
+
+
 def set_up_run_params(config: dict,
                       args: dict,
                       hyperparam_name: str):
@@ -214,8 +233,8 @@ def set_up_run_params(config: dict,
         'output_mlflow_dir': os.path.join(args['output_dir'], 'MLflow'),
         'config_hash': config_hash,
         'start_time': start_time,
-        'src_dir': os.getcwd(),
-        'repo_dir': os.path.join(os.getcwd(), '..'),
+        'src_dir': get_repo_dir(return_src=True),
+        'repo_dir': get_repo_dir()
     }
     # Init variables for 'run'
     run_params['repeat_artifacts'] = {}
