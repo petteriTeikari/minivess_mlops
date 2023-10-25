@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 from loguru import logger
 
-from ml_tests.model_tests import model_tests_main
+from tests.model.model_tests import model_tests_main
 from src.inference.ensemble_main import reinference_dataloaders
 from src.eval import evaluate_datasets_per_epoch
 from src.inference.ensemble_utils import get_submodel_name

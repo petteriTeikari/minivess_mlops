@@ -8,8 +8,8 @@ import random
 
 from omegaconf import DictConfig
 
-from ml_tests.dataset_tests import ml_test_dataset_for_allowed_types
-from ml_tests.file_tests import ml_test_filelisting_corruption
+from tests.data.dataset_tests import ml_test_dataset_for_allowed_types
+from tests.data.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
 from src.utils.general_utils import print_memory_stats_to_logger
 

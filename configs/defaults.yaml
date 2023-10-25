@@ -25,7 +25,6 @@ config:
           DVC:
             datapath_base: 'data'
             version: 'placeholder'
-            repo_url: 'https://github.com/petteriTeikari/minivess_mlops'
           EBrains:
             # this was originally used for the data, but it is a bit cumbersome to use programmatically,
             # wtih authentication (registration) requiring extra hoops for non-academics
@@ -394,9 +393,6 @@ config:
     TENSORBOARD:
       placeholder: 1
     MLFLOW:
-      # Could this be configured slightly different, using compositionality so that you don't have
-      # very environment-specific parameter among with more static parameters?
-      server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'
       TRACKING:
         enable: True
         DATASET:
@@ -424,3 +420,17 @@ config:
     WANDB:
       enable: False
       s3: null
+
+  # ----------------------------------------------------------------------------------- #
+  # SERVICES
+  # refactor to be a separate .yaml
+  # ----------------------------------------------------------------------------------- #
+  SERVICES:
+    # These can be obviously very different for different orgs and different users
+    MLFLOW:
+      server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'
+    DVC:
+      repo_url: 'https://github.com/petteriTeikari/minivess_mlops'
+    S3:
+      dataset_bucket: 's3://minivessdataset'
+      artifacts_bucket: 's3://minivess-artifacts'

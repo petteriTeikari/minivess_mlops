@@ -13,7 +13,7 @@ import torch
 import torch.distributed as dist
 from omegaconf import DictConfig
 
-from ml_tests.mount_tests import debug_mounts
+from tests.env.mount_tests import debug_mounts
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
 from src.utils.general_utils import print_dict_to_logger
@@ -28,14 +28,15 @@ def get_changed_keys(base_config, config):
 
 
 def get_hydra_config_paths(task_cfg_name: str = None,
-                           reprod_cfg_name: str = None) -> dict:
+                           reprod_cfg_name: str = None,
+                           parent_dir_string: str = '..') -> dict:
 
     def get_config_path():
-        absolute_config_dir = os.path.join(os.getcwd(), '..', 'configs')
+        absolute_config_dir = os.path.join(os.getcwd(), parent_dir_string, 'configs')
         if not os.path.exists(absolute_config_dir):
             logger.error('Configuration dir "{}" does not exist!'.format(absolute_config_dir))
             raise IOError('Configuration dir "{}" does not exist!'.format(absolute_config_dir))
-        relative_config_dir = os.path.join('..', 'configs')
+        relative_config_dir = os.path.join(parent_dir_string, 'configs')
         return absolute_config_dir, relative_config_dir
 
     def get_task_cfg_overrides_list(task_cfg_name: str, abs_cfg_path: str):
@@ -78,10 +79,11 @@ def update_task_cfg_for_ci_cd_jobs(run_mode: str = 'test_dataload',
 def hydra_import_config(hydra_cfg_paths: dict,
                         base_cfg_name: str = 'defaults',
                         job_name: str = None,
+                        parent_dir_string_defaults: str = '..',
                         hydra_version_base = '1.2') -> DictConfig:
     try:
         # This relative path is from config_utils.py, so one "../" added
-        with initialize(config_path=os.path.join('..', hydra_cfg_paths['config_path']),
+        with initialize(config_path=os.path.join(parent_dir_string_defaults, hydra_cfg_paths['config_path']),
                         job_name=job_name,
                         version_base=hydra_version_base):
             cfg = compose(config_name=base_cfg_name,
@@ -96,6 +98,27 @@ def hydra_import_config(hydra_cfg_paths: dict,
     return cfg
 
 
+def config_import_script(task_cfg_name: str = None,
+                         reprod_cfg_name: str = None,
+                         parent_dir_string: str = '..',
+                         parent_dir_string_defaults: str = '..',
+                         job_name: str = 'config_test',
+                         base_cfg_name: str = 'defaults',
+                         hydra_version_base = '1.2') -> DictConfig:
+
+    # Define the paths needed to create the Hydra config
+    hydra_cfg_paths = get_hydra_config_paths(task_cfg_name=task_cfg_name,
+                                             reprod_cfg_name=reprod_cfg_name,
+                                             parent_dir_string=parent_dir_string)
+
+    # Compose the Hydra config by merging base and "task" config
+    config = hydra_import_config(hydra_cfg_paths=hydra_cfg_paths,
+                                 job_name=job_name,
+                                 base_cfg_name=base_cfg_name,
+                                 parent_dir_string_defaults=parent_dir_string_defaults,
+                                 hydra_version_base=hydra_version_base)
+
+    return config
 
 def import_config(args: dict,
                   task_cfg_name: str = 'train_configs/train_task_test',
@@ -106,13 +129,9 @@ def import_config(args: dict,
     if args['run_mode'] != 'train':
         task_cfg_name = update_task_cfg_for_ci_cd_jobs(run_mode=args['run_mode'])
 
-    # Define the paths needed to create the Hydra config
-    hydra_cfg_paths = get_hydra_config_paths(task_cfg_name=task_cfg_name,
-                                             reprod_cfg_name=reprod_cfg_name)
-
-    # Compose the Hydra config by merging base and "task" config
-    config = hydra_import_config(hydra_cfg_paths=hydra_cfg_paths,
-                                 job_name=args['project_name'])
+    config = config_import_script(task_cfg_name=task_cfg_name,
+                                  reprod_cfg_name=reprod_cfg_name,
+                                  job_name=args['project_name'])
 
     exp_run = set_up_experiment_run(config=config,
                                     args=args,

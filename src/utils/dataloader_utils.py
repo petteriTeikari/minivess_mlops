@@ -2,8 +2,8 @@ from loguru import logger
 from monai.data import DataLoader, list_data_collate, Dataset
 from omegaconf import DictConfig
 
-from ml_tests.dataloader_tests import ml_test_dataloader_dict_integrity
-from ml_tests.dataset_tests import ml_test_dataset_summary
+from tests.data.dataloader_tests import ml_test_dataloader_dict_integrity
+from tests.data.dataset_tests import ml_test_dataset_summary
 from src.datasets.minivess import define_minivess_dataset
 from src.utils.transforms import define_transforms, no_aug
 

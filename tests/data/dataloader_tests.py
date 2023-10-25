@@ -7,8 +7,8 @@ import torch
 
 from loguru import logger
 
-from ml_tests.dataset_tests import ml_test_dataset_for_allowed_types
-from ml_tests.test_utils import add_boolean_and_metric_strings_to_summary
+from tests.data.dataset_tests import ml_test_dataset_for_allowed_types
+from tests.test_utils import add_boolean_and_metric_strings_to_summary
 from src.inference.ensemble_utils import merge_nested_dicts
 
 

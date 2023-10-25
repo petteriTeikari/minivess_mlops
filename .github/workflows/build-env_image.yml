@@ -3,7 +3,7 @@
 #   and what you could use as an interpreter in PyCharm, and what you would like to auto-build only when 
 #   Poetry environment or the Dockerfile changes
 # * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
-#   auto-built everytime the `src` and ` ml_tests` code has updates
+#   auto-built everytime the `src` and ` model` code has updates
 name: Docker (Env)
 
 on:

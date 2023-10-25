@@ -5,7 +5,7 @@ import numpy as np
 import nibabel as nib
 from loguru import logger
 
-from ml_tests.ml_tests import ml_test_data_not_corrupted
+from tests.model.ml_tests import ml_test_data_not_corrupted
 
 
 def ml_test_filelisting_corruption(list_of_files: list,
