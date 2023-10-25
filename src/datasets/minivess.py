@@ -40,15 +40,19 @@ def import_minivess_dataset(dataset_cfg: DictConfig,
     filelisting, dataset_stats = get_minivess_filelisting(dataset_dir)
     fold_split_file_dicts = define_minivess_splits(filelisting, data_splits_config=dataset_cfg['SPLITS'])
 
-    if dataset_cfg['SUBSET']['NAME'] == 'ALL_SAMPLES':
-        logger.info('Using all the samples for training, validation and testing')
-    else:
-        subset_cfg_name = dataset_cfg['SUBSET']['NAME']
-        subset_cfg = dataset_cfg['SUBSET'][subset_cfg_name]
-        logger.info('Using only a subset of the samples, Config = {}'.format(dataset_cfg['SUBSET']['NAME']))
-        minivess_debug_splits(fold_split_file_dicts=fold_split_file_dicts,
-                              subset_cfg=subset_cfg,
-                              subset_cfg_name=subset_cfg_name)
+    try:
+        if dataset_cfg['SUBSET']['NAME'] == 'ALL_SAMPLES':
+            logger.info('Using all the samples for training, validation and testing')
+        else:
+            subset_cfg_name = dataset_cfg['SUBSET']['NAME']
+            subset_cfg = dataset_cfg['SUBSET'][subset_cfg_name]
+            logger.info('Using only a subset of the samples, Config = {}'.format(dataset_cfg['SUBSET']['NAME']))
+            minivess_debug_splits(fold_split_file_dicts=fold_split_file_dicts,
+                                  subset_cfg=subset_cfg,
+                                  subset_cfg_name=subset_cfg_name)
+    except Exception as e:
+        logger.error('Problem getting data subset, error = {}'.format(e))
+        raise IOError('Problem getting data subset, error = {}'.format(e))
 
     return filelisting, fold_split_file_dicts, dataset_stats
 
@@ -220,6 +224,7 @@ def define_minivess_splits(filelisting,
 
     split_method = data_splits_config['NAME']
     if split_method == 'RANDOM':
+        logger.info('Splitting the data randomly')
         files_dict = get_random_splits_for_minivess(data_dicts, data_split_cfg=data_splits_config[split_method])
         # FIXME! quick and dirty placeholder for allowing cross-validation if needed, or you could bootstrap
         #  an inference model with different data on each fold

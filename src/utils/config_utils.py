@@ -164,6 +164,7 @@ def set_up_experiment_run(config: DictConfig,
 
     # Initialize ML logging (experiment tracking)
     exp_run['MLFLOW'], mlflow_dict = init_mlflow_logging(config=config,
+                                                         exp_run=exp_run,
                                                          mlflow_config=config['config']['LOGGING']['MLFLOW'],
                                                          experiment_name=args['project_name'],
                                                          run_name=exp_run['RUN']['hyperparam_name'])
@@ -223,7 +224,7 @@ def define_hyperparams_from_config(config: dict) -> dict:
     hyperparameters = define_hyperparam_run_params(config)
 
     # TODO! Fix this with the updated nesting, with some nicer recursive function for undefined depth
-    hyperparameters_flat = None  # flatten_nested_dictionary(dict_in=config['hyperparameters'])
+    hyperparameters_flat = {'placeholder_key': 'value'}  # flatten_nested_dictionary(dict_in=config['hyperparameters'])
     logger.info('Save the derived hyperparameters to config["hyperparameters"]')
     logger.info(hyperparameters)  # TODO add to print_the_dict_to_logger() nested dicts as well
 
@@ -347,21 +348,26 @@ def parse_training_params(model_names, hyperparams, cfg):
 
     # Training params
     training_tmp = deepcopy(cfg['TRAINING'])
-    setting_names = ['LOSS', 'OPTIMIZER', 'SCHEDULER']
-    for model_name in model_names:
-        hyperparams['models'][model_name]['training'] = training_tmp[model_name]
-        hyperparams['models'][model_name]['training_extra'] = {}
-        for setting_name in setting_names:
-            try:
-                settings, param_name = (
-                    parse_settings_by_name(model_cfg=training_tmp[model_name][setting_name]))
-                hyperparams['models'][model_name]['training_extra'][setting_name] = {}
-                hyperparams['models'][model_name]['training_extra'][setting_name][param_name] = settings
-            except Exception as e:
-                logger.error('Problem parsing the training settings, model_name = {}, setting_name = {}, e = {}'.
-                             format(model_name, setting_name, e))
-                raise IOError('Problem parsing the training settings, model_name = {}, setting_name = {}, e = {}'.
-                              format(model_name, setting_name, e))
+    if training_tmp['SKIP_TRAINING']:
+        logger.warning('Skipping the training, not parsing training hyperparameters')
+        hyperparams = {}
+
+    else:
+        setting_names = ['LOSS', 'OPTIMIZER', 'SCHEDULER']
+        for model_name in model_names:
+            hyperparams['models'][model_name]['training'] = training_tmp[model_name]
+            hyperparams['models'][model_name]['training_extra'] = {}
+            for setting_name in setting_names:
+                try:
+                    settings, param_name = (
+                        parse_settings_by_name(model_cfg=training_tmp[model_name][setting_name]))
+                    hyperparams['models'][model_name]['training_extra'][setting_name] = {}
+                    hyperparams['models'][model_name]['training_extra'][setting_name][param_name] = settings
+                except Exception as e:
+                    logger.error('Problem parsing the training settings, model_name = {}, setting_name = {}, e = {}'.
+                                 format(model_name, setting_name, e))
+                    raise IOError('Problem parsing the training settings, model_name = {}, setting_name = {}, e = {}'.
+                                  format(model_name, setting_name, e))
 
     return hyperparams
 

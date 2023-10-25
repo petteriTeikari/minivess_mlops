@@ -1,0 +1,24 @@
+# @package _global_
+NAME: 'train_demo'
+config:
+  VERBOSE: True
+  TRAINING:
+    SKIP_TRAINING: True
+  DATA:
+    DATA_SOURCE:
+      MINIVESS:
+        DATASET:
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 0.0
+        SUBSET:
+          NAME: 'ALL_SAMPLES'
+  LOGGING:
+    MLFLOW:
+      TRACKING:
+        enable: False
+  TESTING:
+    # We have ran the dataloader test before this, anbd the train test will not be run if
+    # the dataloader test failed, so need to test this again
+    DATALOADER:
+      DATA_VALIDITY:
+        enable: False

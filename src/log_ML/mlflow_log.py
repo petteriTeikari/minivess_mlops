@@ -54,7 +54,8 @@ def init_mlflow_run(local_server_path: str,
     return experiment, active_run
 
 
-def init_mlflow_logging(config: dict,
+def init_mlflow_logging(config: DictConfig,
+                        exp_run: dict,
                         mlflow_config: dict,
                         experiment_name: str = "MINIVESS_segmentation",
                         run_name: str = "UNet3D"):
@@ -68,13 +69,13 @@ def init_mlflow_logging(config: dict,
         if mlflow_config['server_URI'] is not None:
             env_vars_set = authenticate_mlflow()
             if not env_vars_set:
-                tracking_uri = mlflow_local_mlflow_init(config)
+                tracking_uri = mlflow_local_mlflow_init(config, exp_run)
             else:
                 logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
                 tracking_uri = mlflow_config['server_URI']
                 mlflow.set_tracking_uri(tracking_uri)
         else:
-            tracking_uri = mlflow_local_mlflow_init(config)
+            tracking_uri = mlflow_local_mlflow_init(config, exp_run)
 
         logger.info('MLflow | Logging to a local MLflow Server: "{}"'.format(tracking_uri))
         # TODO! Is there a way to have MLflow wait for longer periods, or go to offline state
@@ -95,12 +96,12 @@ def init_mlflow_logging(config: dict,
                           '   mlflow_config["server_URI"]  = null\n'
                           'error = {}'.format(e))
 
-        if config["hyperparameters_flat"] is not None:
-            logger.info('MLflow | Writing experiment hyperparameters (from config["hyperparameters_flat"])')
-            for hyperparam_key in config["hyperparameters_flat"]:
+        if exp_run["HYPERPARAMETERS_FLAT"] is not None:
+            logger.info('MLflow | Writing experiment hyperparameters (from exp_run["HYPERPARAMETERS_FLAT"])')
+            for hyperparam_key in exp_run["HYPERPARAMETERS_FLAT"]:
                 # https://dagshub.com/docs/troubleshooting/
-                mlflow.log_param(hyperparam_key, config["hyperparameters_flat"][hyperparam_key])
-                logger.debug(' {} = {}'.format(hyperparam_key, config["hyperparameters_flat"][hyperparam_key]))
+                mlflow.log_param(hyperparam_key, exp_run["HYPERPARAMETERS_FLAT"][hyperparam_key])
+                logger.debug(' {} = {}'.format(hyperparam_key, exp_run["HYPERPARAMETERS_FLAT"][hyperparam_key]))
         else:
             logger.info('MLflow | Writing dummy parameter')
             mlflow.log_param('dummy_key', 'dummy_value')
@@ -116,10 +117,11 @@ def init_mlflow_logging(config: dict,
     return mlflow_dict_omegaconf, mlflow_dict
 
 
-def mlflow_local_mlflow_init(config) -> str:
+def mlflow_local_mlflow_init(config, exp_run) -> str:
     # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
     tracking_uri = exp_run['RUN']['output_mlflow_dir']
     os.makedirs(tracking_uri, exist_ok=True)
+    logger.debug('MLflow | Local MLflow Server initialized at "{}"'.format(tracking_uri))
     mlflow.set_tracking_uri(tracking_uri)
 
     return tracking_uri
