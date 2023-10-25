@@ -209,8 +209,8 @@ def check_for_dvc_cache_existence(cache_dir: str):
         else:
             logger.info('DVC cache dir exists in "{}"'.format(cache_dir))
     except Exception as e:
-        logger.warning('Problem checking for cache dir ({]), e = {}'.format(cache_dir, e))
-        raise IOError('Problem checking for cache dir ({]), e = {}'.format(cache_dir, e))
+        logger.warning('Problem checking for cache dir ({}), e = {}'.format(cache_dir, e))
+        raise IOError('Problem checking for cache dir ({}), e = {}'.format(cache_dir, e))
 
 
 def get_dvc_config(dvc_path: str,
