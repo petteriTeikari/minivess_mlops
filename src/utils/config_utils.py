@@ -188,6 +188,8 @@ def set_up_experiment_run(config: DictConfig,
                                                          experiment_name=args['project_name'],
                                                          run_name=exp_run['RUN']['hyperparam_name'])
 
+    logger.info('Done setting up the experiment run parameters')
+
     return exp_run
 
 

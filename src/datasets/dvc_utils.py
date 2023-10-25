@@ -32,10 +32,10 @@ def get_dvc_files_of_repo(repo_dir: str,
 
     try:
         cache_dir = get_dvc_cache_dir(dvc_repo_path)
+        check_for_dvc_cache_existence(cache_dir)
     except Exception as e:
-        logger.warning('Problem getting the DVC cache dir from DVC path "{}", e = {}'.format(dvc_repo_path, e))
-        cache_dir = None
-    check_for_dvc_cache_existence(cache_dir)
+        logger.error('Problem getting the DVC cache dir from DVC path "{}", e = {}'.format(dvc_repo_path, e))
+        raise IOError('Problem getting the DVC cache dir from DVC path "{}", e = {}'.format(dvc_repo_path, e))
 
     try:
         debug_dvc_files(dvc_repo_path=repo_url,
@@ -203,10 +203,14 @@ def get_dvc_cache_dir(dvc_repo_path: str):
 
 def check_for_dvc_cache_existence(cache_dir: str):
 
-    if not os.path.exists(cache_dir):
-        raise IOError('DVC cache dir does not exist in "{}"'.format(cache_dir))
-    else:
-        logger.info('DVC cache dir exists in "{}"'.format(cache_dir))
+    try:
+        if not os.path.exists(cache_dir):
+            raise IOError('DVC cache dir does not exist in "{}"'.format(cache_dir))
+        else:
+            logger.info('DVC cache dir exists in "{}"'.format(cache_dir))
+    except Exception as e:
+        logger.warning('Problem checking for cache dir ({]), e = {}'.format(cache_dir, e))
+        raise IOError('Problem checking for cache dir ({]), e = {}'.format(cache_dir, e))
 
 
 def get_dvc_config(dvc_path: str,
