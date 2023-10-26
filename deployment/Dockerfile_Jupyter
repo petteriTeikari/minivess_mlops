@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.3
 FROM petteriteikari/minivess-mlops-env:latest as base
 
-# See e.g. Creating Docker image(conda+Jupyter notebook) for Social Scientists
+# See e.g. "Creating Docker image(conda+Jupyter notebook) for Social Scientists"
 # https://medium.com/geekculture/creating-docker-image-conda-jupyter-notebook-for-social-scientists-8c8b8b259a9a
 # https://docs.paperspace.com/gradient/containers/
 # https://github.com/gradient-ai/tensorflow-python/blob/master/Dockerfile

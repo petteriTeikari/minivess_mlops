@@ -66,9 +66,4 @@ RUN pip install --disable-pip-version-check --no-cache-dir -r $HOME/requirements
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-# Jupyter extra
-# Let's define this parameter to install jupyter lab instead of the default juyter notebook command
-# so we don't have to use it when running the container with the option -e
-# ENV JUPYTER_ENABLE_LAB=yes
-
 USER $USER
