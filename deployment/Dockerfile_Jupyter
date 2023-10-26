@@ -15,9 +15,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python && \
     apt-get install -y --no-install-recommends python3-pip && \
     pip3 install --upgrade pip && \
-    pip install jupyterlab
+    pip install jupyterlab notebook
 
 ENV PORT 8888
 EXPOSE $PORT
 
-CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --ip 0.0.0.0 --no-browser --allow-root"]
+# ENTRYPOINT ["jupyter notebook","--allow-root","--ip=0.0.0.0","--port=8888","--no-browser"]
+#jupyter notebook --allow-root --ip=0.0.0.0 --port=8888 --no-browser
+# docker run -i -t --rm -p  8888:8888 petteriteikari/minivess-mlops-jupyter:latest /bin/bash
