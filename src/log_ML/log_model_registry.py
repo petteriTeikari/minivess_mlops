@@ -38,11 +38,11 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             ensemble_models[ensemble_name] = (
                 ModelEnsemble(models_of_ensemble=ensemble_models_flat[ensemble_name],
                               models_from_paths=True,
-                              validation_config=config['config']['VALIDATION'],
+                              validation_cfg=cfg['config']['VALIDATION'],
                               ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                               validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                               device=config['config']['MACHINE']['IN_USE']['device'],
-                              eval_config=config['config']['VALIDATION_BEST'],
+                              eval_cfg=cfg['config']['VALIDATION_BEST'],
                               # TODO! need to make this adaptive based on submodel
                               precision='AMP'))  # config['config']['TRAINING']['PRECISION'])
 
@@ -57,11 +57,11 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             mlflow_model_log[ensemble_name] = (
                 mlflow_metamodel_logging(ensemble_model=ensemble_models[ensemble_name],
                                          model_paths=ensemble_models_flat[ensemble_name],
-                                         run_params_dict=exp_run['RUN'],
+                                         run_params_dict=cfg['run']['PARAMS'],
                                          model_uri=model_uri,
                                          ensemble_name=ensemble_name,
                                          signature=signature,
-                                         config=config))
+                                         cfg=cfg))
 
             if test_loading:
                 # Test that you can download the models from the Model Registry, and that the performance
@@ -77,8 +77,8 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
                                                     cv_ensemble_results=cv_ensemble_results,
                                                     experim_dataloaders=experim_dataloaders,
                                                     ensemble_name=ensemble_name,
-                                                    test_config=config['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
-                                                    config=config))
+                                                    test_cfg=cfg['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
+                                                    cfg=cfg))
             else:
                 test_results = None
                 logger.warning('MLflow | Skipping the model loading back from MLflow, are you sure?\n'
@@ -123,15 +123,15 @@ def mlflow_metamodel_logging(ensemble_model,
         mlflow.pyfunc.log_model(artifact_path=metamodel_name,
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
                                                            models_from_paths=True,
-                                                           validation_config=config['config']['VALIDATION'],
+                                                           validation_cfg=cfg['config']['VALIDATION'],
                                                            ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                                            validation_params=validation_params,
                                                            device=config['config']['MACHINE']['IN_USE']['device'],
-                                                           eval_config=config['config']['VALIDATION_BEST'],
+                                                           eval_cfg=cfg['config']['VALIDATION_BEST'],
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                pip_requirements=os.path.join(exp_run['RUN']['repo_dir'], 'requirements.txt')
+                                pip_requirements=os.path.join(cfg['run']['PARAMS']['repo_dir'], 'requirements.txt')
                                 )
     )
 

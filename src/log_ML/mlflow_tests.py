@@ -61,7 +61,7 @@ def test_mlflow_models_reproduction(ensemble_filepaths: dict,
     if 'CHECK_LOCAL' in test_config:
         test_results['local_models'] = local_model_tests(test_config=test_config,
                                                          ensemble_model=ensemble_model,
-                                                         config=config,
+                                                         cfg=cfg,
                                                          model_paths=ensemble_filepaths)
     else:
         test_results['local'] = None
@@ -93,11 +93,11 @@ def local_model_tests(ensemble_model: ModelEnsemble,
 
         ensemble_model_local = ModelEnsemble(models_of_ensemble=model_paths,
                                              models_from_paths=True,
-                                             validation_config=config['config']['VALIDATION'],
+                                             validation_cfg=cfg['config']['VALIDATION'],
                                              ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                              validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                                              device=config['config']['MACHINE']['IN_USE']['device'],
-                                             eval_config=config['config']['VALIDATION_BEST'],
+                                             eval_cfg=cfg['config']['VALIDATION_BEST'],
                                              # TODO! need to make this adaptive based on submodel
                                              precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 

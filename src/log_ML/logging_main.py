@@ -10,21 +10,26 @@ from src.log_ML.results_utils import average_repeat_results, reorder_crossvalida
     get_best_repeat_result
 from src.log_ML.s3_utils import sync_artifacts_to_s3
 from src.log_ML.wandb_log import log_wandb_repeat_results, log_wandb_ensemble_results
+from src.utils.dict_utils import cfg_key
 
 
-def log_epoch_results(train_epoch_results, eval_epoch_results,
-                      epoch, config, output_dir, output_artifacts):
+def log_epoch_results(train_epoch_results,
+                      eval_epoch_results,
+                      epoch,
+                      cfg,
+                      output_dir,
+                      output_artifacts):
 
     if 'epoch_level' not in list(output_artifacts.keys()):
         output_artifacts['epoch_level'] = {}
 
     output_artifacts = log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
-                                                 epoch, config, output_dir, output_artifacts)
+                                                 epoch, cfg, output_dir, output_artifacts)
 
     return output_artifacts
 
 
-def log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, config,
+def log_n_epochs_results(train_results, eval_results, best_dict, output_artifacts, cfg,
                          repeat_idx: int, fold_name: str, repeat_name: str):
 
     logger.debug('Placeholder for n epochs logging (i.e. submodel or single repeat training)')
@@ -32,8 +37,8 @@ def log_n_epochs_results(train_results, eval_results, best_dict, output_artifact
 
 def log_averaged_and_best_repeats(repeat_results: dict,
                                   fold_name: str,
-                                  config: DictConfig,
-                                  exp_run: dict,
+                                  cfg: dict,
+                                  
                                   dataloaders: dict,
                                   device):
 
@@ -46,22 +51,23 @@ def log_averaged_and_best_repeats(repeat_results: dict,
     best_repeat_dicts = get_best_repeat_result(repeat_results)
 
     # These are not defined for WANDB at this point, but written at the end of the script
-    service = ('MLflow' if config['config']['LOGGING']['MLFLOW']['TRACKING']['enable'] else None)
+    service = ('MLflow' if cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW', 'TRACKING', 'enable') else None)
 
-    if config['config']['VALIDATION_BEST']['enable']:
+    if cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION_BEST', 'enable'):
 
         # Re-inference the dataloader with the best model(s) of the best repeat
         # e.g. you want to have Hausdorff distance here that you thought to be too heavy to compute while training
+        artifacts_output_dir = cfg_key(cfg, 'run', 'PARAMS', 'output_experiment_dir')
         best_repeat_metrics = reinference_dataloaders(input_dict=best_repeat_dicts,
-                                                      config=config,
-                                                      artifacts_output_dir=exp_run['RUN']['output_experiment_dir'],
+                                                      cfg=cfg,
+                                                      artifacts_output_dir=artifacts_output_dir,
                                                       dataloaders=dataloaders,
                                                       device=device,
                                                       model_scheme='best_repeats')
 
         # log best repeat metrics here to MLflow/WANDB
         log_best_reinference_metrics(best_repeat_metrics=best_repeat_metrics,
-                                     config=config,
+                                     cfg=cfg,
                                      fold_name=fold_name,
                                      service=service)
 
@@ -71,13 +77,13 @@ def log_averaged_and_best_repeats(repeat_results: dict,
 
         # Log the metric results of the best repeat out of n repeats
         log_best_repeats(best_repeat_dicts=best_repeat_dicts,
-                         config=config,
+                         cfg=cfg,
                          service=service,
                          fold_name=fold_name)
 
 
 def log_best_repeats(best_repeat_dicts: dict,
-                     config: DictConfig,
+                     cfg: dict,
                      splits: tuple = ('VAL', 'TEST'),
                      service: str = 'MLflow',
                      fold_name: str = None):
@@ -130,8 +136,8 @@ def log_best_repeats(best_repeat_dicts: dict,
 def log_crossvalidation_results(fold_results: dict,
                                 ensembled_results: dict,
                                 experim_dataloaders: dict,
-                                config: DictConfig,
-                                exp_run: dict,
+                                cfg: dict,
+                                
                                 output_dir: str):
 
     # Reorder CV results and compute the stats, i.e. mean of 5 folds and 5 repeats per fold (n = 25)
@@ -146,28 +152,31 @@ def log_crossvalidation_results(fold_results: dict,
     else:
         cv_ensemble_results = None
 
-    if config['config']['LOGGING']['WANDB']['enable']:
+    if cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'WANDB', 'enable'):
         log_wandb_repeat_results(fold_results=fold_results,
-                                 output_dir=exp_run['RUN']['output_base_dir'],
-                                 config=config)
+                                 output_dir=cfg_key(cfg, 'run', 'PARAMS', 'output_base_dir'),
+                                 cfg=cfg)
     else:
         logger.info('Skipping repeat-level WANDB Logging!')
 
     if cv_ensemble_results is not None:
-        if config['config']['LOGGING']['WANDB']['enable']:
+        if cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'WANDB', 'enable'):
             log_wandb_ensemble_results(ensembled_results=ensembled_results,
-                                       output_dir=exp_run['RUN']['output_base_dir'],
-                                       config=config)
+                                       output_dir=cfg_key(cfg, 'run', 'PARAMS', 'output_base_dir'),
+                                       cfg=cfg)
 
+        cv_averaged_output_dir = cfg_key(cfg, 'run', 'PARAMS', 'cross_validation_averaged')
+        cv_ensembled_output_dir = cfg_key(cfg, 'run', 'PARAMS', 'cross_validation_ensembled')
+        output_dir = cfg['run']['PARAMS']['output_base_dir']
         logged_model_paths = log_cv_results(cv_results=cv_results,
                                             cv_ensemble_results=cv_ensemble_results,
                                             ensembled_results=ensembled_results,
                                             fold_results=fold_results,
                                             experim_dataloaders=experim_dataloaders,
-                                            config=config,
-                                            output_dir=exp_run['RUN']['output_base_dir'],
-                                            cv_averaged_output_dir=exp_run['RUN']['cross_validation_averaged'],
-                                            cv_ensembled_output_dir=exp_run['RUN']['cross_validation_ensembled'])
+                                            cfg=cfg,
+                                            output_dir=output_dir,
+                                            cv_averaged_output_dir=cv_averaged_output_dir,
+                                            cv_ensembled_output_dir=cv_ensembled_output_dir)
     else:
         logged_model_paths = None
 
@@ -176,13 +185,13 @@ def log_crossvalidation_results(fold_results: dict,
         logger.info('Done with the MLflow Logging!')
 
     sync_artifacts_to_s3(experiment_artifacts_dir=output_dir,
-                         config=config)
+                         cfg=cfg)
 
     return logged_model_paths
 
 
 def log_best_reinference_metrics(best_repeat_metrics: dict,
-                                 config: DictConfig,
+                                 cfg: dict,
                                  stat_key: str = 'split_metrics_stat',
                                  stat_value_to_log: str = 'mean',
                                  service: str = 'MLflow',

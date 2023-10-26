@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 
 def sync_artifacts_to_s3(experiment_artifacts_dir: str,
                          bucket_name: str = 'minivess-artifacts',
-                         config: DictConfig = None):
+                         cfg: dict = None):
 
     s3_path = os.path.join('s3://', bucket_name)
     s3_experiments_path = os.path.join(s3_path, 'experiments')

@@ -6,6 +6,7 @@ from omegaconf import DictConfig
 from src.log_ML.json_log import to_serializable
 from src.log_ML.log_utils import get_used_services
 from src.log_ML.wandb_log import log_crossval_res
+from src.utils.dict_utils import cfg_key
 
 
 def log_cv_results(cv_results: dict,
@@ -13,13 +14,13 @@ def log_cv_results(cv_results: dict,
                    ensembled_results: dict,
                    fold_results: dict,
                    experim_dataloaders: dict,
-                   config: DictConfig,
+                   cfg: dict,
                    output_dir: str,
                    cv_averaged_output_dir: str,
                    cv_ensembled_output_dir: str):
 
     logger.info('Logging Cross-Validation-wise results')
-    logging_services = get_used_services(logging_cfg=config['config']['LOGGING'])
+    logging_services = get_used_services(logging_cfg=cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING'))
     os.makedirs(cv_averaged_output_dir, exist_ok=True)
     os.makedirs(cv_ensembled_output_dir, exist_ok=True)
 
@@ -38,7 +39,7 @@ def log_cv_results(cv_results: dict,
                                    cv_ensembled_output_dir=cv_ensembled_output_dir,
                                    output_dir=output_dir,
                                    logging_services=logging_services,
-                                   config=config)
+                                   cfg=cfg)
 
     return model_paths
 

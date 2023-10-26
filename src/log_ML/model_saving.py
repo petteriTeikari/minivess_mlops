@@ -4,18 +4,27 @@ from copy import deepcopy
 import numpy as np
 import torch
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.utils.model_utils import get_last_layer_weights_of_model
 
 
-def save_models_if_improved(best_dicts, epoch,
-                            model, optimizer, lr_scheduler,
-                            train_epoch_results, train_results,
-                            eval_epoch_results, eval_results,
-                            validation_config, config, model_dir,
+def save_models_if_improved(best_dicts,
+                            epoch: int,
+                            model,
+                            optimizer,
+                            lr_scheduler,
+                            train_epoch_results: dict,
+                            train_results: dict,
+                            eval_epoch_results: dict,
+                            eval_results: dict,
+                            validation_config: DictConfig,
+                            cfg: dict,
+                            model_dir: str,
                             split_key: str = 'VAL',
                             results_type: str = 'scalars',
-                            fold_name: str = None, repeat_name: str = None):
+                            fold_name: str = None,
+                            repeat_name: str = None):
 
     os.makedirs(model_dir, exist_ok=True)
     best_dicts_out = {}
@@ -137,7 +146,7 @@ def model_improved_script(best_dict: dict,
                           current_value: float, best_value_so_far: float,
                           model, optimizer, lr_scheduler,
                           epoch: int, model_dir: str,
-                          dataset: str, metric: str, validation_config: dict,
+                          dataset: str, metric: str, validation_config: DictConfig,
                           fold_name: str, repeat_name: str) -> dict:
     """
     Instead of "Github demo repos" in which you only want to save the weights, we also want to save all possible

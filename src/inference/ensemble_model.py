@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Union
 
 import mlflow
+import monai.data.dataloader
 import numpy as np
 import torch
 from omegaconf import OmegaConf
@@ -12,22 +13,24 @@ from src.inference.ensemble_utils import add_sample_results_to_ensemble_results,
     compute_split_metric_stats
 from src.inference.inference_utils import inference_sample, get_inference_metrics
 from src.log_ML.model_saving import import_model_from_path
+from src.utils.dict_utils import cfg_key
 from src.utils.model_utils import get_last_layer_weights_of_model
 
 
 def inference_ensemble_dataloader(models_of_ensemble: dict,
-                                  config: dict,
+                                  cfg: dict,
                                   split: str,
-                                  dataloader,
+                                  dataloader: monai.data.dataloader.DataLoader,
                                   device):
 
     # Create the ensembleModel class with all the submodels of the ensemble
+    validation_params = cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION', 'VALIDATION_PARAMS')
     ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
-                                   validation_config=config['config']['VALIDATION'],
-                                   ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                   validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
+                                   validation_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION'),
+                                   ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config', 'ENSEMBLE', 'PARAMS'),
+                                   validation_params=validation_params,
                                    device=device,
-                                   eval_config=config['config']['VALIDATION_BEST'],
+                                   eval_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION_BEST'),
                                    # TODO! this could be architecture-specific
                                    precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 

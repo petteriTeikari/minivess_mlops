@@ -8,6 +8,7 @@ import random
 
 from omegaconf import DictConfig
 
+from src.utils.dict_utils import cfg_key
 from tests.data.dataset_tests import ml_test_dataset_for_allowed_types
 from tests.data.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
@@ -17,23 +18,25 @@ from src.utils.general_utils import print_memory_stats_to_logger
 def import_minivess_dataset(dataset_cfg: DictConfig,
                             data_dir: str,
                             run_mode: str,
-                            config: DictConfig,
-                            exp_run: dict,
+                            cfg: dict,
                             dataset_name: str,
                             fetch_method: str,
                             fetch_params: dict):
 
     if fetch_method == 'DVC':
+        repo_url = cfg_key(cfg, 'hydra_cfg', 'config', 'SERVICES', 'DVC', 'repo_url')
+        repo_dir= cfg_key(cfg, 'run', 'PARAMS', 'repo_dir')
         dataset_dir = fetch_dataset_with_dvc(fetch_params=fetch_params,
                                              dataset_cfg=dataset_cfg,
                                              dataset_name_lowercase=dataset_name.lower(),
-                                             repo_url=config['config']['SERVICES']['DVC']['repo_url'],
-                                             repo_dir=exp_run['RUN']['repo_dir'])
+                                             repo_url=repo_url,
+                                             repo_dir=repo_dir)
 
     elif fetch_method == 'EBrains':
-        dataset_dir = import_filelisting_ebrains(dataset_cfg=dataset_cfg,
-                                                 data_dir=data_dir,
-                                                 fetch_params=fetch_params)
+        raise NotImplementedError('EBrains not working atm, use DVC instead')
+        # dataset_dir = import_filelisting_ebrains(dataset_cfg=dataset_cfg,
+        #                                          data_dir=data_dir,
+        #                                          fetch_params=fetch_params)
 
     else:
         raise NotImplementedError('Unknown dataset fetch method for Minivess = {}'.format(fetch_method))

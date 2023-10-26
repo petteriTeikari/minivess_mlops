@@ -42,12 +42,12 @@ def log_config_artifacts(log_name: str,
                                                        log_name=log_name,
                                                        wandb_run=wandb_run,
                                                        logging_services=logging_services,
-                                                       config=config,
+                                                       cfg=cfg,
                                                        test_loading=True)  # GET FROM CONFIG
 
     # HERE, log the config as .yaml file back to disk
     logger.info('{} | ENSEMBLED Cross-Validation results | Config as YAML'.format(logging_services))
-    path_out, loaded_dict = write_config_as_yaml(config=config, dir_out=output_dir)
+    path_out, loaded_dict = write_config_as_yaml(cfg=cfg, dir_out=output_dir)
     if 'WANDB' in logging_services:
         artifact_cfg = wandb.Artifact(name='config', type='config')
         artifact_cfg.add_file(path_out)
@@ -56,7 +56,7 @@ def log_config_artifacts(log_name: str,
         mlflow.log_dict(loaded_dict, artifact_file=os.path.split(path_out)[1])
 
     logger.info('{} | ENSEMBLED Cross-Validation results | Loguru log saved as .txt'.format(logging_services))
-    path_out = exp_run['RUN']['output_log_path']
+    path_out = cfg['run']['PARAMS']['output_log_path']
     if 'WANDB' in logging_services:
         artifact_log = wandb.Artifact(name='log', type='log')
         artifact_log.add_file(path_out)
@@ -83,7 +83,7 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
     log_outputs = {}
     if 'WANDB' in logging_services:
         log_ensembles_to_wandb(ensemble_models_flat=ensemble_models_flat,
-                               config=config,
+                               cfg=cfg,
                                wandb_run=wandb_run,
                                test_loading=test_loading)
 
@@ -93,7 +93,7 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
                                     experim_dataloaders=experim_dataloaders,
                                     ensembled_results=ensembled_results,
                                     cv_ensemble_results=cv_ensemble_results,
-                                    config=config,
+                                    cfg=cfg,
                                     test_loading=test_loading))
 
     return {'model_paths': model_paths, 'ensemble_models_flat': ensemble_models_flat, 'log_outputs': log_outputs}

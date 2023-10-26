@@ -5,7 +5,7 @@ def log_scalars(metric_dict: dict,
                 metric_type: str,
                 dataset_name: str,
                 epoch: int,
-                config: dict,
+                cfg: dict,
                 out_dir: str,
                 output_artifacts: dict,
                 multiple_values_per_epoch: bool = False,  # i.e. multiple batches, loss per batch

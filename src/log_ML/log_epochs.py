@@ -7,7 +7,7 @@ from src.log_ML.log_metrics_lowlevel import log_scalars
 
 
 def log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
-                              epoch, config, output_dir, output_artifacts):
+                              epoch, cfg, output_dir, output_artifacts):
 
     # Create the tensorboard subdirectory for this repeat (submodel of inference)
     output_artifacts['epoch_level']['tb_dir'] = os.path.join(output_dir, 'tensorboard')
@@ -28,14 +28,14 @@ def log_epoch_for_tensorboard(train_epoch_results, eval_epoch_results,
                                             out_dir=output_artifacts['epoch_level']['tb_dir'],
                                             output_artifacts=output_artifacts,
                                             epoch=epoch,
-                                            config=config,
+                                            cfg=cfg,
                                             metric_type='train')
 
     output_artifacts = log_epoch_tb_metrics(results_dict=eval_epoch_results,
                                             out_dir=output_artifacts['epoch_level']['tb_dir'],
                                             output_artifacts=output_artifacts,
                                             epoch=epoch,
-                                            config=config,
+                                            cfg=cfg,
                                             metric_type='evaluation')
 
     return output_artifacts
@@ -45,7 +45,7 @@ def log_epoch_tb_metrics(results_dict: dict,
                          out_dir: str,
                          output_artifacts: dict,
                          epoch: int,
-                         config: dict,
+                         cfg: dict,
                          metric_type: str = 'train'):
 
     if metric_type == 'train':
@@ -54,7 +54,7 @@ def log_epoch_tb_metrics(results_dict: dict,
                                                   split_name=split_name,
                                                   metric_type=metric_type,
                                                   epoch=epoch,
-                                                  config=config,
+                                                  cfg=cfg,
                                                   out_dir=out_dir,
                                                   output_artifacts=output_artifacts)
     elif metric_type == 'evaluation':
@@ -63,7 +63,7 @@ def log_epoch_tb_metrics(results_dict: dict,
                                                       split_name=split_name,
                                                       metric_type=metric_type,
                                                       epoch=epoch,
-                                                      config=config,
+                                                      cfg=cfg,
                                                       out_dir=out_dir,
                                                       output_artifacts=output_artifacts)
     else:
@@ -76,7 +76,7 @@ def log_epoch_tb_per_split(split_dict: dict,
                            split_name: str,
                            metric_type: str,
                            epoch: int,
-                           config: dict,
+                           cfg: dict,
                            out_dir: str,
                            output_artifacts: dict):
 
@@ -90,7 +90,7 @@ def log_epoch_tb_per_split(split_dict: dict,
                                                             metric_type=metric_type,
                                                             dataset_name=dataset_name,
                                                             epoch=epoch,
-                                                            config=config,
+                                                            cfg=cfg,
                                                             out_dir=out_dir,
                                                             output_artifacts=output_artifacts)
     
@@ -102,7 +102,7 @@ def log_epoch_per_split_per_database(dataset_dict: dict,
                                      metric_type: str,
                                      dataset_name: str,
                                      epoch: int,
-                                     config: dict,
+                                     cfg: dict,
                                      out_dir: str,
                                      output_artifacts: dict):
 
@@ -116,7 +116,7 @@ def log_epoch_per_split_per_database(dataset_dict: dict,
                                            metric_type=metric_type,
                                            dataset_name=dataset_name,
                                            epoch=epoch,
-                                           config=config,
+                                           cfg=cfg,
                                            out_dir=out_dir,
                                            output_artifacts=output_artifacts)
         elif var_type == 'arrays':
@@ -127,7 +127,7 @@ def log_epoch_per_split_per_database(dataset_dict: dict,
                                            metric_type=metric_type,
                                            dataset_name=dataset_name,
                                            epoch=epoch,
-                                           config=config,
+                                           cfg=cfg,
                                            out_dir=out_dir,
                                            output_artifacts=output_artifacts,
                                            multiple_values_per_epoch=True)
@@ -139,7 +139,7 @@ def log_epoch_per_split_per_database(dataset_dict: dict,
                                            metric_type=metric_type,
                                            dataset_name=dataset_name,
                                            epoch=epoch,
-                                           config=config,
+                                           cfg=cfg,
                                            out_dir=out_dir,
                                            output_artifacts=output_artifacts)
         else:

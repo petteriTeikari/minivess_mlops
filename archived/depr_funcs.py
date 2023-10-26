@@ -34,7 +34,7 @@ def inference_ensemble_old():
 
             model_dict = repeat_result_example[dataset][metric_to_track]['model']
             model, _, _, _ = import_model_from_path(model_path=model_dict['model_path'],
-                                                    validation_config=config['config']['VALIDATION'])
+                                                    validation_cfg=cfg['config']['VALIDATION'])
 
             # FIXME: get this from config
             metric_dict = {'roi_size': (64, 64, 8), 'sw_batch_size': 4, 'predictor': model, 'overlap': 0.6}
@@ -61,13 +61,13 @@ def inference_ensemble_old():
                     # We have now the inference output of each repeat in the "ensemble_results" and we can for example
                     # get the average probabilities per pixel/voxel, or do majority voting
                     # This contains the binary mask that you could actually use
-                    ensemble_stat_results = ensemble_repeats(inf_res=inference_results, config=config)
+                    ensemble_stat_results = ensemble_repeats(inf_res=inference_results, cfg=cfg)
 
                     # And let's compute the metrics from the ensembled prediction
                     sample_ensemble_metrics = (
                         get_inference_metrics(ensemble_stat_results=ensemble_stat_results,
                                               y_pred=ensemble_stat_results['arrays']['mask'],
-                                              config=config,
+                                              cfg=cfg,
                                               batch_data=batch_data))
 
                     # Collect the metrics for each sample so you can for example compute mean dice for the split
@@ -104,7 +104,7 @@ def inference_dataloader(dataloader, model, device, split: str, config: dict):
                                           auto_mixedprec=config['config']['TRAINING']['AMP'])
 
             metrics = (get_inference_metrics(y_pred=sample_res['arrays']['binary_mask'],
-                                             eval_config=config['config']['VALIDATION_BEST'],
+                                             eval_cfg=cfg['config']['VALIDATION_BEST'],
                                              batch_data=batch_data))
 
             split_metrics = add_sample_metrics_to_split_results(sample_metrics=deepcopy(metrics),
@@ -140,11 +140,11 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
         ensemble_model_local = ModelEnsemble(models_of_ensemble=model_paths,
                                              model_best_dicts=best_dicts,
                                              models_from_paths=True,
-                                             validation_config=config['config']['VALIDATION'],
+                                             validation_cfg=cfg['config']['VALIDATION'],
                                              ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                              validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                                              device=config['config']['MACHINE']['IN_USE']['device'],
-                                             eval_config=config['config']['VALIDATION_BEST'],
+                                             eval_cfg=cfg['config']['VALIDATION_BEST'],
                                              # TODO! need to make this adaptive based on submodel
                                              precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 
@@ -168,8 +168,8 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                 mlflow_model_logging(model=model,
                                      best_dict=best_dict,
                                      model_uri=model_uri,
-                                     mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                     run_params_dict=exp_run['RUN'],
+                                     mlflow_cfg=cfg['config']['LOGGING']['MLFLOW'],
+                                     run_params_dict=cfg['run']['PARAMS'],
                                      ensemble_name=ensemble_name,
                                      submodel_name=submodel_name))
 
@@ -187,8 +187,8 @@ def log_ensembles_to_MLflow(ensemble_models_flat: dict,
                                             cv_ensemble_results=cv_ensemble_results,
                                             experim_dataloaders=experim_dataloaders,
                                             ensemble_name=ensemble_name,
-                                            test_config=config['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
-                                            config=config)
+                                            test_cfg=cfg['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
+                                            cfg=cfg)
         else:
             logger.warning('MLflow | Skipping the model loading back from MLflow, are you sure?\n'
                            'Meant as a reproducabiloity check so that you can test that the models are loaded OK,'
@@ -242,7 +242,7 @@ def create_model_ensemble_from_mlflow_model_registry(ensemble_submodels: dict,
     models_of_ensemble = {}
     for j, submodel_name in enumerate(ensemble_submodels):
         artifact_name = define_artifact_name(ensemble_name, submodel_name,
-                                             hyperparam_name=exp_run['RUN']['hyperparam_name'])
+                                             hyperparam_name=cfg['run']['PARAMS']['hyperparam_name'])
         model_uri_models = f"models:/{artifact_name}/{reg_models[submodel_name].version}"
         loaded_model = deepcopy(get_model_from_mlflow_model_registry(model_uri=model_uri_models))
         torch.save(dict(model=loaded_model), '{}.pth'.format(submodel_name))  # debug save
@@ -252,11 +252,11 @@ def create_model_ensemble_from_mlflow_model_registry(ensemble_submodels: dict,
     ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
                                    model_best_dicts=best_dicts,
                                    models_from_paths=False,
-                                   validation_config=config['config']['VALIDATION'],
+                                   validation_cfg=cfg['config']['VALIDATION'],
                                    ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
                                    validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
                                    device=config['config']['MACHINE']['IN_USE']['device'],
-                                   eval_config=config['config']['VALIDATION_BEST'],
+                                   eval_cfg=cfg['config']['VALIDATION_BEST'],
                                    # TODO! Makle adaptive:
                                    precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 

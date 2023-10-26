@@ -6,12 +6,13 @@ from src.inference.ensemble_model import inference_ensemble_dataloader
 from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
 from src.inference.inference_utils import inference_best_repeat
 from src.utils.dataloader_utils import redefine_dataloader_for_inference
+from src.utils.dict_utils import cfg_key
 
 
 def reinference_dataloaders(input_dict: dict,
                             dataloaders: dict,
                             artifacts_output_dir: str,
-                            config: DictConfig,
+                            cfg: dict,
                             device,
                             model_scheme: str = 'ensemble_from_repeats',
                             debug_mode: bool = False):
@@ -33,23 +34,24 @@ def reinference_dataloaders(input_dict: dict,
                 # and see how well you generalize for 3rd party data (out-of-distribution data, OOD)
                 for dataset_name in dataloaders[split]:
                     logger.info('Dataset "{}"'.format(dataset_name))
-                    dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloaders[split][dataset_name],
+                    dataloader_batched = cfg_key(dataloaders, split, dataset_name)
+                    dataloader = redefine_dataloader_for_inference(dataloader_batched=dataloader_batched,
                                                                    dataset_name=dataset_name,
                                                                    split=split,
                                                                    device=device,
-                                                                   config=config)
+                                                                   cfg=cfg)
 
                     if model_scheme == 'ensemble_from_repeats':
                         results_out[split] = inference_ensembles_dataloader(dataloader=dataloader,
                                                                             split=split,
                                                                             archi_results=input_dict,
-                                                                            config=config,
+                                                                            cfg=cfg,
                                                                             device=device)
                     elif model_scheme == 'best_repeats':
                         results_out[split] = inference_best_repeat(dataloader=dataloader,
                                                                    split=split,
                                                                    best_repeat_dicts=input_dict,
-                                                                   config=config,
+                                                                   cfg=cfg,
                                                                    device=device)
                     else:
                         raise NotImplementedError('Unknown or not yet implemented '
@@ -62,18 +64,18 @@ def reinference_dataloaders(input_dict: dict,
                                                                dataset_name=dataset_name,
                                                                split=split,
                                                                device=device,
-                                                               config=config)
+                                                               cfg=cfg)
                 if model_scheme == 'ensemble_from_repeats':
                     results_out[split] = inference_ensembles_dataloader(dataloader=dataloader,
                                                                         split=split,
                                                                         archi_results=input_dict,
-                                                                        config=config,
+                                                                        cfg=cfg,
                                                                         device=device)
                 elif model_scheme == 'best_repeats':
                     results_out[split] = inference_best_repeat(dataloader=dataloader,
                                                                split=split,
                                                                best_repeat_dicts=input_dict,
-                                                               config=config,
+                                                               cfg=cfg,
                                                                device=device)
                 else:
                     raise NotImplementedError('Unknown or not yet implemented '
@@ -88,14 +90,16 @@ def reinference_dataloaders(input_dict: dict,
 def inference_ensembles_dataloader(dataloader,
                                    split: str,
                                    archi_results: dict,
-                                   config: dict,
+                                   cfg: dict,
                                    device: str):
 
     # ASSUMING THAT all the repeats are the same (which should hold, and if you want to do diverse ensembles
     # later, keep the repeat and the architecture/model tweaks as separate)
     architecture_names = list(archi_results.keys())
-    repeat_names = list(archi_results[architecture_names[0]].keys())
-    repeat_result_example = archi_results[architecture_names[0]][repeat_names[0]]['best_dict']
+    first_arch_name = architecture_names[0]
+    repeat_names = list(archi_results[first_arch_name].keys())
+    first_repeat = archi_results[first_arch_name][repeat_names[0]]
+    repeat_result_example = first_repeat['best_dict']
 
     no_submodels = len(architecture_names) * len(repeat_names)
     no_eval_datasets = len(repeat_result_example)
@@ -114,7 +118,7 @@ def inference_ensembles_dataloader(dataloader,
                     format(ensemble_name, i+1, len(ensemble_models_flat)))
         ensemble_results[ensemble_name] = (
             inference_ensemble_dataloader(models_of_ensemble=ensemble_models_flat[ensemble_name],
-                                          config=config,
+                                          cfg=cfg,
                                           split=split,
                                           dataloader=dataloader,
                                           device=device))

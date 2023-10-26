@@ -4,6 +4,8 @@ import mlflow
 from loguru import logger
 from omegaconf import DictConfig
 
+from src.utils.dict_utils import cfg_key
+
 
 def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     """
@@ -54,9 +56,9 @@ def init_mlflow_run(local_server_path: str,
     return experiment, active_run
 
 
-def init_mlflow_logging(config: DictConfig,
-                        exp_run: dict,
-                        mlflow_config: dict,
+def init_mlflow_logging(hydra_cfg: DictConfig,
+                        run_params: dict,                        
+                        mlflow_config: DictConfig,
                         experiment_name: str = "MINIVESS_segmentation",
                         run_name: str = "UNet3D"):
     """
@@ -67,16 +69,16 @@ def init_mlflow_logging(config: DictConfig,
     if mlflow_config['TRACKING']['enable']:
         logger.info('MLflow | Initializing MLflow Experiment tracking')
         try:
-            if config['config']['SERVICES']['MLFLOW']['server_URI'] is not None:
+            if hydra_cfg['config']['SERVICES']['MLFLOW']['server_URI'] is not None:
                 env_vars_set = authenticate_mlflow()
                 if not env_vars_set:
-                    tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+                    tracking_uri = mlflow_local_mlflow_init(run_params)
                 else:
                     logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
                     tracking_uri = mlflow_config['server_URI']
                     mlflow.set_tracking_uri(tracking_uri)
             else:
-                tracking_uri = mlflow_local_mlflow_init(config, exp_run)
+                tracking_uri = mlflow_local_mlflow_init(run_params)
         except Exception as e:
             logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
             raise IOError('Failed to initialize the MLflow logging! e = {}'.format(e))
@@ -100,12 +102,12 @@ def init_mlflow_logging(config: DictConfig,
                           '   mlflow_config["server_URI"]  = null\n'
                           'error = {}'.format(e))
 
-        if exp_run["HYPERPARAMETERS_FLAT"] is not None:
-            logger.info('MLflow | Writing experiment hyperparameters (from exp_run["HYPERPARAMETERS_FLAT"])')
-            for hyperparam_key in exp_run["HYPERPARAMETERS_FLAT"]:
+        if run_params["HYPERPARAMETERS_FLAT"] is not None:
+            logger.info('MLflow | Writing experiment hyperparameters (from cfg["run"]["HYPERPARAMETERS_FLAT"])')
+            for hyperparam_key in run_params["HYPERPARAMETERS_FLAT"]:
                 # https://dagshub.com/docs/troubleshooting/
-                mlflow.log_param(hyperparam_key, exp_run["HYPERPARAMETERS_FLAT"][hyperparam_key])
-                logger.debug(' {} = {}'.format(hyperparam_key, exp_run["HYPERPARAMETERS_FLAT"][hyperparam_key]))
+                mlflow.log_param(hyperparam_key, run_params["HYPERPARAMETERS_FLAT"][hyperparam_key])
+                logger.debug(' {} = {}'.format(hyperparam_key, run_params["HYPERPARAMETERS_FLAT"][hyperparam_key]))
         else:
             logger.info('MLflow | Writing dummy parameter')
             mlflow.log_param('dummy_key', 'dummy_value')
@@ -121,9 +123,9 @@ def init_mlflow_logging(config: DictConfig,
     return mlflow_dict_omegaconf, mlflow_dict
 
 
-def mlflow_local_mlflow_init(config, exp_run) -> str:
+def mlflow_local_mlflow_init(run_params) -> str:
     # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb
-    tracking_uri = exp_run['RUN']['output_mlflow_dir']
+    tracking_uri = cfg_key(run_params, 'PARAMS', 'output_mlflow_dir')
     os.makedirs(tracking_uri, exist_ok=True)
     logger.debug('MLflow | Local MLflow Server initialized at "{}"'.format(tracking_uri))
     mlflow.set_tracking_uri(tracking_uri)
@@ -135,7 +137,7 @@ def mlflow_log_dataset(mlflow_config: dict,
                        dataset_cfg: dict,
                        filelisting: dict,
                        fold_split_file_dicts: dict,
-                       config: DictConfig):
+                       cfg: dict):
     """
     https://mlflow.org/docs/latest/python_api/mlflow.data.html
     """

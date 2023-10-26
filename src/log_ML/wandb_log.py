@@ -10,11 +10,12 @@ from omegaconf import DictConfig
 from src.log_ML.log_config import log_config_artifacts
 from src.log_ML.log_utils import get_number_of_steps_from_repeat_results
 from src.log_ML.mlflow_log import mlflow_cv_artifacts
+from src.utils.config_utils import cfg_key
 
 
 def log_wandb_repeat_results(fold_results: dict,
                              output_dir: str,
-                             config: DictConfig,
+                             cfg: dict,
                              log_models_with_repeat: bool = False):
 
     logger.info('Logging repeat-wise results to WANDB (local_dir = {})'.format(output_dir))
@@ -27,9 +28,9 @@ def log_wandb_repeat_results(fold_results: dict,
                 # use ensemble_name function?
                 log_name = fold_name + '_' + archi_name + '_' + repeat_name
                 try:
-                    wandb_run = wandb_init_wrapper(project=exp_run['ARGS']['project_name'],
+                    wandb_run = wandb_init_wrapper(project=cfg_key(cfg, 'run', 'ARGS', 'project_name'),
                                                    name=log_name,
-                                                   group=exp_run['RUN']['hyperparam_name'],
+                                                   group=cfg['run']['PARAMS']['hyperparam_name'],
                                                    job_type='repeat',
                                                    param_conf=config['config'],
                                                    dir_out=output_dir,
@@ -38,7 +39,7 @@ def log_wandb_repeat_results(fold_results: dict,
                     raise Exception('Problem with initializing Weights and Biases, e = {}'.format(e))
 
                 wandb_log_repeat(wandb_run, fold_name, repeat_name, log_name,
-                                 results=fold_results[fold_name][archi_name][repeat_name], config=config,
+                                 results=fold_results[fold_name][archi_name][repeat_name], cfg=cfg,
                                  log_models_with_repeat=log_models_with_repeat)
                 wandb.finish()
 
@@ -102,16 +103,16 @@ def wandb_init_wrapper(project: str = None,
 
 def log_wandb_ensemble_results(ensembled_results: dict,
                                output_dir: str,
-                               config: DictConfig):
+                               cfg: dict):
 
     logger.info('Logging ensemble-wise results to WANDB')
     for f, fold_name in enumerate(ensembled_results):
 
         log_name = fold_name
         try:
-            wandb_run = wandb_init_wrapper(project=exp_run['ARGS']['project_name'],
+            wandb_run = wandb_init_wrapper(project=cfg_key(cfg, 'run', 'ARGS', 'project_name'),
                                            name=log_name,
-                                           group=exp_run['RUN']['hyperparam_name'],
+                                           group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='ensemble',
                                            param_conf=config['config'],
                                            dir_out=output_dir,
@@ -122,11 +123,11 @@ def log_wandb_ensemble_results(ensembled_results: dict,
         # Log the metrics
         # TO-OPTIMIZE, you could think of using the same function really for both WANDB and MLflow
         wandb_log_ensemble_per_fold(wandb_run, fold_name, log_name,
-                                    results=ensembled_results[fold_name], config=config)
+                                    results=ensembled_results[fold_name], cfg=cfg)
 
         # Log the artifacts, as in all the custom plots, .csv., .json you might have
         # created during the training process
-        dir_out = exp_run['RUN']['ensemble_artifacts'][fold_name]
+        dir_out = cfg['run']['PARAMS']['ensemble_artifacts'][fold_name]
         logger.info('Logging the ensemble output directory to WANDB: {}'.format(dir_out))
         artifact = wandb.Artifact(name=log_name, type='artifacts')
         artifact.add_dir(local_path=dir_out, name='ensemble_artifacts')
@@ -144,7 +145,7 @@ def log_crossval_res(cv_results: dict,
                      cv_ensembled_output_dir: str,
                      output_dir: str,
                      logging_services: list,
-                     config: dict):
+                     cfg: dict):
 
     if len(logging_services) == 0:
         logger.warning('No logging (Experiment tracking such as MLflow or WANDB) '
@@ -154,7 +155,7 @@ def log_crossval_res(cv_results: dict,
         logger.info('Logging AVERAGED Cross-Validation results')
         log_cv_results(cv_results=cv_results,
                        cv_dir_out=cv_averaged_output_dir,
-                       config=config,
+                       cfg=cfg,
                        logging_services=logging_services,
                        output_dir=output_dir)
 
@@ -164,7 +165,7 @@ def log_crossval_res(cv_results: dict,
                                               cv_dir_out=cv_ensembled_output_dir,
                                               fold_results=fold_results,
                                               experim_dataloaders=experim_dataloaders,
-                                              config=config,
+                                              cfg=cfg,
                                               logging_services=logging_services,
                                               output_dir=output_dir)
 
@@ -173,7 +174,7 @@ def log_crossval_res(cv_results: dict,
 
 def log_cv_results(cv_results: dict,
                    cv_dir_out: str,
-                   config: dict,
+                   cfg: dict,
                    logging_services: list,
                    output_dir: str,
                    stat_keys_to_reject: tuple = ('n',),
@@ -183,9 +184,9 @@ def log_cv_results(cv_results: dict,
     log_name = 'CV_averaged'
     if 'WANDB' in logging_services:
         try:
-            wandb_run = wandb_init_wrapper(project=exp_run['ARGS']['project_name'],
+            wandb_run = wandb_init_wrapper(project=cfg_key(cfg, 'run', 'ARGS', 'project_name'),
                                            name=log_name,
-                                           group=exp_run['RUN']['hyperparam_name'],
+                                           group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='CV',
                                            param_conf=config['config'],
                                            dir_out=output_dir,
@@ -257,7 +258,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                             cv_dir_out: str,
                             fold_results: dict,
                             experim_dataloaders: dict,
-                            config: dict,
+                            cfg: dict,
                             logging_services: list,
                             output_dir: str,
                             stat_keys_to_reject: tuple = ('n', ),
@@ -266,9 +267,9 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
     log_name = 'CV_ensembled'
     if 'WANDB' in logging_services:
         try:
-            wandb_run = wandb_init_wrapper(project=exp_run['ARGS']['project_name'],
+            wandb_run = wandb_init_wrapper(project=cfg_key(cfg, 'run', 'ARGS', 'project_name'),
                                            name=log_name,
-                                           group=exp_run['RUN']['hyperparam_name'],
+                                           group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='CV_ENSEMBLE',
                                            param_conf=config['config'],
                                            dir_out=output_dir,
@@ -301,7 +302,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
     model_paths = log_config_artifacts(log_name=log_name,
                                        cv_dir_out=cv_dir_out,
                                        output_dir=output_dir,
-                                       config=config,
+                                       cfg=cfg,
                                        fold_results=fold_results,
                                        ensembled_results=ensembled_results,
                                        cv_ensemble_results=cv_ensemble_results,

@@ -68,7 +68,7 @@ def set_model_training_params(model,
                               device,
                               scaler,
                               training_config: dict,
-                              config: DictConfig):
+                              cfg: dict):
 
     loss_function = choose_loss_function(training_config=training_config,
                                          loss_config=training_config['LOSS'])

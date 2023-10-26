@@ -32,12 +32,10 @@ for sysargv in input_args:
 args = parse_args_to_dict()
 
 # Create the config with Hydra from the .yaml file(s)
-config, exp_run = import_config(args=args, task_cfg_name=args['task_config_file'])
+cfg = import_config(args=args, task_cfg_name=args['task_config_file'])
 
 # Import the dataloaders (now the data augmentations are here as well as data transformations)
-_, _, experim_dataloaders, exp_run = (
-        define_experiment_data(config=config,
-                               exp_run=exp_run))
+_, _, experim_dataloaders, cfg['run'] = define_experiment_data(cfg=cfg)
 
 # Get the "validation" and "train" dataloaders from the dictionary
 train, val = get_dataloaders(experim_dataloaders)

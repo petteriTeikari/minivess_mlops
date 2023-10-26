@@ -7,7 +7,7 @@ from src.log_ML.logging_main import correct_key_for_main_result
 
 
 def log_ensemble_results(ensemble_results,
-                         config: DictConfig,
+                         cfg: dict,
                          stat_key: str = 'mean',
                          service: str = 'MLflow',
                          fold_name: str = None):

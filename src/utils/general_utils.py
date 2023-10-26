@@ -37,7 +37,7 @@ def diff_omegadicts(a, b, missing=KeyError):
 
 def print_dict_to_logger(dict_in: dict, prefix: str = ''):
     for k, v in dict_in.items():
-        logger.info('{}  {}: {}'.format(prefix, k, v))
+        logger.info('{}{}: {}'.format(prefix, k, v))
         # if isinstance(v, dict):
         #     print_dict_to_logger(v, prefix='  ')
         # else:
@@ -48,3 +48,5 @@ def print_memory_stats_to_logger():
     svmem = psutil.virtual_memory()
     logger.debug('Memory usage: {}% ({:.2f}/{:.2f} GB)',
                  svmem.percent, svmem.used/10**9, svmem.total/10**9)
+
+

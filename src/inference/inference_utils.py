@@ -98,7 +98,7 @@ def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
                 # double-check which dataset we actually had here
                 model_path = get_model_path_from_repeat_best_dict(metric_dict_in, dataset, tracked_metric)
                 model, _, _, _ = import_model_from_path(model_path=model_path,
-                                                        validation_config=config['config']['VALIDATION'])
+                                                        validation_cfg=cfg['config']['VALIDATION'])
 
                 # Here you can then compute additional metrics, like e.g. you never saved best model based on
                 # Hausdorff Distance (HD), but here you can get the HD for the best model based on Dice,

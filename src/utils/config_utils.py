@@ -11,14 +11,14 @@ from loguru import logger
 
 import torch
 import torch.distributed as dist
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
+from src.utils.dict_utils import put_to_dict, cfg_key
 from tests.env.mount_tests import debug_mounts
 from src.log_ML.json_log import to_serializable
 from src.log_ML.mlflow_log import init_mlflow_logging
 from src.utils.general_utils import print_dict_to_logger
 from src.utils.metadata_utils import get_run_metadata
-
 
 def get_changed_keys(base_config, config):
     set1 = set(base_config.items())
@@ -123,105 +123,123 @@ def config_import_script(task_cfg_name: str = None,
 def import_config(args: dict,
                   task_cfg_name: str = 'train_configs/train_task_test',
                   reprod_cfg_name: str = None,
-                  log_level: str = 'DEBUG'):
+                  log_level: str = 'DEBUG') -> Dict:
 
     # CI/CD tasks have hard-coded "task configs"
     if args['run_mode'] != 'train':
         task_cfg_name = update_task_cfg_for_ci_cd_jobs(run_mode=args['run_mode'])
 
-    config = config_import_script(task_cfg_name=task_cfg_name,
+    hydra_cfg = config_import_script(task_cfg_name=task_cfg_name,
                                   reprod_cfg_name=reprod_cfg_name,
                                   job_name=args['project_name'])
 
-    exp_run = set_up_experiment_run(config=config,
-                                    args=args,
-                                    log_level=log_level)
+    run_params = set_up_experiment_run(hydra_cfg=hydra_cfg,
+                                       args=args,
+                                       log_level=log_level)
 
-    return config, exp_run
+    return {'hydra_cfg': hydra_cfg, 'run': run_params}
 
 
-def set_up_experiment_run(config: DictConfig,
+def set_up_experiment_run(hydra_cfg: DictConfig,
                           args: dict,
                           log_level: str = 'DEBUG') -> dict:
 
     # Add the input arguments as an extra subdict to the config
-    hyperparam_name = config['NAME']
-    exp_run = {'ARGS': args}
+    hyperparam_name = hydra_cfg['NAME']
+    run_params = put_to_dict({}, args, 'ARGS')
 
-    # Setup the computing environment
-    exp_run['MACHINE'] = set_up_environment(machine_config=config['config']['MACHINE'],
-                                            local_rank=args['local_rank'])
+    # Setup the computing environment *## cfg['run']['MACHINE']
+    machine_dict = set_up_environment(machine_config=cfg_key(hydra_cfg, 'config', 'MACHINE'),
+                                      local_rank=args['local_rank'])
+    run_params = put_to_dict(run_params, machine_dict, 'MACHINE')
 
     # If you do not want to mount the artifacts directory, and find easier just to "aws sync" at the end
-    if not args['s3_mount']:
-        logger.warning('Skipping realtime AWS S3 write, and writing run artifacts to a local non-mounted dir')
-        args['output_dir'] += '_local'
-    debug_mounts(mounts_list=get_mounts_from_args(args=args))
+    if args['s3_mount']:
+        raise NotImplementedError('The real-time write to S3 seems like a dream at the moment, so aws sync at the end')
+
+    try:
+        debug_mounts(mounts_list=get_mounts_from_args(args=args))
+    except Exception as e:
+        logger.error('Failed to run the mount tests, e = {}'.format(e))
+        raise IOError('Failed to run the mount tests, e = {}'.format(e))
 
     # Set-up run parameters
-    exp_run['RUN'] = set_up_run_params(config=config,
-                                       args=args,
-                                       hyperparam_name=hyperparam_name)
+    run_params['PARAMS'] = set_up_run_params(hydra_cfg=hydra_cfg,
+                                             args=args,
+                                             hyperparam_name=hyperparam_name)
 
     # Define hyperparameters for Experimnent Tracking (MLflow/WANDB)
-    exp_run['HYPERPARAMETERS'], exp_run['HYPERPARAMETERS_FLAT'] = (
-        define_hyperparams_from_config(config))
+    run_params['HYPERPARAMETERS'],run_params['HYPERPARAMETERS_FLAT'] = (
+        define_hyperparams_from_config(hydra_cfg=hydra_cfg))
 
     # Add hash to names to make them unique
-    if config['config']['LOGGING']['unique_hyperparam_name_with_hash']:
-        exp_run['RUN'] = use_dict_hash_in_names(run_params=exp_run['RUN'],
-                                                config_hash=exp_run['RUN']['config_hash'])
+    if cfg_key(hydra_cfg, 'config', 'LOGGING', 'unique_hyperparam_name_with_hash'):
+        run_params['PARAMS'] = use_dict_hash_in_names(params=cfg_key(run_params, 'PARAMS'),
+                                                      config_hash=cfg_key(run_params, 'PARAMS', 'config_hash'))
 
     # Set-up the log files (loguru, stdout/stderr)
-    exp_run = set_up_log_files(config=config,
-                               exp_run=exp_run,
-                               hyperparam_name=hyperparam_name,
-                               log_level=log_level)
+    run_params = set_up_log_files(run_params=run_params,
+                                  hyperparam_name=hyperparam_name,
+                                  log_level=log_level)
 
     # Add run/environment-dependent metadata (e.g. library versions, etc.)
-    exp_run['METADATA'] = get_run_metadata()
+    run_params['METADATA'] = get_run_metadata()
 
     # Initialize ML logging (experiment tracking)
-    exp_run['MLFLOW'], mlflow_dict = init_mlflow_logging(config=config,
-                                                         exp_run=exp_run,
-                                                         mlflow_config=config['config']['LOGGING']['MLFLOW'],
-                                                         experiment_name=args['project_name'],
-                                                         run_name=exp_run['RUN']['hyperparam_name'])
+    run_params['MLFLOW'], mlflow_dict = (
+        init_mlflow_logging(hydra_cfg=hydra_cfg,
+                            run_params=run_params,
+                            mlflow_config=cfg_key(hydra_cfg, 'config', 'LOGGING', 'MLFLOW'),
+                            experiment_name=args['project_name'],
+                            run_name=cfg_key(run_params, 'PARAMS', 'hyperparam_name')))
 
-    logger.info('Done setting up the experiment run parameters')
+    logger.debug('Done setting up the experiment run parameters')
 
-    return exp_run
+    return run_params
 
 
-def get_repo_dir(return_src: bool = False) -> str:
-    # quick and dirty
-    try:
-        repo_dir = os.path.join(os.getcwd())
-        base_path, last_subdir = os.path.split(repo_dir)
-        if last_subdir == 'src':
-            if return_src:
-                repo_dir = repo_dir
-            else:
-                repo_dir = base_path
-        else:
-            if return_src:
-                repo_dir = os.path.join(repo_dir, 'src')
-    except Exception as e:
-        raise IOError('Problem getting the repo dir (src={}), error = {}'.format(return_src, e))
+def get_repo_base_dir(working_dir: str,
+                      repo_name: str = 'minivess_mlops'):
+
+    repo_dir = None
+    if os.path.split(working_dir)[-1] == repo_name:
+        return working_dir
+    else:
+        repo_dir = get_repo_base_dir(working_dir=os.path.split(working_dir)[0],
+                                     repo_name=repo_name)
+
+    if repo_dir is None:
+        raise IOError('Could not find the repo base dir')
 
     return repo_dir
 
 
-def set_up_run_params(config: dict,
+def get_repo_dir(return_src: bool = False,
+                 repo_name: str = 'minivess_mlops') -> str:
+
+    cwd = os.getcwd()
+    logger.debug('Trying to find the repo dir from cwd = "{}"'.format(cwd))
+    repo_dir = get_repo_base_dir(working_dir=cwd,
+                                 repo_name=repo_name)
+    logger.info('Git base repo found in "{}"'.format(repo_dir))
+
+    if return_src:
+        repo_dir = os.path.join(repo_dir, 'src')
+
+    return repo_dir
+
+
+def set_up_run_params(hydra_cfg: DictConfig,
                       args: dict,
                       hyperparam_name: str):
 
     # Create hash from config dict
-    config_hash = dict_hash(dictionary=config['config'])
+    config_hash = dict_hash(dictionary=deepcopy(hydra_cfg['config']),
+                            drop_keys = ('SERVICES', ))
     start_time = get_datetime_string()
 
     output_experiments_base_dir = os.path.join(args['output_dir'], 'experiments')
-    logger.info('Save the run-specific parameters to exp_run["run"]')
+    logger.info('Save the run-specific parameters to cfg["run"]["PARAMS"]')
     run_params = {
         'hyperparam_name': hyperparam_name,
         'hyperparam_base_name': hyperparam_name,
@@ -240,28 +258,28 @@ def set_up_run_params(config: dict,
     run_params['repeat_artifacts'] = {}
     run_params['ensemble_artifacts'] = {}
     run_params['fold_dir'] = {}
-    print_dict_to_logger(dict_in=run_params, prefix=' ')
+    print_dict_to_logger(dict_in=run_params, prefix='')
 
     return run_params
 
 
-def use_dict_hash_in_names(run_params: dict,
+def use_dict_hash_in_names(params: dict,
                            config_hash: str) -> dict:
 
-    run_params['hyperparam_name'] += '_{}'.format(config_hash)
-    run_params['output_experiment_dir'] += '_{}'.format(config_hash)
+    params['hyperparam_name'] += '_{}'.format(config_hash)
+    params['output_experiment_dir'] += '_{}'.format(config_hash)
     logger.info('Unique hyperparam name with hash')
-    logger.info('  hyperparam_name = "{}"'.format(run_params['hyperparam_name']))
-    logger.info('  output_experiment_dir = "{}"'.format(run_params['output_experiment_dir']))
+    logger.info('  hyperparam_name = "{}"'.format(params['hyperparam_name']))
+    logger.info('  output_experiment_dir = "{}"'.format(params['output_experiment_dir']))
 
-    return run_params
+    return params
 
 
-def define_hyperparams_from_config(config: dict) -> dict:
+def define_hyperparams_from_config(hydra_cfg: DictConfig):
 
     # Get a predefined smaller subset to be logged as MLflow/WANDB columns/hyperparameters
     # to make the dashboards cleaner, or alternatively you can just dump the whole config['config']
-    hyperparameters = define_hyperparam_run_params(config)
+    hyperparameters = define_hyperparam_run_params(hydra_cfg)
 
     # TODO! Fix this with the updated nesting, with some nicer recursive function for undefined depth
     hyperparameters_flat = {'placeholder_key': 'value'}  # flatten_nested_dictionary(dict_in=config['hyperparameters'])
@@ -271,35 +289,35 @@ def define_hyperparams_from_config(config: dict) -> dict:
     return hyperparameters, hyperparameters_flat
 
 
-def set_up_log_files(config: DictConfig,
-                     exp_run: dict,
+def set_up_log_files(run_params: dict,
                      hyperparam_name: str,
                      log_level: str = 'DEBUG'):
 
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | "
                   "<yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
     log_file = 'log_{}.txt'.format(hyperparam_name)
-    exp_run['RUN']['output_log_path'] = os.path.join(exp_run['RUN']['output_experiment_dir'], log_file)
+    run_params['PARAMS']['output_log_path'] = os.path.join(run_params['PARAMS']['output_experiment_dir'], log_file)
     try:
-        logger.add(exp_run['RUN']['output_log_path'],
+        logger.add(run_params['PARAMS']['output_log_path'],
                    level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True)
     except Exception as e:
         logger.error('Problem initializing the log file to the artifacts output, permission issues?? e = {}'.format(e))
         raise IOError('Problem initializing the log file to the artifacts output, have you created one? '
                       'do you have the permissions correct? See README.md for the "minivess_mlops_artifacts" creation'
                       'with symlink to /mnt \n error msg = {}'.format(e))
-    logger.info('Log (loguru) will be saved to disk to "{}"'.format(exp_run['RUN']['output_log_path']))
+    logger.info('Log (loguru) will be saved to disk to "{}"'.format(run_params['PARAMS']['output_log_path']))
 
     log_file = 'stdout_{}.txt'.format(hyperparam_name)
-    exp_run['RUN']['stdout_log_path'] = os.path.join(exp_run['RUN']['output_experiment_dir'], log_file)
-    logger.info('Stdout will be saved to disk to "{}"'.format(exp_run['RUN']['stdout_log_path']))
-    sys.stdout = open(exp_run['RUN']['stdout_log_path'], 'w')
+    run_params['PARAMS']['stdout_log_path'] = os.path.join(run_params['PARAMS']['output_experiment_dir'], log_file)
+    logger.info('Stdout will be saved to disk to "{}"'.format(run_params['PARAMS']['stdout_log_path']))
+    sys.stdout = open(run_params['PARAMS']['stdout_log_path'], 'w')
     sys.stderr = sys.stdout
 
-    return exp_run
+    return run_params
 
 
-def set_up_environment(machine_config: dict, local_rank: int = 0):
+def set_up_environment(machine_config: DictConfig,
+                       local_rank: int):
 
     if machine_config['DISTRIBUTED']:
         # initialize the distributed training process, every GPU runs in a process
@@ -329,11 +347,23 @@ def set_up_environment(machine_config: dict, local_rank: int = 0):
     return machine_config
 
 
-def dict_hash(dictionary: Dict[str, Any]) -> str:
+def dict_hash(dictionary: Dict[str, Any],
+              drop_keys: tuple) -> str:
     """
     MD5 hash of a dictionary.
     https://www.doc.ic.ac.uk/~nuric/coding/how-to-hash-a-dictionary-in-python.html
     """
+
+    logger.info('Computing hash for the Hydra config dictionary')
+    dictionary: dict = OmegaConf.to_container(dictionary)
+
+    # The idea was to have the hash to track the uniqueness of the dictionary (see if you are running the
+    # experiment with exactly the same configs), so you don't want to have any stochastic keys here (random seeds),
+    # or anything that is irrelevant for the training but varies across users, organisations, teams etc.
+    for drop_key in drop_keys:
+        dictionary.pop(drop_key, None)
+        logger.debug('Dropping "{}" from the dictionary before computing hash'.format(drop_key))
+
     dhash = hashlib.md5()
     # We need to sort arguments so {'a': 1, 'b': 2} is
     # the same as {'b': 2, 'a': 1}
@@ -355,7 +385,7 @@ def get_datetime_string():
     return date
 
 
-def define_hyperparam_run_params(config: dict) -> dict:
+def define_hyperparam_run_params(hydra_cfg: DictConfig) -> dict:
     """
     To be optimized later? You could read these from the config as well, which subdicts count as
     experiment hyperparameters. Not just dumping all possibly settings that maybe not have much impact
@@ -365,19 +395,20 @@ def define_hyperparam_run_params(config: dict) -> dict:
     """
 
     hyperparams = {}
-    cfg = config['config']
-
+    cfg = hydra_cfg['config']
     logger.info('Hand-picking the keys/subdicts from "config" that are logged as hyperparameters for MLflow/WANDB')
 
     # What datasets were you used for training the model
-    hyperparams['datasets'] = cfg['DATA']['DATA_SOURCE']['DATASET_NAMES']
+    hyperparams['datasets'] = cfg_key(cfg, 'DATA', 'DATA_SOURCE', 'DATASET_NAMES')
 
     # What model and architecture hyperparams you used
     hyperparams['models'] = {}
-    model_names = cfg['MODEL']['META_MODEL']
+    model_names = cfg_key(cfg, 'MODEL', 'META_MODEL')
     for model_name in model_names:
-        hyperparams['models'][model_name] = {}
-        hyperparams['models'][model_name]['architecture'] = cfg['MODEL'][model_name]
+        # hyperparams['models'][model_name] = {'architecture': cfg_key(cfg, 'MODEL', model_name)}
+        hyperparams = put_to_dict(hyperparams,
+                                  {'architecture': cfg_key(cfg, 'MODEL', model_name)},
+                                  'models', model_name)
 
     hyperparams = parse_training_params(model_names, hyperparams, cfg)
 
@@ -452,6 +483,5 @@ def get_mounts_from_args(args: dict) -> list:
     mounts.append(args['output_dir'])
 
     return mounts
-
 
 
