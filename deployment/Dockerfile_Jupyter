@@ -23,3 +23,7 @@ EXPOSE $PORT
 # ENTRYPOINT ["jupyter notebook","--allow-root","--ip=0.0.0.0","--port=8888","--no-browser"]
 #jupyter notebook --allow-root --ip=0.0.0.0 --port=8888 --no-browser
 # docker run -i -t --rm -p  8888:8888 petteriteikari/minivess-mlops-jupyter:latest /bin/bash
+# https://dev.to/juanbelieni/how-to-run-jupyterlab-on-docker-4n80
+# https://stackoverflow.com/questions/38830610/access-jupyter-notebook-running-on-docker-container
+
+# docker run -i -t -p 8888:8888 petteriteikari/minivess-mlops-jupyter:latest /bin/bash -c "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root"
