@@ -198,14 +198,13 @@ def get_dvc_cache_dir(dvc_repo_path: str):
                        format(dvc_path))
         cache_dir = None
 
-    if hasattr(__builtins__,'__IPYTHON__'):
-        try:
-            import google.colab
-            # NOTE! Hard-coded now in JUpyter notebook
-            cache_dir = 'volumes/minivess-dvc-cache'
-            logger.warning('Running in Colab, quick fix for DVC cache dir = {}'.format(cache_dir))
-        except:
-            IN_COLAB = False
+    try:
+        import google.colab
+        # NOTE! Hard-coded now in JUpyter notebook
+        cache_dir = 'volumes/minivess-dvc-cache'
+        logger.warning('Running in Colab, quick fix for DVC cache dir = {}'.format(cache_dir))
+    except:
+        logger.debug('Not running this on Google Colab')
 
     return cache_dir
 
