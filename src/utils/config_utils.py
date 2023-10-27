@@ -201,17 +201,21 @@ def set_up_experiment_run(hydra_cfg: DictConfig,
 def get_repo_base_dir(working_dir: str,
                       repo_name: str = 'minivess_mlops'):
 
-    repo_dir = None
+    # quick and dirty recursion limit
+    working_dir_orig = working_dir
     if os.path.split(working_dir)[-1] == repo_name:
         return working_dir
     else:
-        repo_dir = get_repo_base_dir(working_dir=os.path.split(working_dir)[0],
-                                     repo_name=repo_name)
-
-    if repo_dir is None:
-        raise IOError('Could not find the repo base dir')
-
-    return repo_dir
+        working_dir = os.path.split(working_dir)[0]
+        if os.path.split(working_dir)[-1] == repo_name:
+            return working_dir
+        else:
+            working_dir = os.path.split(working_dir)[0]
+            if os.path.split(working_dir)[-1] == repo_name:
+                return working_dir
+            else:
+                logger.error('Could not find the repo base dir, from {}'.format(working_dir_orig))
+                raise IOError('Could not find the repo base dir, from {}'.format(working_dir_orig))
 
 
 def get_repo_dir(return_src: bool = False,
