@@ -70,26 +70,26 @@ def get_number_of_steps_from_repeat_results(results: dict, result_type: str = 't
     return no_steps
 
 
-def write_config_as_yaml(config: dict, dir_out: str):
+def write_config_as_yaml(config: dict, dir_out: str, fname_out: str = 'config.yaml'):
 
-    path_out = os.path.join(dir_out, 'config.yaml')
+    if not os.path.exists(dir_out):
+        logger.error('Output directory does not exist, dir_out = {}'.format(dir_out))
+        raise IOError('Output directory does not exist, dir_out = {}'.format(dir_out))
+
+    path_out = os.path.join(dir_out, fname_out)
     if isinstance(config, omegaconf.dictconfig.DictConfig):
         logger.info('Dumping the OmegaConf config to disk as .yaml ({})'.format(path_out))
         with tempfile.TemporaryDirectory() as d:
             OmegaConf.save(config, path_out)
-            # test that this is actually the same
-            with open(path_out) as f:
-                loaded_dict = yaml.unsafe_load(f)
-                assert config == loaded_dict, ('The OmegaConf dictionary dumped to disk as .yaml '
-                                               'is not the sane as used '
-                                               'for training, something funky happened during saving')
+
+        # test that this is actually the same
+        with open(path_out) as f:
+            loaded_dict = yaml.unsafe_load(f)
+            assert config == loaded_dict, ('The OmegaConf dictionary dumped to disk as .yaml '
+                                           'is not the sane as used '
+                                           'for training, something funky happened during saving')
     else:
-        logger.info('Dumping vanilla Python dictionary to disk as .yaml ({})'.format(path_out))
-        try:
-            with open(path_out, 'w') as outfile:
-                yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
-        except Exception as e:
-            logger.warning('Problem writing the config to disk, e = {}'.format(e))
+        raise NotImplementedError('Dumping vanilla Python dictionary to disk as .yaml not implemented')
 
     return path_out, loaded_dict
 

@@ -3,9 +3,9 @@ import os
 import sys
 import time
 
-from src.training.experiment import run_train_experiment, train_run_per_hyperparameters
+from src.log_ML.mlflow_admin import mlflow_update_best_model
+from src.training.experiment import train_run_per_hyperparameters
 from src.utils.general_utils import print_dict_to_logger
-from src.utils.config_utils import import_config
 
 from loguru import logger
 import warnings
@@ -64,7 +64,7 @@ def parse_args_to_dict():
                         help="node rank for distributed training")
     # TODO! log_level
     parser.add_argument('-p', '--project_name', type=str, required=False,
-                        default='MINIVESS_segmentation_TEST',
+                        default='minivess-test2',
                         help="Name of the project in WANDB/MLOps. Keep the same name for all the segmentation"
                              "experiments so that you can compare how tweaks affect segmentation performance."
                              "Obviously create a new project if you have MINIVESS_v2 or some other dataset, when"
@@ -91,5 +91,8 @@ if __name__ == '__main__':
                                                                len(hyperparam_runs),
                                                                hyperparam_name))
         hparam_run_results[hyperparam_name] = train_run_per_hyperparameters(args)
+
+    # Update the best MLflow model
+    mlflow_update_best_model(project_name=args['project_name'])
 
     logger.info('Done in {:.0f} seconds with the execution!'.format(time.time() - t0))

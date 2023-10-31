@@ -32,7 +32,7 @@ def log_wandb_repeat_results(fold_results: dict,
                                                    name=log_name,
                                                    group=cfg['run']['PARAMS']['hyperparam_name'],
                                                    job_type='repeat',
-                                                   param_conf=config['config'],
+                                                   param_conf=cfg_key(cfg, 'hydra_cfg', 'config'),
                                                    dir_out=output_dir,
                                                    tags=['tag1', 'tag2'])
                 except Exception as e:
@@ -114,7 +114,7 @@ def log_wandb_ensemble_results(ensembled_results: dict,
                                            name=log_name,
                                            group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='ensemble',
-                                           param_conf=config['config'],
+                                           param_conf=cfg_key(cfg, 'hydra_cfg', 'config'),
                                            dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
@@ -145,7 +145,7 @@ def log_crossval_res(cv_results: dict,
                      cv_ensembled_output_dir: str,
                      output_dir: str,
                      logging_services: list,
-                     cfg: dict):
+                     cfg: DictConfig):
 
     if len(logging_services) == 0:
         logger.warning('No logging (Experiment tracking such as MLflow or WANDB) '
@@ -174,7 +174,7 @@ def log_crossval_res(cv_results: dict,
 
 def log_cv_results(cv_results: dict,
                    cv_dir_out: str,
-                   cfg: dict,
+                   cfg: DictConfig,
                    logging_services: list,
                    output_dir: str,
                    stat_keys_to_reject: tuple = ('n',),
@@ -188,7 +188,7 @@ def log_cv_results(cv_results: dict,
                                            name=log_name,
                                            group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='CV',
-                                           param_conf=config['config'],
+                                           param_conf=cfg_key(cfg, 'hydra_cfg', 'config'),
                                            dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
@@ -271,7 +271,7 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
                                            name=log_name,
                                            group=cfg['run']['PARAMS']['hyperparam_name'],
                                            job_type='CV_ENSEMBLE',
-                                           param_conf=config['config'],
+                                           param_conf=cfg_key(cfg, 'hydra_cfg', 'config'),
                                            dir_out=output_dir,
                                            tags=['tag1', 'tag2'])
         except Exception as e:
@@ -293,7 +293,8 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
 
                         log_cv_ensemble_metric(logging_services=logging_services,
                                                metric_name=metric_name,
-                                               value=value)
+                                               value=value,
+                                               cfg=cfg)
 
                         # TOADD! Add the main metric definition here as well
                         # NOTE! If only one fold, no need to log the stdev of 0
@@ -317,7 +318,10 @@ def log_cv_ensemble_results(cv_ensemble_results: dict,
     return model_paths
 
 
-def log_cv_ensemble_metric(logging_services: list, metric_name: str, value):
+def log_cv_ensemble_metric(logging_services: list,
+                           metric_name: str,
+                           value,
+                           cfg: dict):
 
     logger.info('{} | "{}": {:.3f}'.format(logging_services, metric_name, value))
     if 'WANDB' in logging_services:
@@ -325,6 +329,27 @@ def log_cv_ensemble_metric(logging_services: list, metric_name: str, value):
 
     if 'MLflow' in logging_services:
         mlflow.log_metric(metric_name, value)
+
+    # Log cleaner column names for the desired metrics
+    log_main_metrics(metric_name, value, logging_services, cfg)
+
+
+def log_main_metrics(metric_name: str, value: float, logging_services: list, cfg: dict):
+    # Quick'n'dirty metrics with cleaner column names
+    # TODO! Get these from the config
+    metric_out = None
+    if metric_name == 'CV-ENSEMBLE_TEST/dice-MINIVESS/hausdorff_mean':
+        metric_out = 'Hausdorff'
+    if metric_name == 'CV-ENSEMBLE_TEST/dice-MINIVESS/dice_mean':
+        metric_out = 'Dice'
+
+    if metric_out is not None:
+        logger.info('{} (MAIN) | "{}": {:.3f}'.format(logging_services, metric_out, value))
+        if 'WANDB' in logging_services:
+            wandb.log({metric_out: value}, step=0)
+
+        if 'MLflow' in logging_services:
+            mlflow.log_metric(metric_out, value)
 
 
 def wandb_log_metrics_of_repeat(wandb_run, results):

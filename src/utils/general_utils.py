@@ -1,6 +1,9 @@
+import os
+
 import psutil
 from loguru import logger
 from omegaconf import OmegaConf
+from pathlib import Path
 
 
 def check_if_key_in_dict(dict_in: dict, key_in: str):
@@ -50,3 +53,25 @@ def print_memory_stats_to_logger():
                  svmem.percent, svmem.used/10**9, svmem.total/10**9)
 
 
+def is_docker():
+    cgroup = Path('/proc/self/cgroup')
+    return Path('/.dockerenv').is_file() or cgroup.is_file() and 'docker' in cgroup.read_text()
+
+
+def import_from_dotenv(repo_dir: str):
+    # Manual import instead of the python-dotenv package which seemed possibly finicky to get installed
+    env_path = os.path.join(repo_dir, '.env')
+    if not os.path.exists(env_path):
+        # This does not come with the cloned repo as these are sensitive data and
+        # specific to your environment
+        logger.warning('No .env file found at {}, skipping import'.format(env_path))
+    else:
+        logger.info('Importing .env file from {}'.format(env_path))
+        with open(env_path) as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                if '=' not in line:
+                    continue
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value

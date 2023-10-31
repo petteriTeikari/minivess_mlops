@@ -88,6 +88,8 @@ def log_best_repeats(best_repeat_dicts: dict,
                      service: str = 'MLflow',
                      fold_name: str = None):
 
+    metric_cfg = cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MAIN_METRIC')
+
     if service is not None:
         logger.info('Logging (MLflow) the metrics obtained from best repeat')
         for dataset_train in best_repeat_dicts:
@@ -119,8 +121,7 @@ def log_best_repeats(best_repeat_dicts: dict,
                                 metric_main = correct_key_for_main_result(metric_name=metric_name, fold_name=fold_name,
                                                                           tracked_metric=tracked_metric, metric=metric,
                                                                           dataset=dataset_eval, split=split,
-                                                                          metric_cfg=config['config']['LOGGING'][
-                                                                              'MAIN_METRIC'])
+                                                                          metric_cfg=metric_cfg)
 
                                 if metric_main != metric_name:
                                     if service == 'MLflow':
@@ -167,7 +168,7 @@ def log_crossvalidation_results(fold_results: dict,
 
         cv_averaged_output_dir = cfg_key(cfg, 'run', 'PARAMS', 'cross_validation_averaged')
         cv_ensembled_output_dir = cfg_key(cfg, 'run', 'PARAMS', 'cross_validation_ensembled')
-        output_dir = cfg['run']['PARAMS']['output_base_dir']
+        output_dir = cfg['run']['PARAMS']['output_experiment_dir']
         logged_model_paths = log_cv_results(cv_results=cv_results,
                                             cv_ensemble_results=cv_ensemble_results,
                                             ensembled_results=ensembled_results,

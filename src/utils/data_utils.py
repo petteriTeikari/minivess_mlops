@@ -78,7 +78,7 @@ def import_dataset(data_cfg: dict,
 
     # Log the dataset to MLflow
     if cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW', 'TRACKING', 'enable'):
-        mlflow_log_dataset(mlflow_cfg=cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW'),
+        mlflow_log_dataset(mlflow_config=cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW'),
                            dataset_cfg=dataset_cfg,
                            filelisting=filelisting,
                            fold_split_file_dicts=fold_split_file_dicts,

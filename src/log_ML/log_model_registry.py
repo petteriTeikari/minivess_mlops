@@ -4,18 +4,20 @@ from loguru import logger
 import mlflow
 import wandb
 from mlflow.models import ModelSignature
+from omegaconf import DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
 from src.log_ML.mlflow_log import define_mlflow_model_uri, define_metamodel_name
 from src.log_ML.mlflow_tests import test_mlflow_models_reproduction
 from src.log_ML.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
+from src.utils.dict_utils import cfg_key
 
 
 def log_ensembles_to_mlflow(ensemble_models_flat: dict,
                             experim_dataloaders: dict,
                             ensembled_results: dict,
                             cv_ensemble_results: dict,
-                            config: dict,
+                            cfg: dict,
                             test_loading: bool):
     """
     See these for example for logging ensemble of models to Model Registry in MLflow:
@@ -38,11 +40,11 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             ensemble_models[ensemble_name] = (
                 ModelEnsemble(models_of_ensemble=ensemble_models_flat[ensemble_name],
                               models_from_paths=True,
-                              validation_cfg=cfg['config']['VALIDATION'],
-                              ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                              validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
-                              device=config['config']['MACHINE']['IN_USE']['device'],
-                              eval_cfg=cfg['config']['VALIDATION_BEST'],
+                              validation_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION'),
+                              ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config', 'ENSEMBLE', 'PARAMS'),
+                              validation_params=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION', 'VALIDATION_PARAMS'),
+                              device=cfg_key(cfg, 'run', 'MACHINE', 'device'),
+                              eval_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION_BEST'),
                               # TODO! need to make this adaptive based on submodel
                               precision='AMP'))  # config['config']['TRAINING']['PRECISION'])
 
@@ -57,7 +59,7 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             mlflow_model_log[ensemble_name] = (
                 mlflow_metamodel_logging(ensemble_model=ensemble_models[ensemble_name],
                                          model_paths=ensemble_models_flat[ensemble_name],
-                                         run_params_dict=cfg['run']['PARAMS'],
+                                         run_params_dict=cfg_key(cfg, 'run', 'PARAMS'),
                                          model_uri=model_uri,
                                          ensemble_name=ensemble_name,
                                          signature=signature,
@@ -69,6 +71,7 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
                 # stochasticity in your dataloader, like some test-time augmentation)
                 logger.info('MLflow | Test that you can download model from the '
                             'Model Registry and that they are reproducible')
+                test_config = cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW', 'TEST_LOGGING')
                 test_results = (
                     test_mlflow_models_reproduction(ensemble_filepaths=ensemble_models_flat[ensemble_name],
                                                     ensemble_model=ensemble_models[ensemble_name],
@@ -77,7 +80,7 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
                                                     cv_ensemble_results=cv_ensemble_results,
                                                     experim_dataloaders=experim_dataloaders,
                                                     ensemble_name=ensemble_name,
-                                                    test_cfg=cfg['config']['LOGGING']['MLFLOW']['TEST_LOGGING'],
+                                                    test_config=test_config,
                                                     cfg=cfg))
             else:
                 test_results = None
@@ -102,7 +105,7 @@ def mlflow_metamodel_logging(ensemble_model,
                              model_uri: str,
                              ensemble_name: str,
                              signature: ModelSignature,
-                             config: dict,
+                             cfg: dict,
                              autoregister_models: bool = False,
                              immediate_load_test: bool = False):
     """
@@ -118,25 +121,30 @@ def mlflow_metamodel_logging(ensemble_model,
     logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
                 format(ensemble_name, metamodel_name))
 
-    validation_params = config['config']['VALIDATION']['VALIDATION_PARAMS']
     mlflow_model_log['log_model'] = (
         mlflow.pyfunc.log_model(artifact_path=metamodel_name,
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
                                                            models_from_paths=True,
-                                                           validation_cfg=cfg['config']['VALIDATION'],
-                                                           ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                                           validation_params=validation_params,
-                                                           device=config['config']['MACHINE']['IN_USE']['device'],
-                                                           eval_cfg=cfg['config']['VALIDATION_BEST'],
+                                                           validation_config=cfg_key(cfg, 'hydra_cfg', 'config',
+                                                                                     'VALIDATION'),
+                                                           ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config',
+                                                                                   'ENSEMBLE', 'PARAMS'),
+                                                           validation_params=cfg_key(cfg, 'hydra_cfg', 'config',
+                                                                                     'VALIDATION', 'VALIDATION_PARAMS'),
+                                                           device=cfg_key(cfg, 'run', 'MACHINE', 'device'),
+                                                           eval_config=cfg_key(cfg, 'hydra_cfg', 'config',
+                                                                               'VALIDATION_BEST'),
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                pip_requirements=os.path.join(cfg['run']['PARAMS']['repo_dir'], 'requirements.txt')
+                                pip_requirements=os.path.join(cfg['run']['PARAMS']['requirements-txt_path'])
                                 )
     )
 
     if autoregister_models:
         # https://www.databricks.com/wp-content/uploads/2020/06/blog-mlflow-model-1.png
+        # This does not necessarily make a lot of sense, autoregister after running some hyperparam sweeps
+        # if you have obtained a better model from those
         logger.info('MLflow | Registering the model to Model Registry: {}'.
                     format(ensemble_name, metamodel_name))
         model_registry_string = '(and registering to Model Registry)'
@@ -171,7 +179,7 @@ def mlflow_metamodel_logging(ensemble_model,
 
 
 def log_ensembles_to_wandb(ensemble_models_flat: dict,
-                           config: dict,
+                           cfg: DictConfig,
                            wandb_run: wandb.sdk.wandb_run.Run,
                            test_loading: bool):
 

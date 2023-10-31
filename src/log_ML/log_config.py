@@ -2,16 +2,18 @@ import os
 import wandb
 import mlflow
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.inference.ensemble_utils import get_ensemble_name, get_submodel_name
 from src.log_ML.log_model_registry import log_ensembles_to_mlflow, log_ensembles_to_wandb
 from src.log_ML.log_utils import write_config_as_yaml
+from src.utils.dict_utils import cfg_key
 
 
 def log_config_artifacts(log_name: str,
                          cv_dir_out: str,
                          output_dir: str,
-                         config: dict,
+                         cfg: DictConfig,
                          fold_results: dict,
                          ensembled_results: dict,
                          cv_ensemble_results: dict,
@@ -47,22 +49,41 @@ def log_config_artifacts(log_name: str,
 
     # HERE, log the config as .yaml file back to disk
     logger.info('{} | ENSEMBLED Cross-Validation results | Config as YAML'.format(logging_services))
-    path_out, loaded_dict = write_config_as_yaml(cfg=cfg, dir_out=output_dir)
+    path_out_cfg, loaded_cfg = write_config_as_yaml(config=cfg['hydra_cfg'],
+                                                     dir_out=output_dir,
+                                                     fname_out='config.yaml')
+    path_out_run, loaded_run = write_config_as_yaml(config=cfg['run'],
+                                                     dir_out=output_dir,
+                                                     fname_out='run_params.yaml')
+
     if 'WANDB' in logging_services:
         artifact_cfg = wandb.Artifact(name='config', type='config')
-        artifact_cfg.add_file(path_out)
+        artifact_cfg.add_file(path_out_cfg)
         wandb_run.log_artifact(artifact_cfg)
+        artifact_run = wandb.Artifact(name='run_params', type='config')
+        artifact_run.add_file(path_out_run)
+        wandb_run.log_artifact(artifact_run)
+
     if 'MLflow' in logging_services:
-        mlflow.log_dict(loaded_dict, artifact_file=os.path.split(path_out)[1])
+        mlflow.log_dict(loaded_cfg, artifact_file=os.path.split(path_out_cfg)[1])
+        mlflow.log_dict(loaded_run, artifact_file=os.path.split(path_out_run)[1])
 
     logger.info('{} | ENSEMBLED Cross-Validation results | Loguru log saved as .txt'.format(logging_services))
-    path_out = cfg['run']['PARAMS']['output_log_path']
+    log_path_out = cfg_key(cfg, 'run', 'PARAMS', 'output_log_path')
+    std_path_out = cfg_key(cfg, 'run', 'PARAMS', 'stdout_log_path')
+
     if 'WANDB' in logging_services:
         artifact_log = wandb.Artifact(name='log', type='log')
-        artifact_log.add_file(path_out)
+        artifact_log.add_file(log_path_out)
         wandb_run.log_artifact(artifact_log)
+
+        artifact_stdout = wandb.Artifact(name='stdout', type='log')
+        artifact_stdout.add_file(std_path_out)
+        wandb_run.log_artifact(artifact_stdout)
+
     if 'MLflow' in logging_services:
-        mlflow.log_artifact(path_out)
+        mlflow.log_artifact(log_path_out)
+        mlflow.log_artifact(std_path_out)
 
     return model_paths
 
@@ -74,7 +95,7 @@ def log_model_ensemble_to_model_registry(fold_results: dict,
                                          log_name: str,
                                          wandb_run: wandb.sdk.wandb_run.Run,
                                          logging_services: list,
-                                         config: dict,
+                                         cfg: DictConfig,
                                          test_loading: bool = False):
 
     # Collect and simplify the submodel structure of the ensemble(s)

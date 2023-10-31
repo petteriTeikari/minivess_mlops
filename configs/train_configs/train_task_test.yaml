@@ -11,7 +11,7 @@ config:
       MINIVESS:
         DATASET:
           MONAI_CACHEDATASET:
-            CACHE_RATE: 0.0
+            CACHE_RATE: 1.0
         SUBSET:
           NAME: 'DEBUG'
   LOGGING:
