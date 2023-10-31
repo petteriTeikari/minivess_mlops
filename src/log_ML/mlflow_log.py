@@ -5,9 +5,10 @@ from loguru import logger
 from omegaconf import DictConfig
 
 from src.utils.dict_utils import cfg_key
+from src.utils.general_utils import is_docker, import_from_dotenv
 
 
-def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
+def authenticate_mlflow(run_params):
     """
     https://mlflow.org/docs/latest/auth/index.html#using-credentials-file
     https://mlflow.org/docs/latest/auth/index.html#using-environment-variables
@@ -19,6 +20,13 @@ def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
     For Github Action use, these are defined in your repo secrets then
     """
     env_vars_set = True
+    if is_docker():
+        logger.debug('Running code in Docker (MLflow authentication)')
+        # the credentials should come now e.g. from Github Secrets
+    else:
+        logger.debug('Running code outside Docker (MLflow authentication)')
+        import_from_dotenv(repo_dir=cfg_key(run_params, 'PARAMS', 'repo_dir'))
+
     mlflow_tracking_username = os.getenv('MLFLOW_TRACKING_USERNAME')
     if mlflow_tracking_username is None:
         logger.warning('Cannot find MLFLOW_TRACKING_USERNAME environment variable, '
@@ -30,6 +38,19 @@ def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
         logger.warning('Cannot find MLFLOW_TRACKING_PASSWORD environment variable, '
                        'cannot log training results to cloud! Using local MLflow server!')
         env_vars_set = False
+
+    if env_vars_set:
+        logger.info('MLflow | Found MLFLOW_TRACKING_USERNAME and MLFLOW_TRACKING_PASSWORD environment variables')
+    else:
+        logger.warning('Failed remote authentication\n'
+                      ' - did you set the environment variables for Dagshub MLflow (your credentials?\n'
+                      '   https://dagshub.com/docs/integration_guide/mlflow_tracking/#3-set-up-your-credentials\n'
+                      '    e.g. export MLFLOW_TRACKING_USERNAME=<username>\n'
+                      '         export MLFLOW_TRACKING_PASSWORD=<password/token>\n'
+                      ' If authentication fix does not work, you can either:'
+                      '   mlflow_config["TRACKING"]["enable"] = False\n'
+                      '   mlflow_config["server_URI"]  = null\n'
+                      'error = {}')
 
     return env_vars_set
 
@@ -60,22 +81,23 @@ def init_mlflow_logging(hydra_cfg: DictConfig,
                         run_params: dict,                        
                         mlflow_config: DictConfig,
                         experiment_name: str = "MINIVESS_segmentation",
-                        run_name: str = "UNet3D"):
+                        run_name: str = "UNet3D",
+                        server_uri: str = None):
     """
     see e.g. https://github.com/Project-MONAI/tutorials/blob/main/experiment_management/spleen_segmentation_mlflow.ipynb
     https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded
     """
-
     if mlflow_config['TRACKING']['enable']:
         logger.info('MLflow | Initializing MLflow Experiment tracking')
         try:
-            if hydra_cfg['config']['SERVICES']['MLFLOW']['server_URI'] is not None:
-                env_vars_set = authenticate_mlflow()
+            if cfg_key(hydra_cfg, 'config', 'SERVICES', 'MLFLOW', 'server_URI') is not None:
+                env_vars_set = authenticate_mlflow(run_params)
                 if not env_vars_set:
                     tracking_uri = mlflow_local_mlflow_init(run_params)
+                    logger.info('MLflow | Logging to a local MLflow Server: "{}"'.format(tracking_uri))
                 else:
-                    logger.info('Logging to a remote tracking MLflow Server ({})'.format(mlflow_config['server_URI']))
-                    tracking_uri = mlflow_config['server_URI']
+                    logger.info('Logging to a remote tracking MLflow Server ({})'.format(server_uri))
+                    tracking_uri = server_uri
                     mlflow.set_tracking_uri(tracking_uri)
             else:
                 tracking_uri = mlflow_local_mlflow_init(run_params)
@@ -83,24 +105,12 @@ def init_mlflow_logging(hydra_cfg: DictConfig,
             logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
             raise IOError('Failed to initialize the MLflow logging! e = {}'.format(e))
 
-        logger.info('MLflow | Logging to a local MLflow Server: "{}"'.format(tracking_uri))
-        # TODO! Is there a way to have MLflow wait for longer periods, or go to offline state
-        #  if the internet connection is down (e.g. coworking space WLAN)
         try:
             experiment, active_run = init_mlflow_run(tracking_uri,
                                                      experiment_name=experiment_name,
                                                      run_name=run_name)
         except Exception as e:
             logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
-            raise IOError('Failed to initialize the MLflow logging!\n'
-                          ' - did you set the environment variables for Dagshub MLflow (your credentials?\n'
-                          '   https://dagshub.com/docs/integration_guide/mlflow_tracking/#3-set-up-your-credentials\n'
-                          '    e.g. export MLFLOW_TRACKING_USERNAME=<username>\n'
-                          '         export MLFLOW_TRACKING_PASSWORD=<password/token>\n'
-                          ' If authentication fix does not work, you can either:'
-                          '   mlflow_config["TRACKING"]["enable"] = False\n'
-                          '   mlflow_config["server_URI"]  = null\n'
-                          'error = {}'.format(e))
 
         if run_params["HYPERPARAMETERS_FLAT"] is not None:
             logger.info('MLflow | Writing experiment hyperparameters (from cfg["run"]["HYPERPARAMETERS_FLAT"])')
@@ -137,7 +147,7 @@ def mlflow_log_dataset(mlflow_config: dict,
                        dataset_cfg: dict,
                        filelisting: dict,
                        fold_split_file_dicts: dict,
-                       cfg: dict):
+                       cfg: DictConfig):
     """
     https://mlflow.org/docs/latest/python_api/mlflow.data.html
     """
@@ -193,4 +203,8 @@ def define_artifact_name(ensemble_name: str, submodel_name: str, hyperparam_name
 
 
 def define_metamodel_name(ensemble_name: str, hyperparam_name: str):
-    return '_1_{}__{}'.format(hyperparam_name, ensemble_name)
+    return '{}__{}'.format(hyperparam_name, ensemble_name)
+
+
+def get_metamodel_name_from_log_model(log_model_dict: dict):
+    return log_model_dict['artifact_path']

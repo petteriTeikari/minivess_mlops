@@ -3,9 +3,11 @@ import os
 import mlflow
 import numpy as np
 from loguru import logger
+from omegaconf import DictConfig
 
 from src.inference.ensemble_model import inference_ensemble_with_dataloader, ModelEnsemble
 from src.log_ML.model_saving import get_weight_vectors_from_best_dicts
+from src.utils.dict_utils import cfg_key
 
 
 def test_inference_loaded_mlflow_model(ensemble_model,
@@ -54,8 +56,8 @@ def test_mlflow_models_reproduction(ensemble_filepaths: dict,
                                     cv_ensemble_results: dict,
                                     experim_dataloaders: dict,
                                     ensemble_name: str,
-                                    test_config: dict,
-                                    config: dict):
+                                    test_config: DictConfig,
+                                    cfg: dict):
 
     test_results = {}
     if 'CHECK_LOCAL' in test_config:
@@ -80,7 +82,7 @@ def test_mlflow_models_reproduction(ensemble_filepaths: dict,
 
 def local_model_tests(ensemble_model: ModelEnsemble,
                       test_config: dict,
-                      config: dict,
+                      cfg: dict,
                       model_paths: dict):
 
     """
@@ -93,11 +95,12 @@ def local_model_tests(ensemble_model: ModelEnsemble,
 
         ensemble_model_local = ModelEnsemble(models_of_ensemble=model_paths,
                                              models_from_paths=True,
-                                             validation_cfg=cfg['config']['VALIDATION'],
-                                             ensemble_params=config['config']['ENSEMBLE']['PARAMS'],
-                                             validation_params=config['config']['VALIDATION']['VALIDATION_PARAMS'],
-                                             device=config['config']['MACHINE']['IN_USE']['device'],
-                                             eval_cfg=cfg['config']['VALIDATION_BEST'],
+                                             validation_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION'),
+                                             ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config', 'ENSEMBLE', 'PARAMS'),
+                                             validation_params=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION',
+                                                                       'VALIDATION_PARAMS'),
+                                             device=cfg_key(cfg, 'run', 'MACHINE', 'device'),
+                                             eval_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION_BEST'),
                                              # TODO! need to make this adaptive based on submodel
                                              precision='AMP')  # config['config']['TRAINING']['PRECISION'])
 
