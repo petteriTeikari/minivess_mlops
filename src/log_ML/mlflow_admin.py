@@ -1,12 +1,19 @@
 import json
+import os
+import shutil
 
 import mlflow
 from mlflow import MlflowClient
 from mlflow.entities import ViewType
 from mlflow.store.entities import PagedList
 from loguru import logger
+from omegaconf import DictConfig, OmegaConf
 
-from src.log_ML.mlflow_log import get_metamodel_name_from_log_model
+from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname
+from src.log_ML.mlflow_init import authenticate_mlflow, init_mlflow
+from src.utils.config_utils import get_repo_dir, get_config_dir, config_import_script
+from src.utils.dict_utils import cfg_key
+from src.utils.general_utils import import_from_dotenv, is_docker
 
 
 def mlflow_update_best_model(project_name: str,
@@ -17,9 +24,8 @@ def mlflow_update_best_model(project_name: str,
     best_run = get_best_run(project_name,
                             best_metric_name=best_metric_name)
 
-
     # Check the best metric(s) from the registered models
-    register_best_run_as_best_registered_model = (
+    _, register_best_run_as_best_registered_model = (
         get_best_registered_model(project_name=project_name,
                                   best_run=best_run,
                                   best_metric_name=best_metric_name))
@@ -36,32 +42,41 @@ def mlflow_update_best_model(project_name: str,
 
 
 def get_best_registered_model(project_name: str,
-                              best_run,
+                              best_run = None,
                               best_metric_name: str = 'Dice'):
 
-    prev_best = best_run.data.metrics[best_metric_name]
     register_best_run_as_best_registered_model = False
+    if best_run is not None:
+        prev_best = best_run.data.metrics[best_metric_name]
 
     client = MlflowClient()
     rmodels = client.search_registered_models()
+    if len(rmodels) == 0:
+        logger.error('Could not find any registered models from MLflow!')
+        raise IOError('Could not find any registered models from MLflow!')
+
     for rmodel in rmodels:
         # TODO! you need to loop the prev_best to match this
         if project_name in rmodel.name:
-            logger.info('registered model name "{}" '
-                        '(nr of versions = {})'.format(rmodel.name, len(rmodel.latest_versions)))
+
             latest_ver = rmodel.latest_versions[0]
             run_id = latest_ver.run_id
             best_value = get_best_metric_of_run(run_id=run_id,
                                                 best_metric_name=best_metric_name)
 
-            if best_value is None or best_value < prev_best:
-                logger.info('Best run is better than the best registered model')
-                register_best_run_as_best_registered_model = True
-            else:
-                logger.info('Best registered model does not need to be updated')
-                register_best_run_as_best_registered_model = False
+            logger.info('registered model name "{}" '
+                        '(nr of latest versions = {}, latest version = {})'.
+                        format(rmodel.name, len(rmodel.latest_versions), latest_ver.version))
 
-    return register_best_run_as_best_registered_model
+            if best_run is not None:
+                if best_value is None or best_value < prev_best:
+                    logger.info('Best run is better than the best registered model')
+                    register_best_run_as_best_registered_model = True
+                else:
+                    logger.info('Best registered model does not need to be updated')
+                    register_best_run_as_best_registered_model = False
+
+    return latest_ver, register_best_run_as_best_registered_model
 
 
 def get_best_metric_of_run(run_id: str,
@@ -204,3 +219,113 @@ def get_runs_of_experiment(project_name: str,
 def get_current_id(project_name: str):
     current_experiment = dict(mlflow.get_experiment_by_name(project_name))
     return current_experiment['experiment_id']
+
+
+def get_metamodel_name_from_log_model(log_model_dict: dict):
+    return log_model_dict['artifact_path']
+
+
+def get_mlflow_model_for_inference(project_name: str,
+                                   inference_cfg: str,
+                                   server_uri: str = 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow',
+                                   data_dir: str = None):
+
+    env_vars_set = authenticate_mlflow(repo_dir=get_repo_dir())
+
+    # Where to log, local or remote
+    # TODO! get server_uri from some func that knows how to import it from hierachical config
+    tracking_uri = init_mlflow(server_uri=server_uri,
+                               repo_dir=get_repo_dir(),
+                               output_mlflow_dir=os.path.join(get_repo_dir(), 'mlflow_temp'))
+
+    latest_model_version, _ = get_best_registered_model(project_name)
+    artifact_uri = latest_model_version.source
+    artifact_base_dir = get_base_artifact_uri(artifact_uri)
+    cfg = import_cfg_from_mlflow(artifact_base_dir,
+                                 inference_cfg)
+
+    # loaded_model = mlflow.pyfunc.load_model(artifact_uri)
+    logger.info('Updating data directory () to the config'.format(data_dir))
+    OmegaConf.update(cfg['hydra_cfg']['config'],
+                     "DATA", {"DATA_SOURCE": {'FOLDER': {'DATA_DIR': data_dir}}})
+
+    return artifact_uri, artifact_base_dir, cfg
+
+
+def get_base_artifact_uri(artifact_uri: str,
+                          artifacts_dir_mlflow: str = 'artifacts'):
+    # Examine later why is it like this as the project name is extra when
+    # you are trying to access the actual artifact that you want
+    base_dir, subdir = os.path.split(artifact_uri)
+    if subdir == artifacts_dir_mlflow:
+        return artifact_uri
+    else:
+        base_dir2, subdir2 = os.path.split(base_dir)
+        if subdir2 == artifacts_dir_mlflow:
+            return base_dir
+        else:
+            logger.error('More than one subdir in artifact_uri = {}'.format(artifact_uri))
+            raise IOError('More than one subdir in artifact_uri = {}'.format(artifact_uri))
+
+
+def import_cfg_from_mlflow(artifact_base_dir: str = None,
+                           inference_cfg: str = None,
+                           update_train_cfg_with_inference_cfg: bool = True):
+
+    logger.info('Get training config ({}) from {}'.format(get_cfg_yaml_fname(), artifact_base_dir))
+    try:
+        local_path = mlflow.artifacts.download_artifacts(artifact_base_dir + f"/{get_cfg_yaml_fname()}")
+    except Exception as e:
+        logger.error('Problem downloading "{}" from MLflow Artifact Store! '
+                     'e = {}'.format(get_cfg_yaml_fname(), e))
+        raise IOError('Problem downloading "{}" from MLflow Artifact Store! '
+                      'e = {}'.format(get_cfg_yaml_fname(), e))
+
+    if update_train_cfg_with_inference_cfg:
+        hydra_cfg = update_mlflow_cfg(local_path, inference_cfg)
+    else:
+        hydra_cfg = OmegaConf.load(local_path)
+
+    logger.info('Get run parameters ({}) from {}'.format(get_run_params_yaml_fname(), artifact_base_dir))
+    try:
+        local_path = mlflow.artifacts.download_artifacts(artifact_base_dir + f"/{get_run_params_yaml_fname()}")
+    except Exception as e:
+        logger.error('Problem downloading "{}" from MLflow Artifact Store! '
+                     'e = {}'.format(get_run_params_yaml_fname(), e))
+        raise IOError('Problem downloading "{}" from MLflow Artifact Store! '
+                      'e = {}'.format(get_cfg_yaml_fname(), e))
+    run_params = OmegaConf.load(local_path)
+
+    return {'hydra_cfg': hydra_cfg, 'run': run_params}
+
+
+def update_mlflow_cfg(local_path: str, inference_cfg: str):
+
+    config_dir = get_config_dir()
+
+    # tempoprary copy of the MLflow config as the base (to match the training code)
+    fname = os.path.split(local_path)[1]
+    fname_wo_ext = os.path.splitext(fname)[0]
+
+    try:
+        shutil.copy(local_path, os.path.join(config_dir, fname))
+    except Exception as e:
+        logger.error('Failed to make the temp copy of the MLflow config '
+                     '"{}" to "{}", e = {}'.format(fname, os.path.join(config_dir, fname), e))
+        raise IOError('Failed to make the temp copy of the MLflow config '
+                      '"{}" to "{}", e = {}'.format(fname, os.path.join(config_dir, fname), e))
+
+    # combine the base from MLflow run with the inference config
+    config = config_import_script(task_cfg_name=inference_cfg,
+                                  parent_dir_string='..',
+                                  parent_dir_string_defaults='..',
+                                  job_name='inference_folder',
+                                  base_cfg_name = fname_wo_ext)
+
+    # remove the temporary copy of the MLflow config
+    try:
+        os.remove(os.path.join(config_dir, fname))
+    except Exception as e:
+        logger.warning('Failed to remove the temp file "{}", e = {}'.format(os.path.join(config_dir, fname), e))
+
+    return config

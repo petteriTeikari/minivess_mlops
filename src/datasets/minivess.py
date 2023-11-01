@@ -1,6 +1,5 @@
 import glob
 import os
-from monai.data import CacheDataset
 from loguru import logger
 import requests
 import zipfile
@@ -8,8 +7,8 @@ import random
 
 from omegaconf import DictConfig
 
+from src.datasets.torch_dataset import create_dataset_per_split
 from src.utils.dict_utils import cfg_key
-from tests.data.dataset_tests import ml_test_dataset_for_allowed_types
 from tests.data.file_tests import ml_test_filelisting_corruption
 from src.datasets.dvc_utils import get_dvc_files_of_repo
 from src.utils.general_utils import print_memory_stats_to_logger
@@ -294,55 +293,6 @@ def define_minivess_dataset(dataset_config: dict,
     return datasets, ml_test_dataset
 
 
-def create_dataset_per_split(dataset_config: dict,
-                             split: str,
-                             split_file_dict: dict,
-                             transforms_per_split: dict,
-                             debug_testing: bool = False):
-
-    n_files = len(split_file_dict)
-    ds_config = dataset_config['DATASET']
-    pytorch_dataset_type = ds_config['NAME']
-
-    if debug_testing:
-        split_file_dict = debug_add_errors_to_dataset_dict(split_file_dict)
-
-    is_dataset_valid, samples_not_valid = (
-        ml_test_dataset_for_allowed_types(split_file_dict=split_file_dict))
-
-    if pytorch_dataset_type == 'MONAI_CACHEDATASET':
-        # TODO! for fancier RAM management, you could adaptively set the cache_rate here
-        #  based on the machine that you are running this on, add like a case with
-        #  "if ds_config[pytorch_dataset_type]['CACHE_RATE'] == 'max_avail'"
-        ds = CacheDataset(data=split_file_dict,
-                          transform=transforms_per_split,
-                          cache_rate=ds_config[pytorch_dataset_type]['CACHE_RATE'],
-                          num_workers=ds_config[pytorch_dataset_type]['NUM_WORKERS'])
-        logger.info('Created MONAI CacheDataset, split = "{}" (n = {}, '
-                    'keys in dict = {}, cache_rate = {}, num_workers = {})',
-                    split, n_files, list(split_file_dict[0].keys()),
-                    ds_config[pytorch_dataset_type]['CACHE_RATE'],
-                    ds_config[pytorch_dataset_type]['NUM_WORKERS'])
-
-    elif pytorch_dataset_type == 'MONAI_DATASET':
-        logger.error('WARNING! You are using the vanilla MONAI Dataset, which does not work downstream from here')
-        raise NotImplementedError('Vanilla MONAI dataset not implemented, use CacheDataset instead with '
-                                  'cache_rate=0 if you have issues with RAM availability on your machine')
-        # ds = Dataset(data=split_file_dict)
-        # logger.info('Created MONAI (uncached) Dataset, split = "{}" (n={}, '
-        #             'keys in dict = {})', split, n_files, list(split_file_dict[0].keys()))
-        # logger.warning('Use the vanilla MONAI Dataset mostly for debugging/Github Actions '
-        #                'when you might easily run out of RAM')
-    else:
-        raise NotImplementedError('Not implemented yet other dataset than Monai CacheDataset and Dataset, '
-                                  'not = "{}"'.format(pytorch_dataset_type))
-
-    ml_test_dataset = {'is_dataset_valid': is_dataset_valid,
-                       'samples_not_valid': samples_not_valid}
-
-    return ds, ml_test_dataset
-
-
 def minivess_debug_splits(fold_split_file_dicts: dict,
                           subset_cfg: dict,
                           subset_cfg_name: str):
@@ -354,13 +304,3 @@ def minivess_debug_splits(fold_split_file_dicts: dict,
             fold_split_file_dicts[fold][split] = fold_split_file_dicts[fold][split][0:subset_cfg[split]]
 
     return fold_split_file_dicts
-
-
-def debug_add_errors_to_dataset_dict(split_file_dict: dict):
-
-    logger.warning('WARNING You are intentionally adding errors to our dataset for testing the ML Tests pipeline')
-    # TypeError: default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists;
-    # found <class 'NoneType'>
-    split_file_dict[0]['metadata']['filepath_json'] = None
-
-    return split_file_dict

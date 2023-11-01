@@ -19,6 +19,17 @@ config:
       # TOADD, i.e. how to create multiple val, and test subdictionaries
       DATASET_NAMES:
         - 'MINIVESS'
+      # For batch inference of volumes in a folder
+      FOLDER:
+        PLACEHOLDER: 'placeholder'
+        TRANSFORMS:
+          TEST: 'NO_AUG'
+        DATASET:
+          NAME: 'MONAI_CACHEDATASET'
+          # See https://docs.monai.io/en/stable/data.html#cachedataset
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 0.0
+            NUM_WORKERS: 1
       MINIVESS:
         FETCH_METHOD: 'DVC'
         FETCH_METHODS:

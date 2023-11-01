@@ -1,0 +1,21 @@
+# @package _global_
+NAME: 'inference_folder'
+config:
+  DATA:
+    DATA_SOURCE:
+      DATASET_NAMES:
+        - 'FOLDER'
+      FOLDER:
+        DATA_DIR: ???
+        TRANSFORMS:
+          TEST: 'NO_AUG'
+        DATASET:
+          NAME: 'MONAI_CACHEDATASET'
+          # See https://docs.monai.io/en/stable/data.html#cachedataset
+          MONAI_CACHEDATASET:
+            CACHE_RATE: 0.0
+            NUM_WORKERS: 1
+    DATALOADER:
+      TEST:
+        BATCH_SZ: 1
+        NUM_WORKERS: 1

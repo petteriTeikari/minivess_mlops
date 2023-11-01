@@ -1,3 +1,4 @@
+from loguru import logger
 from monai.transforms import (
     Activations,
     AddChanneld,
@@ -22,25 +23,34 @@ import numpy
 def define_transforms(dataset_config: dict,
                       transform_config_per_dataset: dict,
                       transform_config: dict,
-                      device):
+                      device,
+                      keys_in_samples: list):
 
     transforms = {}
     for i, split in enumerate(transform_config_per_dataset.keys()):
         transforms[split] = get_transforms_per_split(device=device,
                                                      transform_cfg_name_per_split=transform_config_per_dataset[split],
                                                      split=split,
-                                                     transform_config=transform_config)
+                                                     transform_config=transform_config,
+                                                     keys_in_samples=keys_in_samples)
 
     return transforms
 
 
-def get_transforms_per_split(device, transform_cfg_name_per_split: str,
-                             split: str = 'TRAIN', transform_config: dict = None):
+def get_transforms_per_split(device,
+                             transform_cfg_name_per_split: str,
+                             split: str,
+                             transform_config: dict,
+                             keys_in_samples: list):
 
     if transform_cfg_name_per_split == 'BASIC_AUG':
         transforms = basic_aug(device)  # eliminate the if/elif/else and parse directly from str?
     elif transform_cfg_name_per_split == 'NO_AUG':
-        transforms = no_aug(device)
+        if 'label' in keys_in_samples:
+            transforms = no_aug(device)
+        else:
+            logger.info('No label found in the Dataset, you are running inference?')
+            transforms = no_aug(device, for_inference_without_labels=True)
     else:
         raise NotImplementedError('Not implemented yet the desired "{}" transform'.
                                   format(transform_cfg_name_per_split))
@@ -82,10 +92,21 @@ def basic_aug(device):
 
 
 def no_aug(device: str,
-           for_inference: bool = False):
-    # This is mainly used for inference / evaluation
-
-    if for_inference:
+           for_inference: bool = False,
+           for_inference_without_labels: bool = False):
+    # Inference without labels
+    if for_inference_without_labels:
+        transforms = Compose(
+            [
+                LoadImaged(keys=["image"]),
+                # ToDeviced(keys=["image"], device=device),
+                EnsureChannelFirstd(keys=["image"]),
+                ScaleIntensityd(keys=['image'], minv=0.0, maxv=1.0),
+                EnsureTyped(keys=["image"], data_type='tensor')
+            ]
+        )
+    # Inference with labels
+    elif for_inference:
         # no random cropping, doing inference for the original shape with a batch size of 1
         transforms = Compose(
             [
@@ -96,6 +117,7 @@ def no_aug(device: str,
                 EnsureTyped(keys=["image", "label"], data_type='tensor')
             ]
         )
+    # Evaluation (the smaller crops)
     else:
         transforms = Compose(
             [

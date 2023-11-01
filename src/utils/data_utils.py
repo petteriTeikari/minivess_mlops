@@ -2,6 +2,7 @@ import os
 from loguru import logger
 from omegaconf import DictConfig
 
+from src.datasets.inference_data import import_folder_dataset
 from src.datasets.minivess import import_minivess_dataset
 from src.log_ML.mlflow_log import mlflow_log_dataset
 from src.utils.config_utils import put_to_dict, cfg_key
@@ -71,6 +72,9 @@ def import_dataset(data_cfg: dict,
                                       dataset_name=dataset_name,
                                       fetch_method=fetch_method,
                                       fetch_params=cfg_key(dataset_cfg, 'FETCH_METHODS', fetch_method))
+
+    elif dataset_name == 'FOLDER':
+        filelisting, fold_split_file_dicts, dataset_stats = import_folder_dataset(dataset_cfg=dataset_cfg)
 
     else:
         raise NotImplementedError('Do not yet know how to download a dataset '

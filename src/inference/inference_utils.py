@@ -1,3 +1,7 @@
+import glob
+import os
+from loguru import logger
+
 import monai.data
 import numpy as np
 import torch
@@ -137,3 +141,12 @@ def get_inference_metrics(y_pred: np.ndarray,
         ensemble_metrics = None
 
     return ensemble_metrics
+
+
+def inference_per_batch(image_tensor: MetaTensor,
+                        filenames: list,
+                        batch_data: dict,
+                        cfg: dict):
+
+    no_batches, no_chans, dim1, dim2, dim3 = image_tensor.shape
+

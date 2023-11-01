@@ -2,6 +2,7 @@ from loguru import logger
 from monai.data import DataLoader, list_data_collate, Dataset
 from omegaconf import DictConfig
 
+from src.datasets.torch_dataset import define_torch_dataset, get_sample_keys
 from src.utils.config_utils import cfg_key
 from tests.data.dataloader_tests import ml_test_dataloader_dict_integrity
 from tests.data.dataset_tests import ml_test_dataset_summary
@@ -33,6 +34,7 @@ def define_datasets(cfg: dict,
         for i, dataset_name in enumerate(fold_split_file_dicts[fold_name].keys()):
             logger.info('Creating (MONAI/PyTorch) Datasets for dataset source = "{}"', dataset_name)
             dataset_config = cfg_key(cfg, 'hydra_cfg', 'config', 'DATA', 'DATA_SOURCE', dataset_name)
+            split_file_dicts = fold_split_file_dicts[fold_name][dataset_name]
 
             # FIXME! What if you want to do some diverse inference with a different set of augmentation
             #  per each fold or for each repeat? See e.g. https://arxiv.org/abs/2007.04206
@@ -41,19 +43,15 @@ def define_datasets(cfg: dict,
             transforms = define_transforms(dataset_config=dataset_config,
                                            transform_config_per_dataset=cfg_key(dataset_config, 'TRANSFORMS'),
                                            transform_config=cfg_key(cfg, 'hydra_cfg', 'config', 'TRANSFORMS'),
-                                           device=cfg_key(cfg, 'run', 'MACHINE', 'device'))
+                                           device=cfg_key(cfg, 'run', 'MACHINE', 'device'),
+                                           keys_in_samples=get_sample_keys(split_file_dicts))
 
-            if dataset_name == 'MINIVESS':
-                split_file_dicts = fold_split_file_dicts[fold_name][dataset_name]
-                datasets[fold_name][dataset_name], ml_test_dataset[fold_name][dataset_name] = \
-                    define_minivess_dataset(dataset_config=dataset_config,
-                                            split_file_dicts=split_file_dicts,
-                                            transforms=transforms,
-                                            debug_testing=debug_testing)
-            else:
-                raise NotImplementedError('Only implemented minivess dataset now!, '
-                                          'not = "{}"'.format(cfg_key(cfg, 'hydra_cfg',
-                                                                      'config', 'DATA', 'DATASET_NAME')))
+            datasets[fold_name][dataset_name], ml_test_dataset[fold_name][dataset_name] = \
+                define_torch_dataset(dataset_name=dataset_name,
+                                     dataset_config=dataset_config,
+                                     split_file_dicts=split_file_dicts,
+                                     transforms=transforms,
+                                     debug_testing=debug_testing)
 
     # Test report for dataset integrity
     all_tests_ok, report_string = ml_test_dataset_summary(ml_test_dataset)
@@ -121,9 +119,10 @@ def define_dataset_and_dataloader(cfg: dict,
     # Test that you can use the constructed dataloaders actually
     if cfg_key(cfg, 'hydra_cfg', 'config', 'TESTING', 'DATALOADER', 'DATA_VALIDITY', 'enable'):
         ml_test_dataloader_dict_integrity(dataloaders,
-                                          test_cfg=cfg_key(cfg, 'hydra_cfg', 'config', 'TESTING', 'DATALOADER'),
+                                          test_config=cfg_key(cfg, 'hydra_cfg', 'config', 'TESTING', 'DATALOADER'),
                                           run_params=cfg_key(cfg, 'run', 'PARAMS'),
-                                          debug_testing=cfg_key(cfg, 'hydra_cfg', 'config', 'TESTING', 'DATALOADER', 'debug_testing'))
+                                          debug_testing=cfg_key(cfg, 'hydra_cfg', 'config', 'TESTING',
+                                                                'DATALOADER', 'debug_testing'))
     else:
         logger.info('Skip ML tests for the dataloader integrity ("DATA VALIDITY")')
         # TO-OPTIMIZE the naming of these
@@ -138,18 +137,22 @@ def quick_and_dirty_training_dataloader_creation(datasets, dataloaders,
     # FIXME: Now we cheat a bit and create this manually, update this when you actually have multiple
     #  datasets and you would like to create one training dataloader from all the datasets, and multiple
     #  dataloaders then in a dict for TEST and VAL splits
-    logger.info('Quick and dirty fixing of MINIVESS dataset to the desired format of 1 TRN dataloader, '
-                'and multiple VAL/TEST splits in dictionary')
-    datasets[fold_name] = datasets[fold_name][dataset_name]
+    if dataset_name in datasets[fold_name]:
+        logger.info('Quick and dirty fixing of MINIVESS dataset to the desired format of 1 TRN dataloader, '
+                    'and multiple VAL/TEST splits in dictionary')
+        datasets[fold_name] = datasets[fold_name][dataset_name]
 
-    dataloaders_out = {fold_name: {}}
-    # this is now a single dictionary. Not sure if there is an use case where you would like to
-    # simultaneously have two training dataloaders?
-    dataloaders_out[fold_name]['TRAIN'] = dataloaders[fold_name][dataset_name]['TRAIN']
-    # these are now subdictionaries, so you could use multiple validation sets to track model improvement
-    # or for using multiple external test sets for generalization evaluation purposes
-    dataloaders_out[fold_name]['VAL'] = {dataset_name: dataloaders[fold_name][dataset_name]['VAL']}
-    dataloaders_out[fold_name]['TEST'] = {dataset_name: dataloaders[fold_name][dataset_name]['TEST']}
+        dataloaders_out = {fold_name: {}}
+        # this is now a single dictionary. Not sure if there is an use case where you would like to
+        # simultaneously have two training dataloaders?
+        dataloaders_out[fold_name]['TRAIN'] = dataloaders[fold_name][dataset_name]['TRAIN']
+        # these are now subdictionaries, so you could use multiple validation sets to track model improvement
+        # or for using multiple external test sets for generalization evaluation purposes
+        dataloaders_out[fold_name]['VAL'] = {dataset_name: dataloaders[fold_name][dataset_name]['VAL']}
+        dataloaders_out[fold_name]['TEST'] = {dataset_name: dataloaders[fold_name][dataset_name]['TEST']}
+    else:
+        logger.info('No quick asnd dirty fix for dataset_name = "{}"'.format(dataset_name))
+        dataloaders_out = dataloaders
 
     return datasets, dataloaders_out
 

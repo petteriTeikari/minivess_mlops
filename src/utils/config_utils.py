@@ -13,10 +13,10 @@ import torch
 import torch.distributed as dist
 from omegaconf import DictConfig, OmegaConf
 
+from src.log_ML.mlflow_init import init_mlflow_logging
 from src.utils.dict_utils import put_to_dict, cfg_key
 from tests.env.mount_tests import debug_mounts
 from src.log_ML.json_log import to_serializable
-from src.log_ML.mlflow_log import init_mlflow_logging
 from src.utils.general_utils import print_dict_to_logger, is_docker
 from src.utils.metadata_utils import get_run_metadata
 
@@ -224,18 +224,26 @@ def get_repo_base_dir(working_dir: str,
 
 
 def get_repo_dir(return_src: bool = False,
-                 repo_name: str = 'minivess_mlops') -> str:
+                 repo_name: str = 'minivess_mlops',
+                 verbose: bool = True) -> str:
 
     cwd = os.getcwd()
-    logger.debug('Trying to find the repo dir from cwd = "{}"'.format(cwd))
     repo_dir = get_repo_base_dir(working_dir=cwd,
                                  repo_name=repo_name)
-    logger.info('Git base repo found in "{}"'.format(repo_dir))
+    if verbose:
+        logger.info('Git base repo found in "{}"'.format(repo_dir))
 
     if return_src:
         repo_dir = os.path.join(repo_dir, 'src')
 
     return repo_dir
+
+
+def get_config_dir():
+    repo_dir = get_repo_dir(verbose=False)
+    config_dir = os.path.join(repo_dir, 'configs')
+    logger.info('Config dir in {}'.format(config_dir))
+    return config_dir
 
 
 def set_up_run_params(hydra_cfg: DictConfig,

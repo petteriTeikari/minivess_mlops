@@ -20,7 +20,8 @@ def ml_test_dataset_for_allowed_types(split_file_dict: dict,
         sample_name = fname
         for ext in exts:
             sample_name = sample_name.replace(ext, '')
-        metadata_dict = sample['metadata']
+
+        metadata_dict = sample.get('metadata', {})
         problematic_keys = ml_test_metadata_dict(metadata_dict=metadata_dict, sample_name=sample_name)
         samples_not_valid = merge_nested_dicts(samples_not_valid, problematic_keys)
 

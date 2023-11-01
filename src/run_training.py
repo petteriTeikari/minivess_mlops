@@ -39,7 +39,7 @@ logger.add(sys.stderr, filter=my_filter)
 def parse_args_to_dict():
     parser = argparse.ArgumentParser(description='Segmentation pipeline for Minivess dataset')
     parser.add_argument('-c', '--task_config-file', type=str, required=True,
-                        default='train_task_test.yaml',
+                        default='train_configs/train_task_test',
                         help="Name of your task-specific .yaml file, e.g. 'config_test'")
     # TODO! base_config
     parser.add_argument('-run', '--run_mode', type=str, required=False,

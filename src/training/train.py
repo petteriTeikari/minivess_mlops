@@ -4,14 +4,13 @@ from copy import deepcopy
 
 import numpy as np
 import torch
-from omegaconf import DictConfig
 from tqdm import tqdm
 from loguru import logger
 
-from src.utils.dict_utils import cfg_key, put_to_dict
+from src.utils.dict_utils import cfg_key
 from tests.model.model_tests import model_tests_main
 from src.inference.ensemble_main import reinference_dataloaders
-from src.eval import evaluate_datasets_per_epoch
+from src.inference.eval import evaluate_datasets_per_epoch
 from src.inference.ensemble_utils import get_submodel_name
 from src.log_ML.log_ensemble import log_ensemble_results
 from src.log_ML.logging_main import log_epoch_results, log_n_epochs_results, \

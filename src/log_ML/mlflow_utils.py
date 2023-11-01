@@ -62,3 +62,29 @@ def get_mlflow_model_signature_from_dataloader_dict(model_in: ModelEnsemble,
     logger.info('MLflow | ModelSignature output Schema: {}'.format(signature.inputs))
 
     return signature
+
+
+def mlflow_dicts_to_omegaconf_dict(experiment, active_run):
+
+    def convert_indiv_dict(object_in, prefix: str = None):
+        dict_out = {}
+        for k, value in vars(object_in).items():
+
+            if k[0] == '_':  # remove the _
+                k = k[1:]
+
+            if prefix is not None:
+                key_out = prefix + k
+            else:
+                key_out = k
+
+            # at the moment, just output the string values, as in names and paths
+            if isinstance(value, str):
+                dict_out[key_out] = value
+
+        return dict_out
+
+    experiment_out = convert_indiv_dict(object_in=experiment)
+    mlflow_dict_out = {**experiment_out, **active_run.data.tags}
+
+    return mlflow_dict_out

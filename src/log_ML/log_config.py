@@ -51,10 +51,10 @@ def log_config_artifacts(log_name: str,
     logger.info('{} | ENSEMBLED Cross-Validation results | Config as YAML'.format(logging_services))
     path_out_cfg, loaded_cfg = write_config_as_yaml(config=cfg['hydra_cfg'],
                                                      dir_out=output_dir,
-                                                     fname_out='config.yaml')
+                                                     fname_out=get_cfg_yaml_fname())
     path_out_run, loaded_run = write_config_as_yaml(config=cfg['run'],
                                                      dir_out=output_dir,
-                                                     fname_out='run_params.yaml')
+                                                     fname_out=get_run_params_yaml_fname())
 
     if 'WANDB' in logging_services:
         artifact_cfg = wandb.Artifact(name='config', type='config')
@@ -163,3 +163,10 @@ def collect_submodels_of_the_ensemble(fold_results: dict):
                 format(n_submodels, n_ensembles))
 
     return model_paths, ensemble_models_flat
+
+
+def get_cfg_yaml_fname():
+    return 'config.yaml'
+
+def get_run_params_yaml_fname():
+    return 'run_params.yaml'
