@@ -64,6 +64,8 @@ def init_mlflow(server_uri: str,
         logger.error('Failed to initialize the MLflow logging! e = {}'.format(e))
         raise IOError('Failed to initialize the MLflow logging! e = {}'.format(e))
 
+    return tracking_uri
+
 
 def mlflow_local_mlflow_init(output_mlflow_dir: str) -> str:
     # see e.g. https://github.com/dmatrix/google-colab/blob/master/mlflow_issue_3317.ipynb

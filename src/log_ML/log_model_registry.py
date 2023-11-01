@@ -121,6 +121,7 @@ def mlflow_metamodel_logging(ensemble_model,
     logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
                 format(ensemble_name, metamodel_name))
 
+    # e.g. metamodel_name = "train_placeholder_cfg_12d24fa578a123675409cccdaac14a45__dice-MINIVESS"
     mlflow_model_log['log_model'] = (
         mlflow.pyfunc.log_model(artifact_path=metamodel_name,
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
@@ -137,7 +138,7 @@ def mlflow_metamodel_logging(ensemble_model,
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                pip_requirements=os.path.join(cfg['run']['PARAMS']['requirements-txt_path'])
+                                pip_requirements=cfg['run']['PARAMS']['requirements-txt_path']
                                 )
     )
 

@@ -8,17 +8,17 @@ from src.inference.ensemble_model import ModelEnsemble
 from src.utils.train_utils import get_first_batch_from_dataloaders_dict
 
 
-def get_model_from_mlflow_model_registry(model_uri):
-    """
-    not https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
-    pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version}")
-    See this
-    https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.load_model
-    """
-    logger.info('MLflow | Fetching Pytorch model from Model Registry: {}'.format(model_uri))
-    loaded_model = mlflow.pytorch.load_model(model_uri)
-
-    return loaded_model
+# def get_model_from_mlflow_model_registry(model_uri: str):
+#     """
+#     not https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
+#     pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version}")
+#     See this
+#     https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.load_model
+#     """
+#     logger.info('MLflow | Fetching Pytorch model from Model Registry: {}'.format(model_uri))
+#     loaded_model = mlflow.pytorch.load_model(model_uri)
+#
+#     return loaded_model
 
 
 def get_subdicts_from_mlflow_model_log(mlflow_model_log: dict, key_str: str):
@@ -45,8 +45,10 @@ def get_mlflow_model_signature_from_dataloader_dict(model_in: ModelEnsemble,
     batch_sz, no_channels, dim1, dim2, dimz = numpy_input.shape
     numpy_input = numpy_input[0, :, :, :]
     no_chans, dim1, dim2, dimz = numpy_input.shape
+    # TODO! something fishy with the dims here, can input 5D, but get back 4D with just one sample
+    logger.warning('Examine the MLflow signature!')
     model_output = model_in.predict_single_volume(image_tensor=tensor_input,
-                                                  input_as_numpy=True,
+                                                  input_as_numpy=False,
                                                   return_mask=True)
     if isinstance(model_output, torch.Tensor):
         model_output = model_output.detach().cpu().numpy()

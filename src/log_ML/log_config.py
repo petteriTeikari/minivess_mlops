@@ -1,4 +1,6 @@
 import os
+import shutil
+
 import wandb
 import mlflow
 from loguru import logger
@@ -47,6 +49,11 @@ def log_config_artifacts(log_name: str,
                                                        cfg=cfg,
                                                        test_loading=True)  # GET FROM CONFIG
 
+    # The log_model produced the "MLflow model", and as a backup, we could save all the .pth models
+    # to a local folder, and then log that folder as an artifact to MLflow
+    log_models_of_ensemble_to_folder(model_paths=model_paths,
+                                     output_dir=output_dir)
+
     # HERE, log the config as .yaml file back to disk
     logger.info('{} | ENSEMBLED Cross-Validation results | Config as YAML'.format(logging_services))
     path_out_cfg, loaded_cfg = write_config_as_yaml(config=cfg['hydra_cfg'],
@@ -55,6 +62,9 @@ def log_config_artifacts(log_name: str,
     path_out_run, loaded_run = write_config_as_yaml(config=cfg['run'],
                                                      dir_out=output_dir,
                                                      fname_out=get_run_params_yaml_fname())
+
+    # Log requirements?
+    # cfg['run']['PARAMS']['requirements-txt_path']
 
     if 'WANDB' in logging_services:
         artifact_cfg = wandb.Artifact(name='config', type='config')
@@ -86,6 +96,37 @@ def log_config_artifacts(log_name: str,
         mlflow.log_artifact(std_path_out)
 
     return model_paths
+
+
+def define_ensemble_submodels_dir_name():
+    return 'ensemble_submodels'
+
+
+def log_models_of_ensemble_to_folder(model_paths: dict,
+                                     output_dir: str,
+                                     move_files: bool = True):
+
+    logger.info('Log submodels of the ensemble(s) in a folder to MLflow Artifact Store')
+    submodels_dir = os.path.join(output_dir, define_ensemble_submodels_dir_name())
+    os.makedirs(submodels_dir, exist_ok=True)
+    for ensemble_name in model_paths['ensemble_models_flat']:
+        model_paths_ensemble = model_paths['ensemble_models_flat'][ensemble_name]
+        ensemble_dir = os.path.join(submodels_dir, ensemble_name)
+        os.makedirs(ensemble_dir, exist_ok=True)
+        for submodel_name in model_paths_ensemble:
+            model_path = model_paths_ensemble[submodel_name]
+            fname_in = os.path.split(model_path)[1]
+            _, ext = os.path.splitext(fname_in)
+            fname_out = f'{submodel_name}.{ext}'
+            path_out = os.path.join(ensemble_dir, fname_out)
+            if move_files:
+                logger.debug('Move file "{}" to "{}"'.format(fname_in, path_out))
+                shutil.move(model_path, os.path.join(ensemble_dir, fname_out))
+            else:
+                logger.debug('Copy file "{}" to "{}"'.format(fname_in, path_out))
+                shutil.copy(model_path, os.path.join(ensemble_dir, fname_out))
+
+    mlflow.log_artifact(submodels_dir)
 
 
 def log_model_ensemble_to_model_registry(fold_results: dict,

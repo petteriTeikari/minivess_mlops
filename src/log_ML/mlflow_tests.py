@@ -163,18 +163,50 @@ def mlflow_models_tests(model_info: mlflow.models.model.ModelInfo,
     return results
 
 
-def create_model_ensemble_from_mlflow_models(metamodel_name: str,
-                                             model_uri: str):
+def create_model_ensemble_from_mlflow_models(metamodel_name: str = None,
+                                             model_uri: str = None,
+                                             dst_path: str = None):
     """
     https://python.plainenglish.io/how-to-create-meta-model-using-mlflow-166aeb8666a8
     """
+
+    # def create_mlmodel_dir(dst_path: str,
+    #                        subdir: str = 'artifacts'):
+    #     # MLflow download fails as the "MLmodel" subdir does not exist, and MLflow does not create it?
+    #     if os.path.exists(dst_path):
+    #         if not os.path.exists(os.path.join(dst_path, subdir)):
+    #             os.makedirs(os.path.join(dst_path, subdir))
+    #         mlmodel_path = os.path.join(dst_path, subdir, 'MLmodel')
+    #         if not os.path.exists(mlmodel_path):
+    #             logger.info('Creating temp dir for MLflow Models download = {}'.format(mlmodel_path))
+    #             os.makedirs(mlmodel_path, exist_ok=True)
+    #     else:
+    #         logger.error('You are trying to download MLflow EnsembleModel to nonexisting path = "{}"'.format(dst_path))
+    #         raise IOError('You are trying to download MLflow EnsembleModel to nonexisting path = "{}"'.format(dst_path))
+    #
+    #     return mlmodel_path
+
+    # if you get the confusing error:
+    # "raise OSError(f"No such file or directory: '{local_artifact_path}'")
+    # OSError: No such file or directory: '/home/petteri/test_volumes_inference/mlflow_temp/artifacts"
+    # See
+    #   https://stackoverflow.com/a/69196346/6412152
+    #   https://github.com/mlflow/mlflow/issues/4104#issuecomment-996715519
+
     # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
-    loaded_meta_model = mlflow.pyfunc.load_model(model_uri)
+    if dst_path is None:
+        loaded_meta_model = mlflow.pyfunc.load_model(model_uri)
+    else:
+        # create_mlmodel_dir(dst_path=dst_path)
+        loaded_meta_model = mlflow.pyfunc.load_model(model_uri=model_uri,
+                                                     dst_path=dst_path)
     # type(loaded_meta_model)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
     unwrapped_meta_model = loaded_meta_model.unwrap_python_model()
     # type(unwrapped_model) # <class 'src.inference.ensemble_model.ModelEnsemble'>
 
     return unwrapped_meta_model
+
+
 
 
 def test_compare_outputs(test: dict, ref: dict,

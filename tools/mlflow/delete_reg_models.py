@@ -1,6 +1,8 @@
 from pprint import pprint
 from mlflow import MlflowClient
 
+# Add authentication to the client
+
 client = MlflowClient()
 rmodels = client.search_registered_models()
 

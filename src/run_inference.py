@@ -44,10 +44,10 @@ if __name__ == '__main__':
     args = parse_args_to_dict()
 
     # Get the model to be used for inference from MLflow Model Registry
-    artifact_uri, artifact_base_dir, cfg = (
-        get_mlflow_model_for_inference(project_name=args['project_name'],
-                                       inference_cfg=args['task_config_file'],
-                                       data_dir=args['data_dir']))
+    cfg = get_mlflow_model_for_inference(project_name=args['project_name'],
+                                         inference_cfg=args['task_config_file'],
+                                         data_dir=args['data_dir'],
+                                         output_dir=args['output_dir'])
 
     # Define the used data with the same function as in training
     fold_split_file_dicts, experim_datasets, experim_dataloaders, cfg['run'] = define_experiment_data(cfg=cfg)
@@ -62,4 +62,5 @@ if __name__ == '__main__':
         inference_per_batch(image_tensor=batch_data['image'],
                             filenames=filenames,
                             batch_data=batch_data,
+                            model=cfg['mlflow_run']['loaded_ensemble'],
                             cfg=cfg)

@@ -1,16 +1,20 @@
 import json
 import os
 import shutil
+import glob
 
 import mlflow
 from mlflow import MlflowClient
 from mlflow.entities import ViewType
+from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.store.entities import PagedList
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 
-from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname
+from src.inference.ensemble_model import ModelEnsemble
+from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname, define_ensemble_submodels_dir_name
 from src.log_ML.mlflow_init import authenticate_mlflow, init_mlflow
+from src.log_ML.mlflow_tests import create_model_ensemble_from_mlflow_models
 from src.utils.config_utils import get_repo_dir, get_config_dir, config_import_script
 from src.utils.dict_utils import cfg_key
 from src.utils.general_utils import import_from_dotenv, is_docker
@@ -25,7 +29,7 @@ def mlflow_update_best_model(project_name: str,
                             best_metric_name=best_metric_name)
 
     # Check the best metric(s) from the registered models
-    _, register_best_run_as_best_registered_model = (
+    _, _, register_best_run_as_best_registered_model = (
         get_best_registered_model(project_name=project_name,
                                   best_run=best_run,
                                   best_metric_name=best_metric_name))
@@ -52,31 +56,33 @@ def get_best_registered_model(project_name: str,
     client = MlflowClient()
     rmodels = client.search_registered_models()
     if len(rmodels) == 0:
-        logger.error('Could not find any registered models from MLflow!')
-        raise IOError('Could not find any registered models from MLflow!')
+        logger.warning('Could not find any registered models from MLflow! This run is considered the best then')
+        register_best_run_as_best_registered_model = True
+        rmodel, latest_ver = None, None
 
-    for rmodel in rmodels:
-        # TODO! you need to loop the prev_best to match this
-        if project_name in rmodel.name:
+    else:
+        for rmodel in rmodels:
+            # TODO! you need to loop the prev_best to match this
+            if project_name in rmodel.name:
 
-            latest_ver = rmodel.latest_versions[0]
-            run_id = latest_ver.run_id
-            best_value = get_best_metric_of_run(run_id=run_id,
-                                                best_metric_name=best_metric_name)
+                latest_ver = rmodel.latest_versions[0]
+                run_id = latest_ver.run_id
+                best_value = get_best_metric_of_run(run_id=run_id,
+                                                    best_metric_name=best_metric_name)
 
-            logger.info('registered model name "{}" '
-                        '(nr of latest versions = {}, latest version = {})'.
-                        format(rmodel.name, len(rmodel.latest_versions), latest_ver.version))
+                logger.info('registered model name "{}" '
+                            '(nr of latest versions = {}, latest version = {})'.
+                            format(rmodel.name, len(rmodel.latest_versions), latest_ver.version))
 
-            if best_run is not None:
-                if best_value is None or best_value < prev_best:
-                    logger.info('Best run is better than the best registered model')
-                    register_best_run_as_best_registered_model = True
-                else:
-                    logger.info('Best registered model does not need to be updated')
-                    register_best_run_as_best_registered_model = False
+                if best_run is not None:
+                    if best_value is None or best_value < prev_best:
+                        logger.info('Best run is better than the best registered model')
+                        register_best_run_as_best_registered_model = True
+                    else:
+                        logger.info('Best registered model does not need to be updated')
+                        register_best_run_as_best_registered_model = False
 
-    return latest_ver, register_best_run_as_best_registered_model
+    return rmodel, latest_ver, register_best_run_as_best_registered_model
 
 
 def get_best_metric_of_run(run_id: str,
@@ -228,8 +234,11 @@ def get_metamodel_name_from_log_model(log_model_dict: dict):
 def get_mlflow_model_for_inference(project_name: str,
                                    inference_cfg: str,
                                    server_uri: str = 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow',
-                                   data_dir: str = None):
+                                   data_dir: str = None,
+                                   output_dir: str = None,
+                                   model_download_method: str = 'subdirs'):
 
+    client = MlflowClient()
     env_vars_set = authenticate_mlflow(repo_dir=get_repo_dir())
 
     # Where to log, local or remote
@@ -238,7 +247,7 @@ def get_mlflow_model_for_inference(project_name: str,
                                repo_dir=get_repo_dir(),
                                output_mlflow_dir=os.path.join(get_repo_dir(), 'mlflow_temp'))
 
-    latest_model_version, _ = get_best_registered_model(project_name)
+    rmodel, latest_model_version, _ = get_best_registered_model(project_name)
     artifact_uri = latest_model_version.source
     artifact_base_dir = get_base_artifact_uri(artifact_uri)
     cfg = import_cfg_from_mlflow(artifact_base_dir,
@@ -249,7 +258,106 @@ def get_mlflow_model_for_inference(project_name: str,
     OmegaConf.update(cfg['hydra_cfg']['config'],
                      "DATA", {"DATA_SOURCE": {'FOLDER': {'DATA_DIR': data_dir}}})
 
-    return artifact_uri, artifact_base_dir, cfg
+    # Load the metamodel (i.e. Ensemble from Model Registry)
+    download_dir = os.path.join(output_dir, 'mlflow_temp')
+    os.makedirs(download_dir, exist_ok=True)
+    model_uri, loaded_ensemble = download_registered_model(rmodel=rmodel,
+                                                           latest_model_version=latest_model_version,
+                                                           cfg=cfg,
+                                                           artifact_base_dir=artifact_base_dir,
+                                                           download_dir=download_dir,
+                                                           model_download_method=model_download_method)
+
+    mlflow_run = {
+        'latest_model_version': latest_model_version,
+        'artifact_base_dir': artifact_base_dir,
+        'artifact_uri': artifact_uri,
+        'model_uri': model_uri,
+        'loaded_ensemble': loaded_ensemble
+                  }
+
+    cfg['mlflow_run'] = mlflow_run
+
+    return cfg
+
+
+def download_registered_model(rmodel: RegisteredModel,
+                              latest_model_version: ModelVersion,
+                              cfg: dict,
+                              artifact_base_dir: str = None,
+                              download_dir: str = None,
+                              model_download_method: str = 'subdirs',
+                              ensemble_name: str = 'dice-MINIVESS'):
+    """
+    https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
+    https://python.plainenglish.io/how-to-create-meta-model-using-mlflow-166aeb8666a8
+    """
+
+    if model_download_method == 'subdirs':
+        loaded_ensemble, model_uri = (
+            load_ensemble_from_mlflow_artifact_folder(artifact_base_dir=artifact_base_dir,
+                                                      download_dir=download_dir,
+                                                      cfg=cfg,
+                                                      ensemble_name=ensemble_name))
+
+    elif model_download_method == 'mlflow.pyfunc.load_model':
+        raise NotImplementedError('This does not seem to work correctly, do some devel debugging')
+        # https://stackoverflow.com/a/76347084/6412152
+        # client = MlflowClient(mlflow.get_tracking_uri())
+        # download_uri = client.get_model_version_download_uri(latest_model_version.name, latest_model_version.version)
+        # model_uri_version = f"models:/{latest_model_version.name}/{latest_model_version.version}"
+        # model_uri_stage = f"models:/{latest_model_version.name}/{latest_model_version.current_stage}"
+        # model_uri = os.path.join(artifact_base_dir, 'MLmodel')
+        # loaded_ensemble = create_model_ensemble_from_mlflow_models(model_uri=model_uri,
+        #                                                            dst_path=download_dir)
+    else:
+        raise IOError('Unknown model_download_method = {}'.format(model_download_method))
+
+    return model_uri, loaded_ensemble
+
+
+def load_ensemble_from_mlflow_artifact_folder(artifact_base_dir: str,
+                                              download_dir: str,
+                                              cfg: dict,
+                                              ensemble_name: str = 'dice-MINIVESS',
+                                              device: str = 'cpu'):
+
+    mlflow_uri = os.path.join(artifact_base_dir, define_ensemble_submodels_dir_name())
+    local_path = mlflow.artifacts.download_artifacts(mlflow_uri, dst_path=download_dir)
+    logger.info('Downloaded the ensemble submodels to local path = "{}"'.format(local_path))
+
+    ensemble_subdir = os.path.join(local_path, ensemble_name)
+    if not os.path.exists(ensemble_subdir):
+        logger.error('Could not find the ensemble subdirectory = "{}"'.format(ensemble_subdir))
+        raise IOError('Could not find the ensemble subdirectory = "{}"'.format(ensemble_subdir))
+
+    model_paths = glob.glob(os.path.join(ensemble_subdir, '*'))
+    models_of_ensemble = convert_model_path_list_to_dict(model_paths)
+    logger.info('Found {} submodels in the ensemble subdirectory = "{}"'.format(len(model_paths), ensemble_subdir))
+    if len(model_paths) == 0:
+        logger.error('Could not find any submodels in the ensemble subdirectory = "{}"'.format(ensemble_subdir))
+        raise IOError('Could not find any submodels in the ensemble subdirectory = "{}"'.format(ensemble_subdir))
+
+    validation_params = cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION', 'VALIDATION_PARAMS')
+    ensemble_model = ModelEnsemble(models_of_ensemble=models_of_ensemble,
+                                   validation_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION'),
+                                   ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config', 'ENSEMBLE', 'PARAMS'),
+                                   validation_params=validation_params,
+                                   device=device,
+                                   eval_config=cfg_key(cfg, 'hydra_cfg', 'config', 'VALIDATION_BEST'),
+                                   # TODO! this could be architecture-specific
+                                   precision='AMP')
+
+    return ensemble_model, mlflow_uri
+
+
+def convert_model_path_list_to_dict(model_paths: list) -> dict:
+    dict_out = {}
+    for model_path in model_paths:
+        model_name, _ = os.path.splitext(os.path.split(model_path)[1])
+        dict_out[model_name] = model_path
+
+    return dict_out
 
 
 def get_base_artifact_uri(artifact_uri: str,

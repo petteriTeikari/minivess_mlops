@@ -77,7 +77,7 @@ def conv_metatensor_to_numpy(metatensor_in: MetaTensor) -> np.ndarray:
 def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
                           split: str,
                           best_repeat_dicts: dict,
-                          config: dict,
+                          cfg: dict,
                           device):
 
     def get_model_path_from_repeat_best_dict(metric_dict_in: dict,
@@ -102,12 +102,12 @@ def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
                 # double-check which dataset we actually had here
                 model_path = get_model_path_from_repeat_best_dict(metric_dict_in, dataset, tracked_metric)
                 model, _, _, _ = import_model_from_path(model_path=model_path,
-                                                        validation_cfg=cfg['config']['VALIDATION'])
+                                                        validation_config=cfg['config']['VALIDATION'])
 
                 # Here you can then compute additional metrics, like e.g. you never saved best model based on
                 # Hausdorff Distance (HD), but here you can get the HD for the best model based on Dice,
                 # and the Dice that you compute here should be the same as the tracked Dice (if this is confusing)
-                metrics, metrics_stat = inference_dataloader(dataloader, model, device, split, config)
+                metrics, metrics_stat = inference_dataloader(dataloader, model, device, split, cfg)
 
                 split_metrics[dataset][tracked_metric][dataset_eval] = metrics
                 split_metrics_stat[dataset][tracked_metric][dataset_eval] = metrics_stat
@@ -146,7 +146,18 @@ def get_inference_metrics(y_pred: np.ndarray,
 def inference_per_batch(image_tensor: MetaTensor,
                         filenames: list,
                         batch_data: dict,
+                        model,
                         cfg: dict):
-
+    """
+    See the following functions for reference how the EnsembleModel is used for inference during the training:
+        inference_ensembles_dataloader()
+        inference_ensemble_dataloader() [imports ModelEnsemble()]
+        inference_ensemble_with_dataloader()
+    """
     no_batches, no_chans, dim1, dim2, dim3 = image_tensor.shape
 
+    # TODO! Add inference for batch_size > 1
+    prediction = model.predict_single_volume(image_tensor=image_tensor[0, :, :, :, :].unsqueeze(0),
+                                             return_mask=False)
+
+    #inference_per_volume

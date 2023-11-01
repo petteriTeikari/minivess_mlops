@@ -8,3 +8,4 @@
 /archived/*
 /deployment/archived/*
 /.env
+/tools/mlflow/*
