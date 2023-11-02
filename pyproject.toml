@@ -16,7 +16,7 @@ requests = "^2.28.2"
 scikit-learn = "^1.2.2"
 tensorboard = "^2.14.0"
 wandb = "^0.15.12"
-mlflow = "^2.7.1"
+mlflow = "^2.8.0"
 scikit-image = "^0.21.0" # scikit-image (0.22.0) requires Python >=3.9
 gdown = "^4.7.1"
 lmdb = "^1.4.1"
@@ -25,12 +25,13 @@ einops = "^0.6.1"
 transformers = "^4.33.0"
 pynrrd = "^1.0.0"
 pytorch-ignite = "^0.4.12"
-dvc = {extras = ["s3"], version = "^3.25.0"}
+dvc = {extras = ["s3"], version = "^3.28.0"}
 weightwatcher = "^0.7.3.1"
 pytest = "^7.4.3"
 #jupyter = "^1.0.0"
 # workaround for: https://github.com/python-poetry/poetry-plugin-export/issues/183
 urllib3 = ">=1.25.4,<1.27"
+bentoml = "^1.1.7"
 
 
 [build-system]
