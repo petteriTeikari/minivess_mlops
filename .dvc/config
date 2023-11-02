@@ -1,8 +1,10 @@
 [core]
-    remote = remote_storage
+    remote = remote_readonly
 [cache]
     dir = /mnt/minivess-dvc-cache
     type = "reflink,symlink,hardlink,copy"
     shared = group
 ['remote "remote_storage"']
     url = s3://minivessdataset
+['remote "remote_readonly"']
+    url = http://minivessdataset.s3-website.eu-north-1.amazonaws.com/
