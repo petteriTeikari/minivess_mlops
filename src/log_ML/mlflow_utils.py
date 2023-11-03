@@ -1,24 +1,11 @@
-import mlflow
-import torch
+import numpy as np
 from loguru import logger
-from mlflow.models import infer_signature
+from mlflow.models import ModelSignature
 from monai.utils import convert_to_tensor
+from mlflow.types.schema import Schema, TensorSpec, ParamSchema, ParamSpec
 
 from src.inference.ensemble_model import ModelEnsemble
 from src.utils.train_utils import get_first_batch_from_dataloaders_dict
-
-
-# def get_model_from_mlflow_model_registry(model_uri: str):
-#     """
-#     not https://mlflow.org/docs/latest/model-registry.html#fetching-an-mlflow-model-from-the-model-registry
-#     pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version}")
-#     See this
-#     https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.load_model
-#     """
-#     logger.info('MLflow | Fetching Pytorch model from Model Registry: {}'.format(model_uri))
-#     loaded_model = mlflow.pytorch.load_model(model_uri)
-#
-#     return loaded_model
 
 
 def get_subdicts_from_mlflow_model_log(mlflow_model_log: dict, key_str: str):
@@ -39,31 +26,62 @@ def get_mlflow_model_signature_from_dataloader_dict(model_in: ModelEnsemble,
     # Get a sample batch from the dataloder for the signature
     batch_data = get_first_batch_from_dataloaders_dict(experim_dataloaders=experim_dataloaders)
 
-    # Inferring the input signature
-    tensor_input = convert_to_tensor(batch_data['image'])
-    numpy_input = tensor_input.numpy()
-    batch_sz, no_channels, dim1, dim2, dimz = numpy_input.shape
-    numpy_input = numpy_input[0, :, :, :]
-    no_chans, dim1, dim2, dimz = numpy_input.shape
-    # TODO! something fishy with the dims here, can input 5D, but get back 4D with just one sample
-    logger.warning('Examine the MLflow signature!')
-    model_output = model_in.predict_single_volume(image_tensor=tensor_input,
-                                                  input_as_numpy=False,
-                                                  return_mask=True)
-    if isinstance(model_output, torch.Tensor):
-        model_output = model_output.detach().cpu().numpy()
+    # Inferring the input_output relationship
+    model_output = define_model_input_and_output_shapes(image_tensor=batch_data['image'],
+                                                        model_in=model_in,
+                                                        return_mask=True)
 
-    logger.info('MLflow | Obtaining MLflow model signature (input.shape = {}, output_shape = {})'.
-                format(numpy_input.shape, model_output.shape))
-    signature = infer_signature(model_input=numpy_input,
-                                model_output=model_output)
-    # TO-OPTIMIZE! Check how these should be when you start using this from MLflow Models
-    # none of the spatial dims are fixed obviously (96x96x8 just the size now used in the MONAI
-    # inference routine)
+    # Define the signature
+    signature = define_model_schema(model_input=batch_data['image'],
+                                    model_output=model_output)
+
     logger.info('MLflow | ModelSignature input Schema: {}'.format(signature.inputs))
     logger.info('MLflow | ModelSignature output Schema: {}'.format(signature.inputs))
 
     return signature
+
+
+def define_model_schema(model_input,
+                        model_output):
+
+    # https://mlflow.org/docs/latest/models.html#id33
+
+    # https://mlflow.org/docs/latest/models.html#id6
+    # Enforce only the number of channels to be fixed 1, as the rest can be variable
+    input_schema = Schema(
+        [
+            TensorSpec(np.dtype(np.float32), (-1, 1, -1, -1, -1)),
+        ]
+    )
+
+    # for a binary mask output
+    # TODO! how to return a dictionary over serving API?
+    output_schema = Schema([TensorSpec(np.dtype(np.float32), (-1, 1, -1, -1, -1))])
+
+    params_schema = ParamSchema(
+        [
+            ParamSpec("return_mask", "boolean", True)
+        ]
+    )
+
+    signature = ModelSignature(inputs=input_schema,
+                               outputs=output_schema,
+                               params=params_schema)
+
+    return signature
+
+
+def define_model_input_and_output_shapes(image_tensor,
+                                         model_in: ModelEnsemble,
+                                         return_mask: bool = False):
+
+    tensor_input = convert_to_tensor(image_tensor)
+    numpy_input = tensor_input.numpy()
+    model_output: dict = model_in.predict(None,
+                                          model_input=numpy_input,
+                                          param={'return_mask': return_mask})
+
+    return model_output
 
 
 def mlflow_dicts_to_omegaconf_dict(experiment, active_run):

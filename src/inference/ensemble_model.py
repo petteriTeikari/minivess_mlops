@@ -101,12 +101,16 @@ def ensemble_repeats(inf_res: dict,
 def compute_ensembled_response(input_data: np.ndarray,
                                ensemble_params) -> dict:
 
+    assert len(input_data.shape) == 6, ('Input should be 6D (no_submodels,B,C,H,W,D), '
+                                        'now it is {}D').format(len(input_data))
+
     variable_stats = {'scalars': {}}
     variable_stats['scalars']['n_samples'] = input_data.shape[0]  # i.e. number of repeats / submodels
 
     variable_stats = {'arrays': {}}
     variable_stats['arrays']['mean'] = np.mean(input_data, axis=0)  # i.e. number of repeats / submodels
     variable_stats['arrays']['var'] = np.var(input_data, axis=0)  # i.e. number of repeats / submodels
+    # TODO! UQ
     variable_stats['arrays']['UQ_epistemic'] = np.nan
     variable_stats['arrays']['UQ_aleatoric'] = np.nan
     variable_stats['arrays']['entropy'] = np.nan
@@ -185,17 +189,18 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
 
         return inference_results
 
-    def predict_single_volume(self,
-                              image_tensor: Union[np.ndarray, torch.Tensor],
-                              input_as_numpy: bool = False,
-                              return_mask: bool = True,
-                              add_channel_to_output: bool = True):
+    # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
+    def predict(self,
+                context,
+                model_input: Union[np.ndarray, torch.Tensor],
+                param: dict = None):
         """
         When you only have the tensor of the images and no idea of the ground truth,
         i.e. when you want to use the trained model for actual segmentation
         """
-        if input_as_numpy:
-            image_tensor = torch.Tensor(image_tensor)
+        assert len(model_input.shape) == 5, ('Input should be 5D (B,C,H,W,D')
+        if isinstance(model_input, np.ndarray):
+            image_tensor = torch.Tensor(model_input)
 
         inference_results = self.__inference_per_sample(input_data=image_tensor,
                                                         input_from='tensor')
@@ -203,13 +208,13 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
         ensemble_stat_results = ensemble_repeats(inf_res=inference_results,
                                                  ensemble_params=self.ensemble_params)
 
+        if 'return_mask' in param:
+            return_mask = param['return_mask']
+        else:
+            return_mask = True
+
         if return_mask:
             mask_out = ensemble_stat_results['arrays']['mask']
-            if add_channel_to_output:
-                if isinstance(mask_out, np.ndarray):
-                    mask_out = mask_out[np.newaxis, :, :, :]
-                else:
-                    raise NotImplementedError('Check what are the dims for torch.Tensor output')
             return mask_out
         else:
             # This contains pixel-wise probabilities, uncertainty estimates, etc in a dictionary

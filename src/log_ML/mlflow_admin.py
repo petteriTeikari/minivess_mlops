@@ -14,10 +14,9 @@ from omegaconf import DictConfig, OmegaConf
 from src.inference.ensemble_model import ModelEnsemble
 from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname, define_ensemble_submodels_dir_name
 from src.log_ML.mlflow_init import authenticate_mlflow, init_mlflow
-from src.log_ML.mlflow_tests import create_model_ensemble_from_mlflow_models
+from src.log_ML.mlflow_models import load_model_from_registry, import_mlflow_model
 from src.utils.config_utils import get_repo_dir, get_config_dir, config_import_script
 from src.utils.dict_utils import cfg_key
-from src.utils.general_utils import import_from_dotenv, is_docker
 
 
 def mlflow_update_best_model(project_name: str,
@@ -30,7 +29,7 @@ def mlflow_update_best_model(project_name: str,
 
     # Check the best metric(s) from the registered models
     _, _, register_best_run_as_best_registered_model = (
-        get_best_registered_model(project_name=project_name,
+        get_best_registered_model(model_name=project_name,
                                   best_run=best_run,
                                   best_metric_name=best_metric_name))
 
@@ -45,7 +44,7 @@ def mlflow_update_best_model(project_name: str,
         logger.info('Keeping the best registered model as the best model')
 
 
-def get_best_registered_model(project_name: str,
+def get_best_registered_model(model_name: str,
                               best_run = None,
                               best_metric_name: str = 'Dice'):
 
@@ -63,7 +62,7 @@ def get_best_registered_model(project_name: str,
     else:
         for rmodel in rmodels:
             # TODO! you need to loop the prev_best to match this
-            if project_name in rmodel.name:
+            if model_name in rmodel.name:
 
                 latest_ver = rmodel.latest_versions[0]
                 run_id = latest_ver.run_id
@@ -99,31 +98,37 @@ def get_best_metric_of_run(run_id: str,
     return best_value
 
 
-def register_model_from_run(run, stage: str = 'Staging',
+def register_model_from_run(run: mlflow.entities.Run,
+                            stage: str = 'Staging',
                             project_name: str = 'segmentation-minivess'):
 
     # https://mlflow.org/docs/1.8.0/model-registry.html#mlflow-model-registry
     client = MlflowClient()
 
     # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
-    log_model_dict = get_log_model_dict_from_run(run=run)
-    metamodel_name = get_metamodel_name_from_log_model(log_model_dict)  # artifact_path
+    metamodel_name = get_log_model_history_dict_from_run(run=run)
 
-    # Registered model names you don't nececcsarily want to be as cryptic as the model log name
+    # Registered model names you don't necessarily want to be as cryptic as the model log name
     # which comes from the hyperparameter sweep. In the end, you might want to have the best segmentor
     # model (or in general you want these names to be a lot more human-readable)
     reg_model_name = project_name
 
+    # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
     logger.info('Register best model with the name = {}'.format(reg_model_name))
-    model_uri = f"runs:/{run.info.run_id}/{reg_model_name}"
-    reg = mlflow.register_model(model_uri, reg_model_name)
+    model_uri = f"runs:/{run.info.run_id}/{metamodel_name}"
+    logger.info('model_uri = {}'.format(model_uri))
+    reg = mlflow.register_model(model_uri=model_uri,
+                                name=reg_model_name)
 
     # Set model version tag
-    # mlflow.exceptions.RestException: RESOURCE_DOES_NOT_EXIST
-    # client.set_model_version_tag(name=reg_model_name,
-    #                              version=reg.version,
-    #                              key="key",
-    #                              value="value")
+    try:
+        client.set_model_version_tag(name=reg_model_name,
+                                     version=reg.version,
+                                     key="metamodel_name",
+                                     value=metamodel_name)
+    except Exception as e:
+        logger.error('Failed to set tags to registered model! e = {}'.format(e))
+        raise IOError('Failed to set tags to registered model! e = {}'.format(e))
 
     # Set and delete aliases on models
     client.set_registered_model_alias(name=reg_model_name,
@@ -134,6 +139,17 @@ def register_model_from_run(run, stage: str = 'Staging',
     transition_model_stage(name=reg_model_name,
                            version=reg.version,
                            stage=stage)
+
+    # Auto-stage previous versions to None then
+    # TODO!
+
+    # Test that you can load the model
+    model_uri = f'models:/{reg_model_name}/{reg.version}'
+    # TODO! autogen the requirements.txt on local machine too
+    # mlflow.pyfunc.get_model_dependencies(model_uri)
+    logger.info('Testing that you can actually load the registered model from "{}"'.format(model_uri))
+    loaded_model = load_model_from_registry(model_uri=model_uri)
+
 
 def transition_model_stage(name: str,
                            version: str,
@@ -148,19 +164,26 @@ def transition_model_stage(name: str,
     )
 
 
-def get_log_model_dict_from_run(run):
+def get_log_model_history_dict_from_run(run):
 
     run_id = run.info.run_id
     tags = run.data.tags
-    log_model_histories_string: str = tags['mlflow.log-model.history']
-    log_model = json.loads(log_model_histories_string)
+    if 'mlflow.log-model.history' in tags:
+        log_model_histories_string: str = tags['mlflow.log-model.history']
+        log_model = json.loads(log_model_histories_string)
 
-    if len(log_model) == 1:
-        log_model_dict: dict = log_model[0]
+        if len(log_model) == 1:
+            log_model_dict: dict = log_model[0]
+            metamodel_name = log_model_dict['metadata']['metamodel_name']
+        else:
+            raise NotImplementedError('Check why there are more entries or none?')
+
     else:
-        raise NotImplementedError('Check why there are more entries or none?')
+        logger.debug("No 'mlflow.log-model.history' in tags!")
+        metamodel_name = run.data.tags['metamodel_name']
 
-    return log_model_dict
+    logger.debug('metamodel_name = "{}" from run'.format(metamodel_name))
+    return metamodel_name
 
 
 def get_mlflow_ordering_direction(best_metric_name):
@@ -227,58 +250,35 @@ def get_current_id(project_name: str):
     return current_experiment['experiment_id']
 
 
-def get_metamodel_name_from_log_model(log_model_dict: dict):
-    return log_model_dict['artifact_path']
+def get_metamodel_name_from_run(run: mlflow.entities.Run):
+    return run.info.run_name
 
 
-def get_mlflow_model_for_inference(project_name: str,
-                                   inference_cfg: str,
-                                   server_uri: str = 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow',
-                                   data_dir: str = None,
-                                   output_dir: str = None,
-                                   model_download_method: str = 'subdirs'):
+def get_reg_mlflow_model(model_name: str,
+                         inference_cfg: str,
+                         server_uri: str = 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'):
 
-    client = MlflowClient()
+    # Set-up MLflow
     env_vars_set = authenticate_mlflow(repo_dir=get_repo_dir())
-
-    # Where to log, local or remote
-    # TODO! get server_uri from some func that knows how to import it from hierachical config
+    # output_mlflow_dir = os.path.join(get_repo_dir(), 'mlflow_temp')
+    output_mlflow_dir = '/mnt/minivess-artifacts/MLflow'
     tracking_uri = init_mlflow(server_uri=server_uri,
                                repo_dir=get_repo_dir(),
-                               output_mlflow_dir=os.path.join(get_repo_dir(), 'mlflow_temp'))
+                               output_mlflow_dir=output_mlflow_dir)
 
-    rmodel, latest_model_version, _ = get_best_registered_model(project_name)
-    artifact_uri = latest_model_version.source
-    artifact_base_dir = get_base_artifact_uri(artifact_uri)
-    cfg = import_cfg_from_mlflow(artifact_base_dir,
-                                 inference_cfg)
+    # Import the model parameters from MLflow Model Registry
+    mlflow_model = import_best_model_from_model_registry(model_name=model_name,
+                                                         env_vars_set=env_vars_set,
+                                                         tracking_uri=tracking_uri)
 
-    # loaded_model = mlflow.pyfunc.load_model(artifact_uri)
-    logger.info('Updating data directory () to the config'.format(data_dir))
-    OmegaConf.update(cfg['hydra_cfg']['config'],
-                     "DATA", {"DATA_SOURCE": {'FOLDER': {'DATA_DIR': data_dir}}})
+    # Import the cfg used to train the model
+    cfg = import_cfg_from_mlflow(artifact_base_dir=mlflow_model['artifact_base_dir'],
+                                 inference_cfg=inference_cfg)
 
-    # Load the metamodel (i.e. Ensemble from Model Registry)
-    download_dir = os.path.join(output_dir, 'mlflow_temp')
-    os.makedirs(download_dir, exist_ok=True)
-    model_uri, loaded_ensemble = download_registered_model(rmodel=rmodel,
-                                                           latest_model_version=latest_model_version,
-                                                           cfg=cfg,
-                                                           artifact_base_dir=artifact_base_dir,
-                                                           download_dir=download_dir,
-                                                           model_download_method=model_download_method)
+    # Try to load the model
+    mlflow_model['model_uri'] = import_mlflow_model(mlflow_model)
 
-    mlflow_run = {
-        'latest_model_version': latest_model_version,
-        'artifact_base_dir': artifact_base_dir,
-        'artifact_uri': artifact_uri,
-        'model_uri': model_uri,
-        'loaded_ensemble': loaded_ensemble
-                  }
-
-    cfg['mlflow_run'] = mlflow_run
-
-    return cfg
+    return cfg, mlflow_model
 
 
 def download_registered_model(rmodel: RegisteredModel,
@@ -437,3 +437,19 @@ def update_mlflow_cfg(local_path: str, inference_cfg: str):
         logger.warning('Failed to remove the temp file "{}", e = {}'.format(os.path.join(config_dir, fname), e))
 
     return config
+
+
+def import_best_model_from_model_registry(model_name: str,
+                                          env_vars_set: bool,
+                                          tracking_uri: str):
+
+    rmodel, latest_model_version, _ = get_best_registered_model(model_name)
+    artifact_uri = latest_model_version.source
+    artifact_base_dir = get_base_artifact_uri(artifact_uri)
+
+    return {'registered_model': rmodel,
+            'latest_version': latest_model_version,
+            'artifact_uri': artifact_uri,
+            'artifact_base_dir': artifact_base_dir,
+            'env_vars_set': env_vars_set,
+            'tracking_uri': tracking_uri}

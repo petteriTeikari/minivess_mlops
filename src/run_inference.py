@@ -4,8 +4,8 @@ import sys
 from loguru import logger
 
 from src.datasets.inference_data import remove_unnecessary_nesting
-from src.inference.inference_utils import inference_per_batch
-from src.log_ML.mlflow_admin import get_mlflow_model_for_inference
+from src.inference.bentoml_utils import import_mlflow_model_to_bentoml
+from src.log_ML.mlflow_admin import get_reg_mlflow_model
 from src.training.experiment import define_experiment_data
 from src.utils.general_utils import print_dict_to_logger
 
@@ -44,23 +44,15 @@ if __name__ == '__main__':
     args = parse_args_to_dict()
 
     # Get the model to be used for inference from MLflow Model Registry
-    cfg = get_mlflow_model_for_inference(project_name=args['project_name'],
-                                         inference_cfg=args['task_config_file'],
-                                         data_dir=args['data_dir'],
-                                         output_dir=args['output_dir'])
+    cfg, mlflow_model = get_reg_mlflow_model(model_name=args['project_name'],
+                                             inference_cfg=args['task_config_file'],
+                                             server_uri=None)
+
+    # Import the actual model
+    import_mlflow_model_to_bentoml(mlflow_model)
+
 
     # Define the used data with the same function as in training
-    fold_split_file_dicts, experim_datasets, experim_dataloaders, cfg['run'] = define_experiment_data(cfg=cfg)
-    dataloader = remove_unnecessary_nesting(experim_dataloaders)
+    #fold_split_file_dicts, experim_datasets, experim_dataloaders, cfg['run'] = define_experiment_data(cfg=cfg)
+    #dataloader = remove_unnecessary_nesting(experim_dataloaders)
 
-    for i, batch_data in enumerate(dataloader):
-        filenames = batch_data['metadata']['filename']
-        logger.info('Inference on batch #{}/{} (no files = {}): {}'.
-                    format(i + 1, len(dataloader), len(filenames), filenames))
-
-        # https://mlflow.org/docs/latest/models.html#model-evaluation
-        inference_per_batch(image_tensor=batch_data['image'],
-                            filenames=filenames,
-                            batch_data=batch_data,
-                            model=cfg['mlflow_run']['loaded_ensemble'],
-                            cfg=cfg)

@@ -24,3 +24,8 @@ config:
     DATALOADER:
       DATA_VALIDITY:
         enable: False
+#  SERVICES:
+#    # These can be obviously very different for different orgs and different users
+#    MLFLOW:
+#      # set to "null" to log locally to MLflow server on your machine (not shared)
+#      server_URI: 'https://dagshub.com/petteriTeikari/minivess_mlops.mlflow'

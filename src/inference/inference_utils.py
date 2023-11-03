@@ -33,11 +33,17 @@ def inference_sample(input_data,
     else:
         raise IOError('Unknown input_from = {}'.format(input_from))
 
+    # (batch_sz_ n_chans, dim1, dim2, dim3)
+    assert len(inputs.shape) == 5, 'You should have 5D input tensor, not {}D'.format(len(inputs.shape))
+
     if precision == 'AMP':  # AMP
+        # add bfloat16?
         with torch.cuda.amp.autocast():
             output = sliding_window_inference(inputs=inputs.to(device), **metric_dict)
     else:
         output = sliding_window_inference(inputs=inputs.to(device), **metric_dict)
+
+    assert len(output.shape) == 5, 'Output should be 5D, not {}D'.format(len(output.shape))
 
     # logits -> probabilities
     activ = Activations(sigmoid=True)
@@ -59,6 +65,9 @@ def inference_sample(input_data,
                             },
                         }
 
+    assert len(inference_output['arrays']['binary_mask'].shape) == 5, (
+        'Output should be 5D, not {}D'.format(len(inference_output['arrays']['binary_mask'].shape)))
+
     return inference_output
 
 
@@ -71,7 +80,7 @@ def conv_metatensor_to_numpy(metatensor_in: MetaTensor) -> np.ndarray:
         numpy_array = metatensor_in.detach().numpy()
     assert len(numpy_array.shape) == 5, ('Code tested only for 5D tensors at the moment, '
                                          'now your metatensor is {}D').format(len(numpy_array.shape))
-    return numpy_array[0, 0, :, :, :]  # quick and dirty for single-channel and batch_sz = 1 tensors
+    return numpy_array
 
 
 def inference_best_repeat(dataloader: monai.data.dataloader.DataLoader,
@@ -157,7 +166,7 @@ def inference_per_batch(image_tensor: MetaTensor,
     no_batches, no_chans, dim1, dim2, dim3 = image_tensor.shape
 
     # TODO! Add inference for batch_size > 1
-    prediction = model.predict_single_volume(image_tensor=image_tensor[0, :, :, :, :].unsqueeze(0),
+    prediction = model.predict(image_tensor=image_tensor[0, :, :, :, :].unsqueeze(0),
                                              return_mask=False)
 
     #inference_per_volume

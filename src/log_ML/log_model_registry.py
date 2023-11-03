@@ -1,5 +1,7 @@
 import os
 import time
+
+import numpy as np
 from loguru import logger
 import mlflow
 import wandb
@@ -8,6 +10,7 @@ from omegaconf import DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
 from src.log_ML.mlflow_log import define_mlflow_model_uri, define_metamodel_name
+from src.log_ML.mlflow_models import load_model_from_registry
 from src.log_ML.mlflow_tests import test_mlflow_models_reproduction
 from src.log_ML.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
 from src.utils.dict_utils import cfg_key
@@ -121,9 +124,14 @@ def mlflow_metamodel_logging(ensemble_model,
     logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
                 format(ensemble_name, metamodel_name))
 
+    # https://mlflow.org/docs/latest/models.html#how-to-log-model-with-example-containing-params
+    input_data = np.zeros((4, 1, 512, 512, 27)).astype(np.float32)
+    params = {"return_mask": True}
+    input_example = (input_data, params)
+
     # e.g. metamodel_name = "train_placeholder_cfg_12d24fa578a123675409cccdaac14a45__dice-MINIVESS"
     mlflow_model_log['log_model'] = (
-        mlflow.pyfunc.log_model(artifact_path=metamodel_name,
+        mlflow.pyfunc.log_model(artifact_path=metamodel_name, #run_params_dict['hyperparam_name'],
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
                                                            models_from_paths=True,
                                                            validation_config=cfg_key(cfg, 'hydra_cfg', 'config',
@@ -138,9 +146,15 @@ def mlflow_metamodel_logging(ensemble_model,
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                pip_requirements=cfg['run']['PARAMS']['requirements-txt_path']
+                                #input_example=input_example,
+                                pip_requirements=cfg['run']['PARAMS']['requirements-txt_path'],
+                                metadata={'ensemble_name': ensemble_name,
+                                          'metamodel_name': metamodel_name}
                                 )
     )
+    mlflow.set_tag("metamodel_name", metamodel_name)
+    mlflow.set_tag("ensemble_name", ensemble_name)
+    logger.warning('Could you want to directly save the model to BentoML as well?')
 
     if autoregister_models:
         # https://www.databricks.com/wp-content/uploads/2020/06/blog-mlflow-model-1.png
@@ -152,29 +166,21 @@ def mlflow_metamodel_logging(ensemble_model,
         mlflow_model_log['reg_model'] = (
             mlflow.register_model(model_uri=model_uri,
                                   name=metamodel_name,
-                                  tags={'ensemble_name': ensemble_name, 'metamodel_name': metamodel_name}))
+                                  tags={'ensemble_name': ensemble_name,
+                                        'metamodel_name': metamodel_name}))
     else:
         logger.info('MLflow | SKIP Model Registering (you can do this manually in MLflow UI then')
         model_registry_string = ''
         mlflow_model_log['reg_model'] = None
 
     mlflow_model_log['best_dicts'] = ensemble_model.model_best_dicts
-
     logger.info('MLflow | Model logging to Models {} done in {:.3f} seconds'.
                 format(model_registry_string, time.time() - t0))
 
     if immediate_load_test:
         meta_model_uri = mlflow_model_log['log_model'].model_uri
         logger.info('MLflow | Immediate Model load Test from Model Registry (uri = {}'.format(meta_model_uri))
-        try:
-            # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
-            loaded_meta_model = mlflow.pyfunc.load_model(meta_model_uri)
-            # type(loaded_meta_model)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
-            unwrapped_model = loaded_meta_model.unwrap_python_model()
-            # type(unwrapped_model) # <class 'src.inference.ensemble_model.ModelEnsemble'>
-
-        except Exception as e:
-            logger.warning('Load test failed, e = {}'.format(e))
+        _ = load_model_from_registry(model_uri=meta_model_uri)
 
     return mlflow_model_log
 
