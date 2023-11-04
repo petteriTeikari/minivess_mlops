@@ -204,19 +204,19 @@ def set_up_experiment_run(hydra_cfg: DictConfig,
 
 
 def get_repo_base_dir(working_dir: str,
-                      repo_name: str = 'minivess_mlops'):
+                      repo_names: tuple = ('minivess_mlops', 'app')):
 
     # quick and dirty recursion limit
     working_dir_orig = working_dir
-    if os.path.split(working_dir)[-1] == repo_name:
+    if os.path.split(working_dir)[-1] in repo_names:
         return working_dir
     else:
         working_dir = os.path.split(working_dir)[0]
-        if os.path.split(working_dir)[-1] == repo_name:
+        if os.path.split(working_dir)[-1] in repo_names:
             return working_dir
         else:
             working_dir = os.path.split(working_dir)[0]
-            if os.path.split(working_dir)[-1] == repo_name:
+            if os.path.split(working_dir)[-1] in repo_names:
                 return working_dir
             else:
                 logger.error('Could not find the repo base dir, from {}'.format(working_dir_orig))
@@ -224,12 +224,12 @@ def get_repo_base_dir(working_dir: str,
 
 
 def get_repo_dir(return_src: bool = False,
-                 repo_name: str = 'minivess_mlops',
+                 repo_names: tuple = ('minivess_mlops', 'app'),
                  verbose: bool = True) -> str:
 
     cwd = os.getcwd()
     repo_dir = get_repo_base_dir(working_dir=cwd,
-                                 repo_name=repo_name)
+                                 repo_names=repo_names)
     if verbose:
         logger.info('Git base repo found in "{}"'.format(repo_dir))
 
