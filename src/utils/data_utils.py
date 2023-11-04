@@ -1,3 +1,4 @@
+import json
 import os
 from loguru import logger
 from omegaconf import DictConfig
@@ -100,3 +101,14 @@ def get_dir_size(start_path='.'):
             if not os.path.islink(fp):
                 total_size += os.path.getsize(fp)
     return total_size
+
+
+def write_tensor_as_json(tensor_in,
+                         filename: str):
+    # for BentoML purpose for example
+    arr = tensor_in.detach().cpu().numpy()
+    lists = arr.tolist()
+    json_str = json.dumps(lists)
+    with open("test_input.json", "w") as outfile:
+        outfile.write(json_str)
+

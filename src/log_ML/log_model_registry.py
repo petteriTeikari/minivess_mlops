@@ -129,9 +129,21 @@ def mlflow_metamodel_logging(ensemble_model,
     params = {"return_mask": True}
     input_example = (input_data, params)
 
+    name_to_use = 'metamodel'
+    if name_to_use == 'metamodel':
+        artifact_path = metamodel_name
+    elif name_to_use == 'hyperparam_name':
+        artifact_path = run_params_dict['hyperparam_name']
+    else:
+        raise IOError('Unknown name_to_use = {}'.format(name_to_use))
+    logger.debug('MLflow Log Model | artifact_path = {}'.format(artifact_path))
+
     # e.g. metamodel_name = "train_placeholder_cfg_12d24fa578a123675409cccdaac14a45__dice-MINIVESS"
+    # https://santiagof.medium.com/effortless-models-deployment-with-mlflow-customizing-inference-e880cd1c9bdd
     mlflow_model_log['log_model'] = (
-        mlflow.pyfunc.log_model(artifact_path=metamodel_name, #run_params_dict['hyperparam_name'],
+        mlflow.pyfunc.log_model(artifact_path=artifact_path,
+                                # https://stackoverflow.com/a/70216328/6412152
+                                code_path=[cfg['run']['PARAMS']['repo_dir']],
                                 python_model=ModelEnsemble(models_of_ensemble=model_paths,
                                                            models_from_paths=True,
                                                            validation_config=cfg_key(cfg, 'hydra_cfg', 'config',
@@ -146,10 +158,11 @@ def mlflow_metamodel_logging(ensemble_model,
                                                            # TODO! need to make this adaptive based on submodel
                                                            precision='AMP'),
                                 signature=signature,
-                                #input_example=input_example,
+                                # input_example=input_example,
                                 pip_requirements=cfg['run']['PARAMS']['requirements-txt_path'],
                                 metadata={'ensemble_name': ensemble_name,
-                                          'metamodel_name': metamodel_name}
+                                          'metamodel_name': metamodel_name,
+                                          'name_to': name_to_use}
                                 )
     )
     mlflow.set_tag("metamodel_name", metamodel_name)

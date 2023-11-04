@@ -208,8 +208,12 @@ class ModelEnsemble(mlflow.pyfunc.PythonModel):
         ensemble_stat_results = ensemble_repeats(inf_res=inference_results,
                                                  ensemble_params=self.ensemble_params)
 
-        if 'return_mask' in param:
-            return_mask = param['return_mask']
+        # See how to set the defaults a bit nicer later
+        if param is not None:
+            if 'return_mask' in param:
+                return_mask = param['return_mask']
+            else:
+                return_mask = True
         else:
             return_mask = True
 

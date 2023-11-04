@@ -2,8 +2,18 @@ import mlflow
 import bentoml
 import numpy as np
 import torch
-
+from loguru import logger
 from src.inference.ensemble_model import ModelEnsemble
+
+
+def test_bento_model_inference(pyfunc_model: mlflow.pyfunc.PyFuncModel):
+    # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
+    # metamodel: ModelEnsemble = pyfunc_model.unwrap_python_model()
+    try:
+        mask_out = pyfunc_model.predict(np.ones((1, 1, 64, 64, 64)).astype(np.float32), {'return_mask': True})
+    except Exception as e:
+        logger.error('Inference failed for BentoML model, e = {}'.format(e))
+        raise IOError('Inference failed for BentoML model, e = {}'.format(e))
 
 
 def import_mlflow_model_to_bentoml(mlflow_model: dict,
@@ -16,18 +26,42 @@ def import_mlflow_model_to_bentoml(mlflow_model: dict,
     run = mlflow.get_run(mlflow_model['latest_version'].run_id)
 
     # https://docs.bentoml.org/en/latest/integrations/mlflow.html#loading-original-model-flavor
-    bento_model = bentoml.mlflow.import_model(name=model_name,
-                                              model_uri=mlflow_model['model_uri'],
-                                              labels=run.data.tags,
-                                              metadata={
-                                                  "metrics": run.data.metrics,
-                                                  "params": run.data.params,
-                                              }
-                                              )
+    bento_model: bentoml._internal.models.model.Model = (
+        bentoml.mlflow.import_model(name=model_name,
+                                    model_uri=mlflow_model['model_uri'],
+                                    labels=run.data.tags,
+                                    metadata={
+                                        "metrics": run.data.metrics,
+                                         "params": run.data.params,
+                                    }
+                                    )
+    )
 
     # https://docs.bentoml.org/en/latest/integrations/mlflow.html#loading-pyfunc-flavor
     pyfunc_model: mlflow.pyfunc.PyFuncModel = bentoml.mlflow.load_model(model_name)
-    a = pyfunc_model.predict(np.ones((1, 1, 64, 64, 64)))
-    # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
-    # metamodel: ModelEnsemble = pyfunc_model.unwrap_python_model()
+    test_bento_model_inference(pyfunc_model)
 
+    return bento_model, pyfunc_model
+
+
+def save_bentoml_model_to_model_store(bento_model: bentoml._internal.models.model.Model,
+                                      pyfunc_model: mlflow.pyfunc.PyFuncModel,
+                                      mlflow_model: dict,
+                                      cfg: dict):
+
+    # https://docs.bentoml.org/en/latest/concepts/model.html#save-a-trained-model
+    logger.debug('Placeholder for model save')
+
+    # bentoml.pytorch.save_model(
+    #     "demo_bentoml_model_minivess",  # Model name in the local Model Store
+    #     bento_model,  # Model instance being saved
+    #     labels={  # User-defined labels for managing models in BentoCloud or Yatai
+    #         "owner": "nlp_team",
+    #         "stage": "dev",
+    #     },
+    #     metadata={  # User-defined additional metadata
+    #         "acc": 0.1111,
+    #         "cv_stats": 0.2222,
+    #         "dataset_version": "20210820",
+    #     },
+    # )

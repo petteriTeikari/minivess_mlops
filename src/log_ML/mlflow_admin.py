@@ -107,6 +107,7 @@ def register_model_from_run(run: mlflow.entities.Run,
 
     # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
     metamodel_name = get_log_model_history_dict_from_run(run=run)
+    #metamodel_name = run.info.run_name  ## TODO! depends on name_to_use
 
     # Registered model names you don't necessarily want to be as cryptic as the model log name
     # which comes from the hyperparameter sweep. In the end, you might want to have the best segmentor
@@ -149,6 +150,8 @@ def register_model_from_run(run: mlflow.entities.Run,
     # mlflow.pyfunc.get_model_dependencies(model_uri)
     logger.info('Testing that you can actually load the registered model from "{}"'.format(model_uri))
     loaded_model = load_model_from_registry(model_uri=model_uri)
+
+    # TODO! You should try to serve the model here as well to test the load_pickle() works
 
 
 def transition_model_stage(name: str,
