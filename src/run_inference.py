@@ -7,6 +7,7 @@ from src.datasets.inference_data import remove_unnecessary_nesting
 from src.inference.bentoml_utils import import_mlflow_model_to_bentoml, save_bentoml_model_to_model_store
 from src.log_ML.mlflow_admin import get_reg_mlflow_model
 from src.training.experiment import define_experiment_data
+from src.utils.config_utils import get_repo_dir
 from src.utils.data_utils import write_tensor_as_json
 from src.utils.general_utils import print_dict_to_logger
 

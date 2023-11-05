@@ -1,6 +1,5 @@
 import os
 import sys
-
 import bentoml
 
 bentoml_path = os.path.dirname(os.path.abspath(__file__))

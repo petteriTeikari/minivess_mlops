@@ -278,10 +278,31 @@ def get_reg_mlflow_model(model_name: str,
     cfg = import_cfg_from_mlflow(artifact_base_dir=mlflow_model['artifact_base_dir'],
                                  inference_cfg=inference_cfg)
 
+    # Get the Conda env (created from the requirements.txt that the Docker autocreated from the Poetry env)
+    mlflow_model['env_paths'] = get_env_from_mlflow_model_registry(artifact_uri=mlflow_model['artifact_uri'])
+
+    # Copy the conda.yaml to the deployment/bentoml folder
+    copy_env_to_bentoml_dir(local_path=mlflow_model['env_paths']['local_conda_path'],
+                            repo_dir=get_repo_dir())
+
     # Try to load the model
     mlflow_model['model_uri'] = import_mlflow_model(mlflow_model)
 
     return cfg, mlflow_model
+
+
+def copy_env_to_bentoml_dir(local_path: str,
+                            repo_dir: str):
+    # You probably a bit something more automagic here, done with Github Actions,
+    # but this will get devel/debugging started
+    bentoml_dir = os.path.join(get_repo_dir(), 'deployment', 'bentoml')
+    if not os.path.exists(bentoml_dir):
+        logger.error('Could not find the BentoML deployment folder = "{}"'.format(bentoml_dir))
+        raise IOError('Could not find the BentoML deployment folder = "{}"'.format(bentoml_dir))
+
+    file_in = os.path.split(local_path)[1]
+    logger.info('Copying {} to {}'.format(file_in, bentoml_dir))
+    shutil.copyfile(local_path, os.path.join(bentoml_dir, file_in))
 
 
 def download_registered_model(rmodel: RegisteredModel,
@@ -377,6 +398,34 @@ def get_base_artifact_uri(artifact_uri: str,
         else:
             logger.error('More than one subdir in artifact_uri = {}'.format(artifact_uri))
             raise IOError('More than one subdir in artifact_uri = {}'.format(artifact_uri))
+
+
+def get_env_from_mlflow_model_registry(artifact_uri: str):
+
+    conda_path = os.path.join(artifact_uri, 'conda.yaml')
+
+    logger.info('Getting Conda environment used for training, '
+                'from MLflow Model Registry config {}'.format(conda_path))
+    try:
+        local_conda_path = mlflow.artifacts.download_artifacts(conda_path)
+    except Exception as e:
+        logger.error('Problem downloading "{}" from MLflow Artifact Store! '
+                     'e = {}'.format(get_cfg_yaml_fname(), e))
+        raise IOError('Problem downloading "{}" from MLflow Artifact Store! '
+                      'e = {}'.format(get_cfg_yaml_fname(), e))
+
+    pyenv_path = os.path.join(artifact_uri, 'python_env.yaml')
+    logger.info('Getting Conda environment used for training, '
+                'from MLflow Model Registry config {}'.format(pyenv_path))
+    try:
+        local_pyenv_path = mlflow.artifacts.download_artifacts(pyenv_path)
+    except Exception as e:
+        logger.error('Problem downloading "{}" from MLflow Artifact Store! '
+                     'e = {}'.format(get_cfg_yaml_fname(), e))
+        raise IOError('Problem downloading "{}" from MLflow Artifact Store! '
+                      'e = {}'.format(get_cfg_yaml_fname(), e))
+
+    return {'local_conda_path': local_conda_path, 'local_pyenv_path': local_pyenv_path}
 
 
 def import_cfg_from_mlflow(artifact_base_dir: str = None,
