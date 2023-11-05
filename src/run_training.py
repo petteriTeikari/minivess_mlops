@@ -94,10 +94,9 @@ if __name__ == '__main__':
         hparam_run_results[hyperparam_name] = train_run_per_hyperparameters(args)
 
     # Update the best MLflow model
-    if cfg_key(hparam_run_results[hyperparam_name]['cfg'],
+    if not cfg_key(hparam_run_results[hyperparam_name]['cfg'],
                'hydra_cfg', 'config', 'TRAINING', 'SKIP_TRAINING'):
         mlflow_update_best_model(project_name=args['project_name'])
     else:
         logger.info('Skipping the MLflow update for now!')
-
     logger.info('Done in {:.0f} seconds with the execution!'.format(time.time() - t0))
