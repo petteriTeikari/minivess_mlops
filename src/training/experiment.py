@@ -19,6 +19,8 @@ def train_run_per_hyperparameters(args: dict,
         run_train_experiment(cfg=cfg,
                              hyperparam_name=cfg_key(cfg, 'run', 'PARAMS', 'hyperparam_name')))
 
+    run_results['cfg'] = cfg
+
     return run_results
 
 
@@ -55,7 +57,7 @@ def run_train_experiment(cfg: dict,
     # Train for n folds, n repeats, n epochs (single model)
     if cfg_key(cfg, 'hydra_cfg', 'config', 'TRAINING', 'SKIP_TRAINING'):
         logger.info('Skipping the training for now, hyperparam_name = {}'.format(hyperparam_name))
-        run_results = None
+        run_results = {}
     else:
         run_results = \
             training_script(hyperparam_name=hyperparam_name,
