@@ -8,12 +8,7 @@ ENV DEPLOY_ENV $DEPLOY_IN
 # By default, use the "full set of R&D libraries" (=dev), add later =prod
 ARG IMAGE_TYPE=dev
 ENV PROD_IMAGE $IMAGE_TYPE
-
-# Create a non-root user
-ENV USER minivessuser
-ENV HOME /home/$USER
-RUN useradd -m $USER && echo $USER:$USER && \
-    chown $USER:$USER $HOME
+ENV HOME /home
 
 # Copy your Poetry files for Python dependencies
 COPY ./pyproject.toml ./poetry.lock ./

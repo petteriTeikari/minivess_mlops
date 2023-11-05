@@ -4,6 +4,8 @@ FROM petteriteikari/minivess-mlops-env:latest as base
 # https://stackoverflow.com/a/63643361/18650369
 ENV USER minivessuser
 ENV HOME /home/$USER
+RUN useradd -m $USER && echo $USER:$USER && \
+    chown $USER:$USER $HOME
 
 USER root
 
