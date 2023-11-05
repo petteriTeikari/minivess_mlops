@@ -66,4 +66,4 @@ RUN pip install --disable-pip-version-check --no-cache-dir -r $HOME/requirements
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-USER $USER
+# USER $USER

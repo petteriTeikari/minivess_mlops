@@ -4,6 +4,11 @@ name: Docker (Train)
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'poetry.lock'
+      - 'pyproject.toml'
+      - 'deployment/Dockerfile_env'
+      - 'deployment/Dockerfile_Jupyter'
   pull_request:
     branches: [ "main" ]
 
