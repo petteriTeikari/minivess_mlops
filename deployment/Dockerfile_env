@@ -8,6 +8,8 @@ ENV DEPLOY_ENV $DEPLOY_IN
 # By default, use the "full set of R&D libraries" (=dev), add later =prod
 ARG IMAGE_TYPE=dev
 ENV PROD_IMAGE $IMAGE_TYPE
+# Do not create an user account, use root
+# https://github.com/MicrosoftDocs/azure-devops-docs/issues/5672
 ENV HOME /home
 
 # Copy your Poetry files for Python dependencies
