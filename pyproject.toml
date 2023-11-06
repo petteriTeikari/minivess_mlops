@@ -32,6 +32,7 @@ pytest = "^7.4.3"
 # workaround for: https://github.com/python-poetry/poetry-plugin-export/issues/183
 urllib3 = ">=1.25.4,<1.27"
 bentoml = "^1.1.7"
+fs-s3fs = "^1.1.1"
 
 
 [build-system]

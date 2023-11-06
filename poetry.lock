@@ -1779,6 +1779,22 @@ six = ">=1.10,<2.0"
 scandir = ["scandir (>=1.5,<2.0)"]
 
 [[package]]
+name = "fs-s3fs"
+version = "1.1.1"
+description = "Amazon S3 filesystem for PyFilesystem2"
+optional = false
+python-versions = "*"
+files = [
+    {file = "fs-s3fs-1.1.1.tar.gz", hash = "sha256:b57f8c7664460ff7b451b4b44ca2ea9623a374d74e1284c2d5e6df499dc7976c"},
+    {file = "fs_s3fs-1.1.1-py2.py3-none-any.whl", hash = "sha256:9ba160eaa93390cc5992a857675666cb2fbb3721b872474dfdc659a715c39280"},
+]
+
+[package.dependencies]
+boto3 = ">=1.9,<2.0"
+fs = ">=2.4,<3.0"
+six = ">=1.10,<2.0"
+
+[[package]]
 name = "fsspec"
 version = "2023.10.0"
 description = "File-system specification"
@@ -6741,4 +6757,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.18"
-content-hash = "058eb17f44abe569d17edad5788a780be79b8e1dd3eef397e4f9caa0d2b8852a"
+content-hash = "9b77a5208c8e1ab9fe61c668ca6b85d891415f9cae3029ba837f737f7b2b8bb3"
