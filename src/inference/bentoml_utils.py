@@ -16,19 +16,17 @@ def test_bento_model_inference(pyfunc_model: mlflow.pyfunc.PyFuncModel):
         raise IOError('Inference failed for BentoML model, e = {}'.format(e))
 
 
-def import_mlflow_model_to_bentoml(mlflow_model: dict,
+def import_mlflow_model_to_bentoml(run: mlflow.entities.Run,
+                                   model_uri: str = 'models:/minivess-test2/1',
                                    model_name: str = 'mlflow_model'):
     """
     https://docs.bentoml.org/en/latest/integrations/mlflow.html#import-an-mlflow-model
+    https://docs.bentoml.org/en/latest/integrations/mlflow.html#attach-model-params-metrics-and-tags
+    https://docs.bentoml.org/en/latest/integrations/mlflow.html#loading-original-model-flavor
     """
-
-    # https://docs.bentoml.org/en/latest/integrations/mlflow.html#attach-model-params-metrics-and-tags
-    run = mlflow.get_run(mlflow_model['latest_version'].run_id)
-
-    # https://docs.bentoml.org/en/latest/integrations/mlflow.html#loading-original-model-flavor
     bento_model: bentoml._internal.models.model.Model = (
         bentoml.mlflow.import_model(name=model_name,
-                                    model_uri=mlflow_model['model_uri'],
+                                    model_uri=model_uri,
                                     labels=run.data.tags,
                                     metadata={
                                         "metrics": run.data.metrics,

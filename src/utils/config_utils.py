@@ -13,7 +13,7 @@ import torch
 import torch.distributed as dist
 from omegaconf import DictConfig, OmegaConf
 
-from src.log_ML.mlflow_init import init_mlflow_logging
+from src.log_ML.mlflow.mlflow_init import init_mlflow_logging
 from src.utils.dict_utils import put_to_dict, cfg_key
 from tests.env.mount_tests import debug_mounts
 from src.log_ML.json_log import to_serializable

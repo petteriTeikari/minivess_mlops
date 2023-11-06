@@ -1,6 +1,5 @@
 import mlflow
 from loguru import logger
-from omegaconf import DictConfig
 
 from src.inference.ensemble_main import reinference_dataloaders
 from src.log_ML.log_crossval import log_cv_results
@@ -9,7 +8,7 @@ from src.log_ML.results_utils import average_repeat_results, reorder_crossvalida
     compute_crossval_stats, reorder_ensemble_crossvalidation_results, compute_crossval_ensemble_stats, \
     get_best_repeat_result
 from src.log_ML.s3_utils import sync_artifacts_to_s3
-from src.log_ML.wandb_log import log_wandb_repeat_results, log_wandb_ensemble_results
+from src.log_ML.wandb.wandb_log import log_wandb_repeat_results, log_wandb_ensemble_results
 from src.utils.dict_utils import cfg_key
 
 

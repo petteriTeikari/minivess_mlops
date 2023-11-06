@@ -3,7 +3,7 @@ import mlflow
 from loguru import logger
 from omegaconf import DictConfig
 
-from src.log_ML.mlflow_utils import mlflow_dicts_to_omegaconf_dict
+from src.log_ML.mlflow.mlflow_utils import mlflow_dicts_to_omegaconf_dict
 from src.utils.dict_utils import cfg_key
 from src.utils.general_utils import import_from_dotenv, is_docker
 

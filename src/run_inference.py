@@ -1,14 +1,16 @@
 import argparse
 import os
 import sys
+
+import mlflow
 from loguru import logger
 
-from src.datasets.inference_data import remove_unnecessary_nesting
+src_path = os.path.dirname(os.path.abspath(__file__))
+project_path = os.path.split(src_path)[0]
+sys.path.insert(0, project_path)  # so that src. is imported correctly also in VSCode by default
+
 from src.inference.bentoml_utils import import_mlflow_model_to_bentoml, save_bentoml_model_to_model_store
-from src.log_ML.mlflow_admin import get_reg_mlflow_model
-from src.training.experiment import define_experiment_data
-from src.utils.config_utils import get_repo_dir
-from src.utils.data_utils import write_tensor_as_json
+from src.log_ML.mlflow.mlflow_admin import get_reg_mlflow_model
 from src.utils.general_utils import print_dict_to_logger
 
 src_path = os.path.dirname(os.path.abspath(__file__))
@@ -57,8 +59,9 @@ def get_model_from_mlflow_as_bentoml_model(model_name: str,
                                              server_uri=server_uri)
 
     # Import the model to BentoML deployment
-    bento_model, pyfunc_model = import_mlflow_model_to_bentoml(mlflow_model)
-
+    run = mlflow.get_run(mlflow_model['latest_version'].run_id)
+    bento_model, pyfunc_model = import_mlflow_model_to_bentoml(run=run,
+                                                               model_uri=mlflow_model['model_uri'])
     # Save to BentoML Model Store?
     save_bentoml_model_to_model_store(bento_model,
                                       pyfunc_model,
@@ -74,6 +77,7 @@ def get_model_from_mlflow_as_bentoml_model(model_name: str,
     return cfg, model_dict
 
 
+# e.g. with "-c inference/inference_folder" arguments
 if __name__ == '__main__':
 
     # Get the cfg used for training and the MLflow as BentoML model

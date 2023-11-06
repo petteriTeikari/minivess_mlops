@@ -3,7 +3,7 @@ import os
 import sys
 import time
 
-from src.log_ML.mlflow_admin import mlflow_update_best_model
+from src.log_ML.mlflow.mlflow_admin import mlflow_update_best_model
 from src.training.experiment import train_run_per_hyperparameters
 from src.utils.dict_utils import cfg_key
 from src.utils.general_utils import print_dict_to_logger

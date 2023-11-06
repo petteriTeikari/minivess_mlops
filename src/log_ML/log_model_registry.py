@@ -1,18 +1,15 @@
-import os
-import time
-
-import numpy as np
-from loguru import logger
 import mlflow
+from loguru import logger
 import wandb
-from mlflow.models import ModelSignature
 from omegaconf import DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
-from src.log_ML.mlflow_log import define_mlflow_model_uri, define_metamodel_name
-from src.log_ML.mlflow_models import load_model_from_registry
-from src.log_ML.mlflow_tests import test_mlflow_models_reproduction
-from src.log_ML.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
+from src.log_ML.bentoml.bentoml_log_models import bentoml_save_mlflow_model_to_model_store
+from src.log_ML.mlflow.mlflow_log import define_mlflow_model_uri
+from src.log_ML.mlflow.mlflow_log_model import mlflow_metamodel_logging
+from src.log_ML.mlflow.mlflow_model_register import mlflow_register_model_from_run
+from src.log_ML.mlflow.mlflow_tests import test_mlflow_models_reproduction
+from src.log_ML.mlflow.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
 from src.utils.dict_utils import cfg_key
 
 
@@ -102,102 +99,6 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
     return {'test_results': test_results}
 
 
-def mlflow_metamodel_logging(ensemble_model,
-                             model_paths: dict,
-                             run_params_dict: dict,
-                             model_uri: str,
-                             ensemble_name: str,
-                             signature: ModelSignature,
-                             cfg: dict,
-                             autoregister_models: bool = False,
-                             immediate_load_test: bool = False):
-    """
-    https://python.plainenglish.io/how-to-create-meta-model-using-mlflow-166aeb8666a8
-    """
-    mlflow_model_log = {}
-    t0 = time.time()
-    metamodel_name = define_metamodel_name(ensemble_name,
-                                           hyperparam_name=run_params_dict['hyperparam_name'])
-
-    # Log model
-    # https://mlflow.org/docs/latest/python_api/mlflow.pytorch.html#mlflow.pytorch.log_model
-    logger.info('MLflow | Logging (pyfunc) meta model (ensemble = {}) file to Models: {}'.
-                format(ensemble_name, metamodel_name))
-
-    # https://mlflow.org/docs/latest/models.html#how-to-log-model-with-example-containing-params
-    input_data = np.zeros((4, 1, 512, 512, 27)).astype(np.float32)
-    params = {"return_mask": True}
-    input_example = (input_data, params)
-
-    name_to_use = 'metamodel'
-    if name_to_use == 'metamodel':
-        artifact_path = metamodel_name
-    elif name_to_use == 'hyperparam_name':
-        artifact_path = run_params_dict['hyperparam_name']
-    else:
-        raise IOError('Unknown name_to_use = {}'.format(name_to_use))
-    logger.debug('MLflow Log Model | artifact_path = {}'.format(artifact_path))
-
-    # e.g. metamodel_name = "train_placeholder_cfg_12d24fa578a123675409cccdaac14a45__dice-MINIVESS"
-    # https://santiagof.medium.com/effortless-models-deployment-with-mlflow-customizing-inference-e880cd1c9bdd
-    mlflow_model_log['log_model'] = (
-        mlflow.pyfunc.log_model(artifact_path=artifact_path,
-                                # https://stackoverflow.com/a/70216328/6412152
-                                code_path=[cfg['run']['PARAMS']['repo_dir']],
-                                python_model=ModelEnsemble(models_of_ensemble=model_paths,
-                                                           models_from_paths=True,
-                                                           validation_config=cfg_key(cfg, 'hydra_cfg', 'config',
-                                                                                     'VALIDATION'),
-                                                           ensemble_params=cfg_key(cfg, 'hydra_cfg', 'config',
-                                                                                   'ENSEMBLE', 'PARAMS'),
-                                                           validation_params=cfg_key(cfg, 'hydra_cfg', 'config',
-                                                                                     'VALIDATION', 'VALIDATION_PARAMS'),
-                                                           device=cfg_key(cfg, 'run', 'MACHINE', 'device'),
-                                                           eval_config=cfg_key(cfg, 'hydra_cfg', 'config',
-                                                                               'VALIDATION_BEST'),
-                                                           # TODO! need to make this adaptive based on submodel
-                                                           precision='AMP'),
-                                signature=signature,
-                                # input_example=input_example,
-                                pip_requirements=cfg['run']['PARAMS']['requirements-txt_path'],
-                                metadata={'ensemble_name': ensemble_name,
-                                          'metamodel_name': metamodel_name,
-                                          'name_to': name_to_use}
-                                )
-    )
-    mlflow.set_tag("metamodel_name", metamodel_name)
-    mlflow.set_tag("ensemble_name", ensemble_name)
-    logger.warning('Could you want to directly save the model to BentoML as well?')
-
-    if autoregister_models:
-        # https://www.databricks.com/wp-content/uploads/2020/06/blog-mlflow-model-1.png
-        # This does not necessarily make a lot of sense, autoregister after running some hyperparam sweeps
-        # if you have obtained a better model from those
-        logger.info('MLflow | Registering the model to Model Registry: {}'.
-                    format(ensemble_name, metamodel_name))
-        model_registry_string = '(and registering to Model Registry)'
-        mlflow_model_log['reg_model'] = (
-            mlflow.register_model(model_uri=model_uri,
-                                  name=metamodel_name,
-                                  tags={'ensemble_name': ensemble_name,
-                                        'metamodel_name': metamodel_name}))
-    else:
-        logger.info('MLflow | SKIP Model Registering (you can do this manually in MLflow UI then')
-        model_registry_string = ''
-        mlflow_model_log['reg_model'] = None
-
-    mlflow_model_log['best_dicts'] = ensemble_model.model_best_dicts
-    logger.info('MLflow | Model logging to Models {} done in {:.3f} seconds'.
-                format(model_registry_string, time.time() - t0))
-
-    if immediate_load_test:
-        meta_model_uri = mlflow_model_log['log_model'].model_uri
-        logger.info('MLflow | Immediate Model load Test from Model Registry (uri = {}'.format(meta_model_uri))
-        _ = load_model_from_registry(model_uri=meta_model_uri)
-
-    return mlflow_model_log
-
-
 def log_ensembles_to_wandb(ensemble_models_flat: dict,
                            cfg: DictConfig,
                            wandb_run: wandb.sdk.wandb_run.Run,
@@ -215,3 +116,25 @@ def log_ensembles_to_wandb(ensemble_models_flat: dict,
             artifact_model.add_file(model_path)
             logger.info('WANDB | Model file logged to registry: {}'.format(artifact_name))
             wandb_run.log_artifact(artifact_model)
+
+
+def register_model_from_run(run: mlflow.entities.Run,
+                            stage: str = 'Staging',
+                            project_name: str = 'segmentation-minivess',
+                            services: tuple = ('mlflow', 'bentoml')):
+
+
+    if 'mlflow' in services:
+        logger.info('Registering improved model to MLflow Model Registry')
+        reg, model_uri = mlflow_register_model_from_run(run=run,
+                                                        stage=stage,
+                                                        project_name=project_name)
+    else:
+        logger.info('Model had improved, but MLflow Model Registry model registration is skipped')
+
+    if 'bentoml' in services:
+        logger.info('Registering improved model to BentoML Model Store')
+        bento_model, pyfunc_model = bentoml_save_mlflow_model_to_model_store(run=run,
+                                                                             model_uri=model_uri)
+    else:
+        logger.info('Skip BentomL model store save')

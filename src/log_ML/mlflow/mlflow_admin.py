@@ -9,12 +9,13 @@ from mlflow.entities import ViewType
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.store.entities import PagedList
 from loguru import logger
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from src.inference.ensemble_model import ModelEnsemble
 from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname, define_ensemble_submodels_dir_name
-from src.log_ML.mlflow_init import authenticate_mlflow, init_mlflow
-from src.log_ML.mlflow_models import load_model_from_registry, import_mlflow_model
+from src.log_ML.log_model_registry import register_model_from_run
+from src.log_ML.mlflow.mlflow_init import authenticate_mlflow, init_mlflow
+from src.log_ML.mlflow.mlflow_models import import_mlflow_model
 from src.utils.config_utils import get_repo_dir, get_config_dir, config_import_script
 from src.utils.dict_utils import cfg_key
 
@@ -96,97 +97,6 @@ def get_best_metric_of_run(run_id: str,
         best_value = None
 
     return best_value
-
-
-def register_model_from_run(run: mlflow.entities.Run,
-                            stage: str = 'Staging',
-                            project_name: str = 'segmentation-minivess'):
-
-    # https://mlflow.org/docs/1.8.0/model-registry.html#mlflow-model-registry
-    client = MlflowClient()
-
-    # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
-    metamodel_name = get_log_model_history_dict_from_run(run=run)
-    #metamodel_name = run.info.run_name  ## TODO! depends on name_to_use
-
-    # Registered model names you don't necessarily want to be as cryptic as the model log name
-    # which comes from the hyperparameter sweep. In the end, you might want to have the best segmentor
-    # model (or in general you want these names to be a lot more human-readable)
-    reg_model_name = project_name
-
-    # https://mlflow.org/docs/latest/model-registry.html#adding-an-mlflow-model-to-the-model-registry
-    logger.info('Register best model with the name = {}'.format(reg_model_name))
-    model_uri = f"runs:/{run.info.run_id}/{metamodel_name}"
-    logger.info('model_uri = {}'.format(model_uri))
-    reg = mlflow.register_model(model_uri=model_uri,
-                                name=reg_model_name)
-
-    # Set model version tag
-    try:
-        client.set_model_version_tag(name=reg_model_name,
-                                     version=reg.version,
-                                     key="metamodel_name",
-                                     value=metamodel_name)
-    except Exception as e:
-        logger.error('Failed to set tags to registered model! e = {}'.format(e))
-        raise IOError('Failed to set tags to registered model! e = {}'.format(e))
-
-    # Set and delete aliases on models
-    client.set_registered_model_alias(name=reg_model_name,
-                                      alias="autoreregistered",
-                                      version=reg.version)
-
-    # Auto-stage
-    transition_model_stage(name=reg_model_name,
-                           version=reg.version,
-                           stage=stage)
-
-    # Auto-stage previous versions to None then
-    # TODO!
-
-    # Test that you can load the model
-    model_uri = f'models:/{reg_model_name}/{reg.version}'
-    # TODO! autogen the requirements.txt on local machine too
-    # mlflow.pyfunc.get_model_dependencies(model_uri)
-    logger.info('Testing that you can actually load the registered model from "{}"'.format(model_uri))
-    loaded_model = load_model_from_registry(model_uri=model_uri)
-
-    # TODO! You should try to serve the model here as well to test the load_pickle() works
-
-
-def transition_model_stage(name: str,
-                           version: str,
-                           stage: str = 'Staging'):
-    # https://mlflow.org/docs/1.8.0/model-registry.html#transitioning-an-mlflow-models-stage
-    logger.info('Transition model "{}" (v. {}) stage to {}'.format(name, version, stage))
-    client = MlflowClient()
-    client.transition_model_version_stage(
-        name=name,
-        version=version,
-        stage=stage
-    )
-
-
-def get_log_model_history_dict_from_run(run):
-
-    run_id = run.info.run_id
-    tags = run.data.tags
-    if 'mlflow.log-model.history' in tags:
-        log_model_histories_string: str = tags['mlflow.log-model.history']
-        log_model = json.loads(log_model_histories_string)
-
-        if len(log_model) == 1:
-            log_model_dict: dict = log_model[0]
-            metamodel_name = log_model_dict['metadata']['metamodel_name']
-        else:
-            raise NotImplementedError('Check why there are more entries or none?')
-
-    else:
-        logger.debug("No 'mlflow.log-model.history' in tags!")
-        metamodel_name = run.data.tags['metamodel_name']
-
-    logger.debug('metamodel_name = "{}" from run'.format(metamodel_name))
-    return metamodel_name
 
 
 def get_mlflow_ordering_direction(best_metric_name):
@@ -459,7 +369,10 @@ def import_cfg_from_mlflow(artifact_base_dir: str = None,
     return {'hydra_cfg': hydra_cfg, 'run': run_params}
 
 
-def update_mlflow_cfg(local_path: str, inference_cfg: str):
+def update_mlflow_cfg(local_path: str,
+                      inference_cfg: str,
+                      parent_dir_string: str = '../',
+                      parent_dir_string_defaults: str = '../'):
 
     config_dir = get_config_dir()
 
@@ -476,17 +389,30 @@ def update_mlflow_cfg(local_path: str, inference_cfg: str):
                       '"{}" to "{}", e = {}'.format(fname, os.path.join(config_dir, fname), e))
 
     # combine the base from MLflow run with the inference config
-    config = config_import_script(task_cfg_name=inference_cfg,
-                                  parent_dir_string='..',
-                                  parent_dir_string_defaults='..',
-                                  job_name='inference_folder',
-                                  base_cfg_name = fname_wo_ext)
+    try:
+        config = config_import_script(task_cfg_name=inference_cfg,
+                                      parent_dir_string=parent_dir_string,
+                                      parent_dir_string_defaults=parent_dir_string_defaults,
+                                      job_name='inference_folder',
+                                      base_cfg_name = fname_wo_ext)
+    except Exception as e:
+        try:
+            os.remove(os.path.join(config_dir, fname))
+        except Exception as e:
+            logger.warning('Failed to remove the temp file "{}", e = {}'.
+                           format(os.path.join(config_dir, fname), e))
+        logger.error('Failed to combine the MLflow config '
+                     '"{}" with the inference config "{}", e = {}'.format(fname, inference_cfg, e))
+        raise IOError('Failed to combine the MLflow config '
+                      '"{}" with the inference config "{}", e = {}'.format(fname, inference_cfg, e))
+
 
     # remove the temporary copy of the MLflow config
     try:
         os.remove(os.path.join(config_dir, fname))
     except Exception as e:
-        logger.warning('Failed to remove the temp file "{}", e = {}'.format(os.path.join(config_dir, fname), e))
+        logger.warning('Failed to remove the temp file "{}", e = {}'.
+                       format(os.path.join(config_dir, fname), e))
 
     return config
 
