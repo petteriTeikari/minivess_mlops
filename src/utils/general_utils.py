@@ -75,3 +75,17 @@ def import_from_dotenv(repo_dir: str):
                     continue
                 key, value = line.strip().split('=', 1)
                 os.environ[key] = value
+
+
+def get_path_size(start_path: str = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    total_size_kB = total_size / 1024
+
+    return total_size_kB

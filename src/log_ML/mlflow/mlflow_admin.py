@@ -22,7 +22,8 @@ from src.utils.dict_utils import cfg_key
 
 def mlflow_update_best_model(project_name: str,
                              stage: str = 'Staging',
-                             best_metric_name: str = 'Dice'):
+                             best_metric_name: str = 'Dice',
+                             manual_debug_run: bool = False):
 
     # Get best run from all the runs so far
     best_run = get_best_run(project_name,
@@ -33,6 +34,14 @@ def mlflow_update_best_model(project_name: str,
         get_best_registered_model(model_name=project_name,
                                   best_run=best_run,
                                   best_metric_name=best_metric_name))
+
+    if manual_debug_run:
+        # when log_model was jamming, some run_id and associated model was wanted
+        # for model registration so that the BentoML part could be worked on
+        logger.warning('You have hard-coded a run_id for debugging purposes!')
+        manual_run_id = '5e28d9fb0dab44a2861585c800df3c59'
+        logger.warning('best_run from id = {}'.format(manual_run_id))
+        best_run = mlflow.get_run(run_id=manual_run_id)
 
     # Register the model from the best run from MLflow experiments,
     # if the best run is better than the best registered model

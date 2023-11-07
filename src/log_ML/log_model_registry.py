@@ -129,12 +129,17 @@ def register_model_from_run(run: mlflow.entities.Run,
         reg, model_uri = mlflow_register_model_from_run(run=run,
                                                         stage=stage,
                                                         project_name=project_name)
+
+        # BentoML atm depends on the existing MLflow Model Registry model
+        if 'bentoml' in services:
+            logger.info('Registering improved model to BentoML Model Store')
+            bento_model, pyfunc_model = (
+                bentoml_save_mlflow_model_to_model_store(run=run,
+                                                         ensemble_name=run.data.tags['ensemble_name'],
+                                                         model_uri=model_uri))
+        else:
+            logger.info('Skip BentomL model store save')
+
     else:
         logger.info('Model had improved, but MLflow Model Registry model registration is skipped')
 
-    if 'bentoml' in services:
-        logger.info('Registering improved model to BentoML Model Store')
-        bento_model, pyfunc_model = bentoml_save_mlflow_model_to_model_store(run=run,
-                                                                             model_uri=model_uri)
-    else:
-        logger.info('Skip BentomL model store save')
