@@ -450,3 +450,4 @@ config:
     BENTOML:
       s3_bucket: 's3://minivess-bentoml-models'
       s3_model_name: 'minivess-segmentor:latest'
+      docker_image: 'petteriteikari/minivess-segmentor'
