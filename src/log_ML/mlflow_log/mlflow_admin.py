@@ -46,7 +46,6 @@ def mlflow_update_best_model(project_name: str,
 
     # Register the model from the best run from MLflow experiments,
     # if the best run is better than the best registered model
-    register_best_run_as_best_registered_model = True
     if register_best_run_as_best_registered_model:
         logger.info('Register the best run as the best registered model')
         register_model_from_run(run=best_run,
@@ -142,10 +141,10 @@ def get_best_run(project_name: str,
             logger.info('Best run from MLflow Tracking experiments, '
                         '{} = {:.3f}'.format(metric_name, best_run.data.metrics[metric_name]))
         else:
-            logger.warning('No runs returned!')
-            best_run = None
+            logger.warning('No runs read returned!')
+            best_run = {}
     else:
-        logger.warning('No runs returned!')
+        logger.warning('No runs returned! (fail to connect?)')
         best_run = None
 
     return best_run

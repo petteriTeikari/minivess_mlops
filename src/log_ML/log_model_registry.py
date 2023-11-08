@@ -127,21 +127,30 @@ def register_model_from_run(run: mlflow.entities.Run,
 
     if 'mlflow_log' in services:
         logger.info('Registering improved model to MLflow Model Registry')
-        reg, model_uri = mlflow_register_model_from_run(run=run,
-                                                        stage=stage,
-                                                        project_name=project_name)
+        try:
+            reg, model_uri = mlflow_register_model_from_run(run=run,
+                                                            stage=stage,
+                                                            project_name=project_name)
 
-        # BentoML atm depends on the existing MLflow Model Registry model
-        if 'bentoml_log' in services:
-            logger.info('Registering improved model to BentoML Model Store')
-            bento_svc_cfg = cfg_key(cfg, 'hydra_cfg', 'config', 'SERVICES', 'BENTOML')
-            bento_model, pyfunc_model = (
-                bentoml_save_mlflow_model_to_model_store(run=run,
-                                                         ensemble_name=run.data.tags['ensemble_name'],
-                                                         model_uri=model_uri,
-                                                         bento_svc_cfg=bento_svc_cfg))
-        else:
-            logger.info('Skip BentomL model store save')
+            try:
+                # BentoML atm depends on the existing MLflow Model Registry model
+                if 'bentoml_log' in services:
+                    logger.info('Registering improved model to BentoML Model Store')
+                    bento_svc_cfg = cfg_key(cfg, 'hydra_cfg', 'config', 'SERVICES', 'BENTOML')
+                    bento_model, pyfunc_model = (
+                        bentoml_save_mlflow_model_to_model_store(run=run,
+                                                                 ensemble_name=run.data.tags['ensemble_name'],
+                                                                 model_uri=model_uri,
+                                                                 bento_svc_cfg=bento_svc_cfg))
+                else:
+                    logger.info('Skip BentomL model store save')
+            except Exception as e:
+                logger.error('Failed to save the model to BentoML Model Store, e = {}'.format(e))
+                raise IOError('Failed to save the model to BentoML Model Store, e = {}'.format(e))
+
+        except Exception as e:
+            logger.error('Failed to register the model to MLflow Model Registry, e = {}'.format(e))
+            raise IOError('Failed to register the model to MLflow Model Registry, e = {}'.format(e))
 
     else:
         logger.info('Model had improved, but MLflow Model Registry model registration is skipped')
