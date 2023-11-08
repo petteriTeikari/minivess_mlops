@@ -87,7 +87,7 @@ def local_model_tests(ensemble_model: ModelEnsemble,
 
     """
     As in the first check that the models that you saved to disk make sense when loaded back
-    before trying to see if something funky happened in mlflow.log_model and load_model
+    before trying to see if something funky happened in mlflow_log.log_model and load_model
     """
     results = {}
     test_name = 'check_weights'
@@ -200,7 +200,7 @@ def create_model_ensemble_from_mlflow_models(metamodel_name: str = None,
         # create_mlmodel_dir(dst_path=dst_path)
         loaded_meta_model = mlflow.pyfunc.load_model(model_uri=model_uri,
                                                      dst_path=dst_path)
-    # type(loaded_meta_model)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
+    # type(loaded_meta_model)  # <class 'mlflow_log.pyfunc.model.PyFuncModel'>
     unwrapped_meta_model = loaded_meta_model.unwrap_python_model()
     # type(unwrapped_model) # <class 'src.inference.ensemble_model.ModelEnsemble'>
 

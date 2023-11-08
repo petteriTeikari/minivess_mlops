@@ -10,7 +10,7 @@ project_path = os.path.split(src_path)[0]
 sys.path.insert(0, project_path)  # so that src. is imported correctly also in VSCode by default
 
 from src.inference.bentoml_utils import import_mlflow_model_to_bentoml, save_bentoml_model_to_model_store
-from src.log_ML.mlflow.mlflow_admin import get_reg_mlflow_model
+from src.log_ML.mlflow_log.mlflow_admin import get_reg_mlflow_model
 from src.utils.general_utils import print_dict_to_logger
 
 src_path = os.path.dirname(os.path.abspath(__file__))

@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 
 from src.datasets.inference_data import import_folder_dataset
 from src.datasets.minivess import import_minivess_dataset
-from src.log_ML.mlflow.mlflow_log import mlflow_log_dataset
+from src.log_ML.mlflow_log.mlflow_log import mlflow_log_dataset
 from src.utils.config_utils import put_to_dict, cfg_key
 
 

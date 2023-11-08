@@ -40,7 +40,7 @@ def load_model_from_registry(model_uri: str):
     logger.debug('Trying to load registered MLflow model from "{}"'.format(model_uri))
     try:
         # https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel.unwrap_python_model
-        loaded_meta_model = mlflow.pyfunc.load_model(model_uri)  # <class 'mlflow.pyfunc.model.PyFuncModel'>
+        loaded_meta_model = mlflow.pyfunc.load_model(model_uri)  # <class 'mlflow_log.pyfunc.model.PyFuncModel'>
         unwrapped_model = loaded_meta_model.unwrap_python_model()  # <class 'ModelEnsemble'>
 
     except Exception as e:

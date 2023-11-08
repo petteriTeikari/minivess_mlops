@@ -406,13 +406,13 @@ lxml = ["lxml"]
 
 [[package]]
 name = "bentoml"
-version = "1.1.7"
+version = "1.1.8"
 description = "BentoML: Build Production-Grade AI Applications"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "bentoml-1.1.7-py3-none-any.whl", hash = "sha256:497124ef7c2e5943958a24ec960f14b8f24e7db96603cbb92fe9ca8ffd0f37ae"},
-    {file = "bentoml-1.1.7.tar.gz", hash = "sha256:afa6d9342f76cefcf20b4b75e9de83ab97a87d883b604d46794d1c9a4dd054c5"},
+    {file = "bentoml-1.1.8-py3-none-any.whl", hash = "sha256:01f983a215c4d71eabe0d333889439d5eb8f57aa139c768bcd29e46d9a4d85c6"},
+    {file = "bentoml-1.1.8.tar.gz", hash = "sha256:45120822241ecc1476f6b5e1526bba955e693570dacc449498e2f031dd1e487f"},
 ]
 
 [package.dependencies]
@@ -425,6 +425,7 @@ click-option-group = "*"
 cloudpickle = ">=2.0.0"
 deepmerge = "*"
 fs = "*"
+fs-s3fs = {version = "*", optional = true, markers = "extra == \"aws\""}
 httpx = "*"
 inflection = "*"
 jinja2 = ">=3.0.1"
@@ -6757,4 +6758,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.18"
-content-hash = "9b77a5208c8e1ab9fe61c668ca6b85d891415f9cae3029ba837f737f7b2b8bb3"
+content-hash = "8dd9205c315c55b168ae54ca9d812598e90179539fb479da6dd9da0ffb3f2e6d"

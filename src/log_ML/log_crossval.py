@@ -4,7 +4,7 @@ from loguru import logger
 
 from src.log_ML.json_log import to_serializable
 from src.log_ML.log_utils import get_used_services
-from src.log_ML.wandb.wandb_log import log_crossval_res
+from src.log_ML.wandb_log.wandb_log import log_crossval_res
 from src.utils.dict_utils import cfg_key
 
 

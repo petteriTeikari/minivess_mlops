@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 
 from src.log_ML.log_config import log_config_artifacts
 from src.log_ML.log_utils import get_number_of_steps_from_repeat_results
-from src.log_ML.mlflow.mlflow_log import mlflow_cv_artifacts
+from src.log_ML.mlflow_log.mlflow_log import mlflow_cv_artifacts
 from src.utils.config_utils import cfg_key
 
 

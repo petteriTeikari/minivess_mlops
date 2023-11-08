@@ -9,18 +9,19 @@ from mlflow.entities import ViewType
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.store.entities import PagedList
 from loguru import logger
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
 from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname, define_ensemble_submodels_dir_name
 from src.log_ML.log_model_registry import register_model_from_run
-from src.log_ML.mlflow.mlflow_init import authenticate_mlflow, init_mlflow
-from src.log_ML.mlflow.mlflow_models import import_mlflow_model
+from src.log_ML.mlflow_log.mlflow_init import authenticate_mlflow, init_mlflow
+from src.log_ML.mlflow_log.mlflow_models import import_mlflow_model
 from src.utils.config_utils import get_repo_dir, get_config_dir, config_import_script
 from src.utils.dict_utils import cfg_key
 
 
 def mlflow_update_best_model(project_name: str,
+                             cfg: DictConfig,
                              stage: str = 'Staging',
                              best_metric_name: str = 'Dice',
                              manual_debug_run: bool = False):
@@ -45,9 +46,11 @@ def mlflow_update_best_model(project_name: str,
 
     # Register the model from the best run from MLflow experiments,
     # if the best run is better than the best registered model
+    register_best_run_as_best_registered_model = True
     if register_best_run_as_best_registered_model:
         logger.info('Register the best run as the best registered model')
         register_model_from_run(run=best_run,
+                                cfg=cfg,
                                 stage=stage,
                                 project_name=project_name)
     else:
@@ -200,7 +203,7 @@ def get_reg_mlflow_model(model_name: str,
     # Get the Conda env (created from the requirements.txt that the Docker autocreated from the Poetry env)
     mlflow_model['env_paths'] = get_env_from_mlflow_model_registry(artifact_uri=mlflow_model['artifact_uri'])
 
-    # Copy the conda.yaml to the deployment/bentoml folder
+    # Copy the conda.yaml to the deployment/bentoml_log folder
     copy_env_to_bentoml_dir(local_path=mlflow_model['env_paths']['local_conda_path'],
                             repo_dir=get_repo_dir())
 
@@ -214,7 +217,7 @@ def copy_env_to_bentoml_dir(local_path: str,
                             repo_dir: str):
     # You probably a bit something more automagic here, done with Github Actions,
     # but this will get devel/debugging started
-    bentoml_dir = os.path.join(get_repo_dir(), 'deployment', 'bentoml')
+    bentoml_dir = os.path.join(get_repo_dir(), 'deployment', 'bentoml_log')
     if not os.path.exists(bentoml_dir):
         logger.error('Could not find the BentoML deployment folder = "{}"'.format(bentoml_dir))
         raise IOError('Could not find the BentoML deployment folder = "{}"'.format(bentoml_dir))
@@ -243,10 +246,10 @@ def download_registered_model(rmodel: RegisteredModel,
                                                       cfg=cfg,
                                                       ensemble_name=ensemble_name))
 
-    elif model_download_method == 'mlflow.pyfunc.load_model':
+    elif model_download_method == 'mlflow_log.pyfunc.load_model':
         raise NotImplementedError('This does not seem to work correctly, do some devel debugging')
         # https://stackoverflow.com/a/76347084/6412152
-        # client = MlflowClient(mlflow.get_tracking_uri())
+        # client = MlflowClient(mlflow_log.get_tracking_uri())
         # download_uri = client.get_model_version_download_uri(latest_model_version.name, latest_model_version.version)
         # model_uri_version = f"models:/{latest_model_version.name}/{latest_model_version.version}"
         # model_uri_stage = f"models:/{latest_model_version.name}/{latest_model_version.current_stage}"

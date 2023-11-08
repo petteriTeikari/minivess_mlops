@@ -9,7 +9,7 @@ def log_scalars(metric_dict: dict,
                 out_dir: str,
                 output_artifacts: dict,
                 multiple_values_per_epoch: bool = False,  # i.e. multiple batches, loss per batch
-                service_name: str = 'tensorboard'):
+                service_name: str = 'tensorboard_log'):
 
     if len(metric_dict) > 0:
         for metric_name in metric_dict.keys():

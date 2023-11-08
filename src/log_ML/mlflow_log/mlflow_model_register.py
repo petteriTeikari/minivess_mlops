@@ -4,15 +4,15 @@ from loguru import logger
 import mlflow
 from mlflow import MlflowClient
 
-from src.log_ML.mlflow.mlflow_models import load_model_from_registry
+from src.log_ML.mlflow_log.mlflow_models import load_model_from_registry
 
 
 def get_log_model_history_dict_from_run(run):
 
     run_id = run.info.run_id
     tags = run.data.tags
-    if 'mlflow.log-model.history' in tags:
-        log_model_histories_string: str = tags['mlflow.log-model.history']
+    if 'mlflow_log.log-model.history' in tags:
+        log_model_histories_string: str = tags['mlflow_log.log-model.history']
         log_model = json.loads(log_model_histories_string)
 
         if len(log_model) == 1:
@@ -22,7 +22,7 @@ def get_log_model_history_dict_from_run(run):
             raise NotImplementedError('Check why there are more entries or none?')
 
     else:
-        logger.debug("No 'mlflow.log-model.history' in tags!")
+        logger.debug("No 'mlflow_log.log-model.history' in tags!")
         metamodel_name = run.data.tags['metamodel_name']
 
     logger.debug('metamodel_name = "{}" from run'.format(metamodel_name))
@@ -91,7 +91,7 @@ def mlflow_register_model_from_run(run: mlflow.entities.Run,
     # Test that you can load the model
     model_uri = f'models:/{reg_model_name}/{reg.version}'
     # TODO! autogen the requirements.txt on local machine too
-    # mlflow.pyfunc.get_model_dependencies(model_uri)
+    # mlflow_log.pyfunc.get_model_dependencies(model_uri)
     logger.info('Testing that you can actually load the registered model from "{}"'.format(model_uri))
     loaded_model = load_model_from_registry(model_uri=model_uri)
 

@@ -31,7 +31,7 @@ pytest = "^7.4.3"
 #jupyter = "^1.0.0"
 # workaround for: https://github.com/python-poetry/poetry-plugin-export/issues/183
 urllib3 = ">=1.25.4,<1.27"
-bentoml = "^1.1.7"
+bentoml = {extras = ["aws"], version = "^1.1.8"}
 fs-s3fs = "^1.1.1"
 
 

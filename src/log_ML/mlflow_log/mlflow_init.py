@@ -3,7 +3,7 @@ import mlflow
 from loguru import logger
 from omegaconf import DictConfig
 
-from src.log_ML.mlflow.mlflow_utils import mlflow_dicts_to_omegaconf_dict
+from src.log_ML.mlflow_log.mlflow_utils import mlflow_dicts_to_omegaconf_dict
 from src.utils.dict_utils import cfg_key
 from src.utils.general_utils import import_from_dotenv, is_docker
 
@@ -46,7 +46,7 @@ def init_mlflow_logging(hydra_cfg: DictConfig,
 
 def init_mlflow(server_uri: str,
                 repo_dir: str,
-                output_mlflow_dir: str):
+                output_mlflow_dir: str = None):
     logger.info('MLflow | Initializing MLflow Experiment tracking')
     try:
         if server_uri is not None:
@@ -142,7 +142,7 @@ def init_mlflow_run(local_server_path: str,
     try:
         logger.debug('Set experiment name to "{}"'.format(experiment_name))
         experiment = mlflow.set_experiment(experiment_name)
-        # mlflow.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
+        # mlflow_log.set_experiment_tag("tag_name", tag_value)  # if you want to add some tags
         logger.info(" experiment name: {}".format(experiment.experiment_id))
         logger.info(" experiment_id: {}".format(experiment.experiment_id))
         logger.info(" artifact Location: {}".format(experiment.artifact_location))

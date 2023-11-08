@@ -4,12 +4,12 @@ import wandb
 from omegaconf import DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
-from src.log_ML.bentoml.bentoml_log_models import bentoml_save_mlflow_model_to_model_store
-from src.log_ML.mlflow.mlflow_log import define_mlflow_model_uri
-from src.log_ML.mlflow.mlflow_log_model import mlflow_metamodel_logging
-from src.log_ML.mlflow.mlflow_model_register import mlflow_register_model_from_run
-from src.log_ML.mlflow.mlflow_tests import test_mlflow_models_reproduction
-from src.log_ML.mlflow.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
+from src.log_ML.bentoml_log.bentoml_log_models import bentoml_save_mlflow_model_to_model_store
+from src.log_ML.mlflow_log.mlflow_log import define_mlflow_model_uri
+from src.log_ML.mlflow_log.mlflow_log_model import mlflow_metamodel_logging
+from src.log_ML.mlflow_log.mlflow_model_register import mlflow_register_model_from_run
+from src.log_ML.mlflow_log.mlflow_tests import test_mlflow_models_reproduction
+from src.log_ML.mlflow_log.mlflow_utils import get_mlflow_model_signature_from_dataloader_dict
 from src.utils.dict_utils import cfg_key
 
 
@@ -92,7 +92,7 @@ def log_ensembles_to_mlflow(ensemble_models_flat: dict,
             logger.warning('At the moment the Model Registry is working only for single metamodel per run\n'
                            'implement something later if you have multiple validation datasets and/or'
                            'multiple metrics. And would you only want to register the "best model" out of these?\n'
-                           'The metrics for each ensemble is either way logged to mlflow UI')
+                           'The metrics for each ensemble is either way logged to mlflow_log UI')
             test_results = None
 
     # 'mlflow_model_log': mlflow_model_log
@@ -119,24 +119,27 @@ def log_ensembles_to_wandb(ensemble_models_flat: dict,
 
 
 def register_model_from_run(run: mlflow.entities.Run,
+                            cfg: DictConfig,
                             stage: str = 'Staging',
                             project_name: str = 'segmentation-minivess',
-                            services: tuple = ('mlflow', 'bentoml')):
+                            services: tuple = ('mlflow_log', 'bentoml_log')):
 
 
-    if 'mlflow' in services:
+    if 'mlflow_log' in services:
         logger.info('Registering improved model to MLflow Model Registry')
         reg, model_uri = mlflow_register_model_from_run(run=run,
                                                         stage=stage,
                                                         project_name=project_name)
 
         # BentoML atm depends on the existing MLflow Model Registry model
-        if 'bentoml' in services:
+        if 'bentoml_log' in services:
             logger.info('Registering improved model to BentoML Model Store')
+            bento_svc_cfg = cfg_key(cfg, 'hydra_cfg', 'config', 'SERVICES', 'BENTOML')
             bento_model, pyfunc_model = (
                 bentoml_save_mlflow_model_to_model_store(run=run,
                                                          ensemble_name=run.data.tags['ensemble_name'],
-                                                         model_uri=model_uri))
+                                                         model_uri=model_uri,
+                                                         bento_svc_cfg=bento_svc_cfg))
         else:
             logger.info('Skip BentomL model store save')
 

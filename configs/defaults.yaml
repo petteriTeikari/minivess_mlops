@@ -447,3 +447,6 @@ config:
     S3:
       dataset_bucket: 's3://minivessdataset'
       artifacts_bucket: 's3://minivess-artifacts'
+    BENTOML:
+      s3_bucket: 's3://minivess-bentoml-models'
+      s3_model_name: 'minivess-segmentor:latest'

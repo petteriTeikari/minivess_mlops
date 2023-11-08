@@ -30,7 +30,10 @@ def import_mlflow_model_to_bentoml(run: mlflow.entities.Run,
                                     labels=run.data.tags,
                                     metadata={
                                         "metrics": run.data.metrics,
-                                         "params": run.data.params,
+                                        "params": run.data.params,
+                                        "tags": run.data.tags,
+                                        "run_id": run.info.run_id,
+                                        "run_name": run.info.run_name,
                                     }
                                     )
     )
@@ -50,7 +53,7 @@ def save_bentoml_model_to_model_store(bento_model: bentoml._internal.models.mode
     # https://docs.bentoml.org/en/latest/concepts/model.html#save-a-trained-model
     logger.debug('Placeholder for model save')
 
-    # bentoml.pytorch.save_model(
+    # bentoml_log.pytorch.save_model(
     #     "demo_bentoml_model_minivess",  # Model name in the local Model Store
     #     bento_model,  # Model instance being saved
     #     labels={  # User-defined labels for managing models in BentoCloud or Yatai

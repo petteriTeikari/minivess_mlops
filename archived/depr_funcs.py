@@ -283,5 +283,5 @@ def authenticate_mlflow(fname_creds: str = 'mlflow_credentials.ini'):
             credentials.read(credentials_file)
 
     # I guess you could have slightly nicer weay to handle sensitive information
-    os.environ['MLFLOW_TRACKING_USERNAME'] = credentials['mlflow']['mlflow_tracking_username']
-    os.environ['MLFLOW_TRACKING_PASSWORD'] = credentials['mlflow']['mlflow_tracking_password']
+    os.environ['MLFLOW_TRACKING_USERNAME'] = credentials['mlflow_log']['mlflow_tracking_username']
+    os.environ['MLFLOW_TRACKING_PASSWORD'] = credentials['mlflow_log']['mlflow_tracking_password']

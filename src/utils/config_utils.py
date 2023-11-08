@@ -13,7 +13,7 @@ import torch
 import torch.distributed as dist
 from omegaconf import DictConfig, OmegaConf
 
-from src.log_ML.mlflow.mlflow_init import init_mlflow_logging
+from src.log_ML.mlflow_log.mlflow_init import init_mlflow_logging
 from src.utils.dict_utils import put_to_dict, cfg_key
 from tests.env.mount_tests import debug_mounts
 from src.log_ML.json_log import to_serializable
@@ -40,15 +40,19 @@ def get_hydra_config_paths(task_cfg_name: str = None,
         return absolute_config_dir, relative_config_dir
 
     def get_task_cfg_overrides_list(task_cfg_name: str, abs_cfg_path: str):
-        subdir, fname = os.path.split(task_cfg_name)
-        if len(subdir) == 0:
-            logger.error('No subdir of the config detected in "{}" (should be like "train/cfg")'.format(task_cfg_name))
-            raise IOError('No subdir of the config detected in "{}" (should be like "train/cfg")'.format(task_cfg_name))
-        absolute_cfg_path = os.path.join(abs_cfg_path, subdir, f'{fname}.yaml')
-        if not os.path.exists(absolute_cfg_path):
-            logger.error('Task cfg "{}" does not exist!'.format(absolute_cfg_path))
-            raise IOError('Task cfg "{}" does not exist!'.format(absolute_cfg_path))
-        overrides_list = [f'+{subdir}={fname}']
+        if task_cfg_name is not None:
+            subdir, fname = os.path.split(task_cfg_name)
+            if len(subdir) == 0:
+                logger.error('No subdir of the config detected in "{}" (should be like "train/cfg")'.format(task_cfg_name))
+                raise IOError('No subdir of the config detected in "{}" (should be like "train/cfg")'.format(task_cfg_name))
+            absolute_cfg_path = os.path.join(abs_cfg_path, subdir, f'{fname}.yaml')
+            if not os.path.exists(absolute_cfg_path):
+                logger.error('Task cfg "{}" does not exist!'.format(absolute_cfg_path))
+                raise IOError('Task cfg "{}" does not exist!'.format(absolute_cfg_path))
+            overrides_list = [f'+{subdir}={fname}']
+        else:
+            overrides_list, absolute_cfg_path = None, None
+
         return overrides_list, absolute_cfg_path
 
     if reprod_cfg_name is not None:
@@ -536,3 +540,29 @@ def get_mounts_from_args(args: dict) -> list:
     return mounts
 
 
+def get_default_cfg(parent_dir_string: str = os.path.join('..', '..'),
+                    parent_dir_string_defaults: str = '.'):
+
+    # TODO! have a clearer absolute config path defined way to read the config(s)
+    # cfg_dir = get_config_dir()
+    hydra_cfg_paths = get_hydra_config_paths(parent_dir_string=parent_dir_string)
+    cfg = hydra_import_config(hydra_cfg_paths=hydra_cfg_paths,
+                              parent_dir_string_defaults=parent_dir_string_defaults)
+
+    return cfg
+
+
+def get_service_uris(cfg_yaml: str = 'defaults.yaml',
+                     parent_dir_string=os.path.join('..', '..'),
+                     parent_dir_string_defaults: str = '.') -> DictConfig:
+    """
+    Update this later so that you have a separate services.yaml that you composition with Hydra with
+    the defaults.yaml, but the output dictionary will be the same
+    """
+
+    hydra_cfg: DictConfig = get_default_cfg(parent_dir_string=parent_dir_string,
+                                            parent_dir_string_defaults=parent_dir_string_defaults)
+
+    services_cfg = cfg_key(hydra_cfg, 'config', 'SERVICES')
+
+    return services_cfg

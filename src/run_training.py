@@ -3,7 +3,7 @@ import os
 import sys
 import time
 
-from src.log_ML.mlflow.mlflow_admin import mlflow_update_best_model
+from src.log_ML.mlflow_log.mlflow_admin import mlflow_update_best_model
 from src.training.experiment import train_run_per_hyperparameters
 from src.utils.dict_utils import cfg_key
 from src.utils.general_utils import print_dict_to_logger
@@ -96,7 +96,8 @@ if __name__ == '__main__':
     # Update the best MLflow model
     if not cfg_key(hparam_run_results[hyperparam_name]['cfg'],
                'hydra_cfg', 'config', 'TRAINING', 'SKIP_TRAINING'):
-        mlflow_update_best_model(project_name=args['project_name'])
+        mlflow_update_best_model(project_name=args['project_name'],
+                                 cfg=hparam_run_results[hyperparam_name]['cfg'])
     else:
         logger.info('Skipping the MLflow update for now!')
     logger.info('Done in {:.0f} seconds with the execution!'.format(time.time() - t0))
