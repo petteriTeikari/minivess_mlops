@@ -135,11 +135,15 @@ def get_best_run(project_name: str,
         logger.error('Failed to get the runs from experiment = {}! e = {}'.format(project_name, e))
         raise IOError('Failed to get the runs from experiment = {}! e = {}'.format(project_name, e))
 
-    if len(runs) > 0:
-        best_run = runs[0]
-        metric_name = metric_best.split(' ')[0]
-        logger.info('Best run from MLflow Tracking experiments, '
-                    '{} = {:.3f}'.format(metric_name, best_run.data.metrics[metric_name]))
+    if runs is not None:
+        if len(runs) > 0:
+            best_run = runs[0]
+            metric_name = metric_best.split(' ')[0]
+            logger.info('Best run from MLflow Tracking experiments, '
+                        '{} = {:.3f}'.format(metric_name, best_run.data.metrics[metric_name]))
+        else:
+            logger.warning('No runs returned!')
+            best_run = None
     else:
         logger.warning('No runs returned!')
         best_run = None
@@ -159,13 +163,17 @@ def get_runs_of_experiment(project_name: str,
     logger.info('Filtering string {}'.format(filter_string))
     logger.info('Returning only ACTIVE runs')
     # ADD info.status == 'FINISHED'
-    runs = MlflowClient().search_runs(
-        experiment_ids=get_current_id(project_name=project_name),
-        filter_string="",
-        run_view_type=ViewType.ACTIVE_ONLY,
-        max_results=max_results,
-        order_by=order_by,
-    )
+    try:
+        runs = MlflowClient().search_runs(
+            experiment_ids=get_current_id(project_name=project_name),
+            filter_string="",
+            run_view_type=ViewType.ACTIVE_ONLY,
+            max_results=max_results,
+            order_by=order_by,
+        )
+    except Exception as e:
+        logger.error('Failed to get the runs from experiment = {}! e = {}'.format(project_name, e))
+        runs = None
 
     return runs
 
