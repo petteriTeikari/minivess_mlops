@@ -8,6 +8,8 @@ RUN useradd -m $USER && echo $USER:$USER && \
     chown $USER:$USER $HOME
 
 USER root
+RUN mv /home/requirements.txt /home/$USER/requirements.txt && \
+    chown $USER:$USER /home/$USER/requirements.txt
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     ln -sf /usr/bin/python3.8 /usr/bin/python3 && \
