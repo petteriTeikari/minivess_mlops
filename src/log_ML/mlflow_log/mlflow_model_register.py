@@ -42,6 +42,21 @@ def transition_model_stage(name: str,
     )
 
 
+def detransition_model_stages(name: str,
+                              version: str,
+                              stage: str = "archived"):
+
+    logger.info('Detransition old versions of the model to stage = {}'.format(stage))
+    client = MlflowClient()
+    for old_ver in range(1, int(version)):
+        logger.info('Model version = "{}" detransitioned'.format(str(old_ver)))
+        client.transition_model_version_stage(
+            name=name,
+            version=str(old_ver),
+            stage=stage
+        )
+
+
 def mlflow_register_model_from_run(run: mlflow.entities.Run,
                                    stage: str = 'Staging',
                                    project_name: str = 'segmentation-minivess'):

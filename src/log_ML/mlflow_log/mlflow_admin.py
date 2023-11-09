@@ -48,7 +48,7 @@ def mlflow_update_best_model(project_name: str,
 
     # Register the model from the best run from MLflow experiments,
     # if the best run is better than the best registered model
-    # register_best_run_as_best_registered_model = True
+    register_best_run_as_best_registered_model = True
     if register_best_run_as_best_registered_model:
         logger.info('Register the best run as the best registered model')
         reg_model: dict = register_model_from_run(run=best_run,
