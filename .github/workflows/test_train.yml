@@ -45,7 +45,7 @@ jobs:
       - name: Pull data from DVC
         #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
         #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |          
+        run: |
           dvc config cache.dir minivess-dvc-cache
           dvc pull
       - name: Check diskspace after DVC pull
@@ -62,5 +62,4 @@ jobs:
         # docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro -e S3_ARTIFACTS=minivess-artifacts -e DOCKER_ARTIFACTS=/mnt/minivess-artifacts -e S3_CACHE=minivess-dvc-cache -e DOCKER_CACHE=/mnt/minivess-dvc-cache --privileged --cap-add SYS_ADMIN --device /dev/fuse petteriteikari/minivess-mlops-train -c train_task_test.yaml -run test_dataload
         run: >
           docker run -v ${HOME}/.aws:/home/minivessuser/.aws:ro petteriteikari/minivess-mlops-train -c task_config.yaml -run test_train -no-s3
-          
 

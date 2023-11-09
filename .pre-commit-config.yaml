@@ -1,0 +1,24 @@
+repos:
+-   repo: https://github.com/psf/black
+    rev: '23.1.0'
+    hooks:
+    -   id: black
+        args: [--config=pyproject.toml]
+
+# Uncomment when you actually add the docstrings
+#-   repo: https://github.com/pycqa/pydocstyle
+#    rev: '6.3.0'
+#    hooks:
+#    -   id: pydocstyle
+#        args: ['.']
+
+-   repo: https://github.com/hadialqattan/pycln
+    rev: 'v2.1.5'
+    hooks:
+    -   id: pycln
+        args: ['.']
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 'v4.4.0'
+    hooks:
+    -   id: trailing-whitespace

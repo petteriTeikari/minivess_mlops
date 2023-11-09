@@ -13,4 +13,4 @@ for rm in rmodels:
     try:
         client.delete_registered_model(name=rm.name)
     except Exception as e:
-        print('Failed to delete model! e = {}'.format(e))
+        print("Failed to delete model! e = {}".format(e))

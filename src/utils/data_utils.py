@@ -9,11 +9,7 @@ from src.log_ML.mlflow_log.mlflow_log import mlflow_log_dataset
 from src.utils.config_utils import put_to_dict, cfg_key
 
 
-def import_datasets(data_cfg: dict,
-                    cfg: dict,
-                    data_dir: str,
-                    run_mode: str = 'train'):
-
+def import_datasets(data_cfg: dict, cfg: dict, data_dir: str, run_mode: str = "train"):
     def reverse_fold_and_dataset_order(fold_split_file_dicts):
         # Note! if you combine multiple datasets, we assume that all the different datasets have similar folds
         #       i.e. enforce this splitting from the config. TOADD later
@@ -23,75 +19,92 @@ def import_datasets(data_cfg: dict,
         for fold_name in fold_names:
             dict_out[fold_name] = {}
             for dataset_name in dataset_names:
-                dict_out[fold_name][dataset_name] = fold_split_file_dicts[dataset_name][fold_name]
+                dict_out[fold_name][dataset_name] = fold_split_file_dicts[dataset_name][
+                    fold_name
+                ]
         return dict_out
 
-    datasets_to_import = cfg_key(data_cfg, 'DATA_SOURCE', 'DATASET_NAMES')
-    logger.info('Importing the following datasets: {}', datasets_to_import)
+    datasets_to_import = cfg_key(data_cfg, "DATA_SOURCE", "DATASET_NAMES")
+    logger.info("Importing the following datasets: {}", datasets_to_import)
     dataset_filelistings, fold_split_file_dicts = {}, {}
     for i, dataset_name in enumerate(datasets_to_import):
-        dataset_filelistings[dataset_name], fold_split_file_dicts[dataset_name], dataset_stats = \
-            import_dataset(data_cfg=data_cfg,
-                           data_dir=data_dir,
-                           dataset_name=dataset_name,
-                           run_mode=run_mode,
-                           cfg=cfg)
-        cfg = put_to_dict(cfg, {dataset_name: dataset_stats}, 'run', 'DATA')
+        (
+            dataset_filelistings[dataset_name],
+            fold_split_file_dicts[dataset_name],
+            dataset_stats,
+        ) = import_dataset(
+            data_cfg=data_cfg,
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            run_mode=run_mode,
+            cfg=cfg,
+        )
+        cfg = put_to_dict(cfg, {dataset_name: dataset_stats}, "run", "DATA")
 
     # reverse fold and dataset_name in the fold_splits for easier processing afterwards
     fold_split_file_dicts = reverse_fold_and_dataset_order(fold_split_file_dicts)
 
-    return fold_split_file_dicts, cfg['run']
+    return fold_split_file_dicts, cfg["run"]
 
 
-def import_dataset(data_cfg: dict,
-                   data_dir: str,
-                   dataset_name: str,
-                   cfg: DictConfig,
-                   run_mode: str = 'train'):
-
-    logger.info('Importing: {}', dataset_name)
-    dataset_cfg = cfg_key(data_cfg, 'DATA_SOURCE', dataset_name)
+def import_dataset(
+    data_cfg: dict,
+    data_dir: str,
+    dataset_name: str,
+    cfg: DictConfig,
+    run_mode: str = "train",
+):
+    logger.info("Importing: {}", dataset_name)
+    dataset_cfg = cfg_key(data_cfg, "DATA_SOURCE", dataset_name)
 
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
         logger.info('Data directory did not exist in "{}", creating it', data_dir)
 
     if dataset_cfg is None:
-        raise IOError('You wanted to use the dataset = "{}", but you had not defined that in your config!\n'
-                      'You should have something defined for this in config["config"]["DATA"], '
-                      'see MINIVESS definition for an example'.format(dataset_name))
+        raise IOError(
+            'You wanted to use the dataset = "{}", but you had not defined that in your config!\n'
+            'You should have something defined for this in config["config"]["DATA"], '
+            "see MINIVESS definition for an example".format(dataset_name)
+        )
 
-    if dataset_name == 'MINIVESS':
-        fetch_method = cfg_key(dataset_cfg, 'FETCH_METHOD')
-        filelisting, fold_split_file_dicts, dataset_stats \
-            = import_minivess_dataset(dataset_cfg=dataset_cfg,
-                                      data_dir=data_dir,
-                                      run_mode=run_mode,
-                                      cfg=cfg,
-                                      dataset_name=dataset_name,
-                                      fetch_method=fetch_method,
-                                      fetch_params=cfg_key(dataset_cfg, 'FETCH_METHODS', fetch_method))
+    if dataset_name == "MINIVESS":
+        fetch_method = cfg_key(dataset_cfg, "FETCH_METHOD")
+        filelisting, fold_split_file_dicts, dataset_stats = import_minivess_dataset(
+            dataset_cfg=dataset_cfg,
+            data_dir=data_dir,
+            run_mode=run_mode,
+            cfg=cfg,
+            dataset_name=dataset_name,
+            fetch_method=fetch_method,
+            fetch_params=cfg_key(dataset_cfg, "FETCH_METHODS", fetch_method),
+        )
 
-    elif dataset_name == 'FOLDER':
-        filelisting, fold_split_file_dicts, dataset_stats = import_folder_dataset(dataset_cfg=dataset_cfg)
+    elif dataset_name == "FOLDER":
+        filelisting, fold_split_file_dicts, dataset_stats = import_folder_dataset(
+            dataset_cfg=dataset_cfg
+        )
 
     else:
-        raise NotImplementedError('Do not yet know how to download a dataset '
-                                  'called = "{}"'.format(dataset_name))
+        raise NotImplementedError(
+            "Do not yet know how to download a dataset "
+            'called = "{}"'.format(dataset_name)
+        )
 
     # Log the dataset to MLflow
-    if cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW', 'TRACKING', 'enable'):
-        mlflow_log_dataset(mlflow_config=cfg_key(cfg, 'hydra_cfg', 'config', 'LOGGING', 'MLFLOW'),
-                           dataset_cfg=dataset_cfg,
-                           filelisting=filelisting,
-                           fold_split_file_dicts=fold_split_file_dicts,
-                           cfg=cfg)
+    if cfg_key(cfg, "hydra_cfg", "config", "LOGGING", "MLFLOW", "TRACKING", "enable"):
+        mlflow_log_dataset(
+            mlflow_config=cfg_key(cfg, "hydra_cfg", "config", "LOGGING", "MLFLOW"),
+            dataset_cfg=dataset_cfg,
+            filelisting=filelisting,
+            fold_split_file_dicts=fold_split_file_dicts,
+            cfg=cfg,
+        )
 
     return filelisting, fold_split_file_dicts, dataset_stats
 
 
-def get_dir_size(start_path='.'):
+def get_dir_size(start_path="."):
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(start_path):
         for f in filenames:
@@ -102,12 +115,10 @@ def get_dir_size(start_path='.'):
     return total_size
 
 
-def write_tensor_as_json(tensor_in,
-                         filename: str):
+def write_tensor_as_json(tensor_in, filename: str):
     # for BentoML purpose for example
     arr = tensor_in.detach().cpu().numpy()
     lists = arr.tolist()
     json_str = json.dumps(lists)
     with open("test_input.json", "w") as outfile:
         outfile.write(json_str)
-

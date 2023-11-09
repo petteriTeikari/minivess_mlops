@@ -10,21 +10,22 @@ from torch import nn
 
 
 def import_segmentation_model(model_config: dict, archi_name: str, device):
-
     # FIXME! Definitely want to support any Monai model out of the box, so parse the class name from string
     #  and do not map all possible models here, use like "automagic Monai" model use, and then allow the use
     #  of custom 3rd party models that you maybe found from Github or something
 
-    if 'Unet' in archi_name:
+    if "Unet" in archi_name:
         model = UNet(**model_config).to(device)
-    elif archi_name == 'SegResNet':
+    elif archi_name == "SegResNet":
         model = SegResNet(**model_config).to(device)
     else:
-        raise NotImplementedError('Not implemented {} yet'.format(archi_name))
+        raise NotImplementedError("Not implemented {} yet".format(archi_name))
 
-    logger.info('Using "{}" as the model, with the following parameters:'.format(archi_name))
+    logger.info(
+        'Using "{}" as the model, with the following parameters:'.format(archi_name)
+    )
     for param_key in model_config:
-        logger.info(' {} = {}'.format(param_key, model_config[param_key]))
+        logger.info(" {} = {}".format(param_key, model_config[param_key]))
 
     return model
 
@@ -47,7 +48,6 @@ def get_nested_layers(model):
 
 
 def filter_layer_names(layers, layer_name_wildcard: str):
-
     layers_out = []
     for layer in layers:
         layer_name = layer.__class__.__name__
@@ -66,13 +66,12 @@ def get_layer_names_as_list(layers: list) -> list:
 
 def print_layer_names(layers: list):
     for i, layer in enumerate(layers):
-        logger.debug(' {}/{}: {}'.format(i+1, len(layers), layer.__class__.__name__))
+        logger.debug(" {}/{}: {}".format(i + 1, len(layers), layer.__class__.__name__))
 
 
-def get_last_layer_weights_of_model(model,
-                                    p_weights: float = 1.00,
-                                    layer_name_wildcard: str = 'conv'):
-
+def get_last_layer_weights_of_model(
+    model, p_weights: float = 1.00, layer_name_wildcard: str = "conv"
+):
     # Get the last layer of the model with the wildcard
     weights = None
     layers = get_nested_layers(model)
@@ -80,8 +79,11 @@ def get_last_layer_weights_of_model(model,
     if len(layers2) > 0:
         last_layer = layers2[-1]
     else:
-        logger.warning('Problem getting the last layer with wildcard "{}", layer names:'.
-                       format(layer_name_wildcard))
+        logger.warning(
+            'Problem getting the last layer with wildcard "{}", layer names:'.format(
+                layer_name_wildcard
+            )
+        )
         print_layer_names(layers)
         last_layer = None
 
@@ -92,20 +94,23 @@ def get_last_layer_weights_of_model(model,
             weights = np.copy(weights_tensor.detach().cpu().numpy())
         except Exception as e:
             # if you start having some more exotic models?
-            raise IOError('Problem extracting the weights from the layer, e = {}'.format(e))
+            raise IOError(
+                "Problem extracting the weights from the layer, e = {}".format(e)
+            )
 
     # If you a lot features here, you might want to return only a subset of this
     # as these are atm used for ML testing purposes to check that you get the same
     # weights when loading models from disk / Model Registry as you got during the training
     if p_weights < 1:
-        logger.warning('feature subset not implemented yet, '
-                       'returning all the {} weights'.format(len(weights)))
+        logger.warning(
+            "feature subset not implemented yet, "
+            "returning all the {} weights".format(len(weights))
+        )
 
     return weights
 
 
 def create_pseudomodel_from_filtered_layers(layers: list):
-
     def list_to_list_of_tuples(layers: list) -> list:
         list_of_tuples = []
         for i, layer in enumerate(layers):

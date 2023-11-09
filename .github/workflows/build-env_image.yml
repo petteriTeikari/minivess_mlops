@@ -1,8 +1,8 @@
 # Build 2 different Docker Images :
 # * the "Environment" now refers to the image containing all the needed Ubuntu packages and Python libraries,
-#   and what you could use as an interpreter in PyCharm, and what you would like to auto-build only when 
+#   and what you could use as an interpreter in PyCharm, and what you would like to auto-build only when
 #   Poetry environment or the Dockerfile changes
-# * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is 
+# * TODO! "Execution Docker" that would be based on the "Environment" that contains the executable code, and is
 #   auto-built everytime the `src` and ` model` code has updates
 name: Docker (Env)
 

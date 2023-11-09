@@ -32,15 +32,13 @@ def diff_omegadicts(a, b, missing=KeyError):
 
     return {
         key: (a.get(key, missing), b.get(key, missing))
-        for key in dict(
-            set(a.items()) ^ set(b.items())
-        ).keys()
+        for key in dict(set(a.items()) ^ set(b.items())).keys()
     }
 
 
-def print_dict_to_logger(dict_in: dict, prefix: str = ''):
+def print_dict_to_logger(dict_in: dict, prefix: str = ""):
     for k, v in dict_in.items():
-        logger.info('{}{}: {}'.format(prefix, k, v))
+        logger.info("{}{}: {}".format(prefix, k, v))
         # if isinstance(v, dict):
         #     print_dict_to_logger(v, prefix='  ')
         # else:
@@ -49,35 +47,43 @@ def print_dict_to_logger(dict_in: dict, prefix: str = ''):
 
 def print_memory_stats_to_logger():
     svmem = psutil.virtual_memory()
-    logger.debug('Memory usage: {}% ({:.2f}/{:.2f} GB)',
-                 svmem.percent, svmem.used/10**9, svmem.total/10**9)
+    logger.debug(
+        "Memory usage: {}% ({:.2f}/{:.2f} GB)",
+        svmem.percent,
+        svmem.used / 10**9,
+        svmem.total / 10**9,
+    )
 
 
 def is_docker():
-    cgroup = Path('/proc/self/cgroup')
-    return Path('/.dockerenv').is_file() or cgroup.is_file() and 'docker' in cgroup.read_text()
+    cgroup = Path("/proc/self/cgroup")
+    return (
+        Path("/.dockerenv").is_file()
+        or cgroup.is_file()
+        and "docker" in cgroup.read_text()
+    )
 
 
 def import_from_dotenv(repo_dir: str):
     # Manual import instead of the python-dotenv package which seemed possibly finicky to get installed
-    env_path = os.path.join(repo_dir, '.env')
+    env_path = os.path.join(repo_dir, ".env")
     if not os.path.exists(env_path):
         # This does not come with the cloned repo as these are sensitive data and
         # specific to your environment
-        logger.warning('No .env file found at {}, skipping import'.format(env_path))
+        logger.warning("No .env file found at {}, skipping import".format(env_path))
     else:
-        logger.info('Importing .env file from {}'.format(env_path))
+        logger.info("Importing .env file from {}".format(env_path))
         with open(env_path) as f:
             for line in f:
-                if line.startswith('#'):
+                if line.startswith("#"):
                     continue
-                if '=' not in line:
+                if "=" not in line:
                     continue
-                key, value = line.strip().split('=', 1)
+                key, value = line.strip().split("=", 1)
                 os.environ[key] = value
 
 
-def get_path_size(start_path: str = '.'):
+def get_path_size(start_path: str = "."):
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(start_path):
         for f in filenames:

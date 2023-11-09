@@ -7,5 +7,8 @@
 # This is now just a collection of the number of "pytest-like" tests in one file instead
 # of being scattered around in the .py files in "model" folder
 
+
 def ml_test_data_not_corrupted(corrupted_files: list):
-    assert len(corrupted_files) == 0, 'The following files were corrupted: {}'.format(corrupted_files)
+    assert len(corrupted_files) == 0, "The following files were corrupted: {}".format(
+        corrupted_files
+    )

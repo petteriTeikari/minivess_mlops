@@ -45,7 +45,7 @@ jobs:
       - name: Pull data from DVC
         #dvc remote modify remote_storage access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
         #dvc remote modify remote_storage secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |          
+        run: |
           dvc config cache.dir minivess-dvc-cache
           dvc pull
       - name: Check diskspace after DVC pull
@@ -71,4 +71,3 @@ jobs:
           repository: ${{ github.repository }}
           event-type: trigger-test-train
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
-

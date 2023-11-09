@@ -18,4 +18,3 @@ volumes:
   aws:
   minivess-dvc-cache:
   minivess-artifacts:
-
