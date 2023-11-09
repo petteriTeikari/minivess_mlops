@@ -35,6 +35,12 @@ bentoml = {extras = ["aws"], version = "^1.1.8"}
 fs-s3fs = "^1.1.1"
 
 
+[tool.poetry.group.lint.dependencies]
+flake8 = "^6.1.0"
+black = "^23.11.0"
+isort = "^5.12.0"
+mypy = "^1.6.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
