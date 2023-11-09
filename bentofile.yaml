@@ -2,8 +2,8 @@
 service: "deployment/bento/service.py:svc"
 description: "file: ./README.md"
 # https://docs.bentoml.org/en/latest/guides/containerization.html#custom-base-image
-#docker:
-#    base_image: "petteriteikari/minivess-mlops-env:latest"
+docker:
+    base_image: "petteriteikari/minivess-mlops-env:latest"
 # https://docs.bentoml.org/en/latest/concepts/bento.html#docker-options
 #docker:
 #    python_version: "3.8.18"
@@ -20,7 +20,7 @@ exclude:
   - "data/"
 #conda:
 #  environment_yml: "./conda.yaml"
-python:
-  requirements_txt: "./deployment/requirements.txt"
+#python:
+#  requirements_txt: "./deployment/requirements.txt"
 models: # The model to be used for building the Bento.
   - minivess-segmentor:latest
