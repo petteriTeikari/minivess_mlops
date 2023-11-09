@@ -12,6 +12,7 @@ from loguru import logger
 from omegaconf import OmegaConf, DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
+from src.log_ML.bentoml_log.bentoml_containarize import containarize_bento
 from src.log_ML.log_config import get_cfg_yaml_fname, get_run_params_yaml_fname, define_ensemble_submodels_dir_name
 from src.log_ML.log_model_registry import register_model_from_run
 from src.log_ML.mlflow_log.mlflow_init import authenticate_mlflow, init_mlflow
@@ -24,7 +25,8 @@ def mlflow_update_best_model(project_name: str,
                              cfg: DictConfig,
                              stage: str = 'Staging',
                              best_metric_name: str = 'Dice',
-                             manual_debug_run: bool = False):
+                             manual_debug_run: bool = False,
+                             docker_no_cache: bool = True):
 
     # Get best run from all the runs so far
     best_run = get_best_run(project_name,
@@ -46,12 +48,21 @@ def mlflow_update_best_model(project_name: str,
 
     # Register the model from the best run from MLflow experiments,
     # if the best run is better than the best registered model
+    register_best_run_as_best_registered_model = True
     if register_best_run_as_best_registered_model:
         logger.info('Register the best run as the best registered model')
-        register_model_from_run(run=best_run,
-                                cfg=cfg,
-                                stage=stage,
-                                project_name=project_name)
+        reg_model: dict = register_model_from_run(run=best_run,
+                                                  cfg=cfg,
+                                                  stage=stage,
+                                                  project_name=project_name)
+
+        # Build the Bento Docker and push it to the registry
+        containarize_bento(bento_tag=reg_model['bento']['tag'],
+                           docker_image=reg_model['bento_svc_cfg']['docker_image'],
+                           run_id=best_run.info.run_id,
+                           no_cache=docker_no_cache)
+
+
     else:
         logger.info('Keeping the best registered model as the best model')
 

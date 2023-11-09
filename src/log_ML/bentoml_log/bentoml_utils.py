@@ -59,3 +59,31 @@ def get_latest_bento_docker(docker_image: str,
         docker_built_from_best_run_id = False
 
     return docker_built_from_best_run_id
+
+
+def get_bento_CLI_build_command(containarize: bool = False,
+                                ):
+
+    # TODO! add the no-cache option to the build command
+    if containarize:
+        containarize_string = '--containerize'
+    else:
+        containarize_string = ''
+    cmd = f'bentoml build -f bentofile.yaml {containarize_string} .'
+    logger.info('Building Bento locally, cmd = "{}"'.format(cmd))
+
+    return cmd
+
+
+def get_bento_CLI_containerize_command(bento_tag: str,
+                                       no_cache: bool = False):
+    # e.g. "bentoml containerize minivess-segmentor:a6bgb6d3nob4nj6o --opt no-cache"
+    if no_cache:
+        cache_string = ' --opt no-cache'
+    else:
+        logger.warning('You are containerizing the Bento with cache,\nyou might easily get some cached garbage and wonder why your Docker does not behave as you think it should based on your code.\nUse with caution!')
+        cache_string = ''
+    cmd = f'bentoml containerize {bento_tag}{cache_string}'
+    logger.info('Containarize Bento locally, cmd = "{}"'.format(cmd))
+
+    return cmd

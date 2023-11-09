@@ -90,13 +90,13 @@ if __name__ == '__main__':
                                 run_id_tag=mlflow_model['latest_version'].run_id))
 
     # Build Bento with Containarize
-    docker_built_from_best_run_id = False
-    if not docker_built_from_best_run_id:
-        containarize_bento(bento_model=bento_model,
-                           docker_image=cfg_key(service_uris, 'BENTOML', 'docker_image'))
+    # docker_built_from_best_run_id = False
+    # if not docker_built_from_best_run_id:
+    #     containarize_bento(bento_model=bento_model,
+    #                        docker_image=cfg_key(service_uris, 'BENTOML', 'docker_image'))
 
-    if args['output'] == 'is_docker_old':
-        if docker_built_from_best_run_id:
-            sys.exit(0)  ## echo $? from bash
-        else:
-            sys.exit(1)  ## echo $? from bash
+    # if args['output'] == 'is_docker_old':
+    #     if docker_built_from_best_run_id:
+    #         sys.exit(0)  ## echo $? from bash
+    #     else:
+    #         sys.exit(1)  ## echo $? from bash

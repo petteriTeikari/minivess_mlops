@@ -4,6 +4,7 @@ import wandb
 from omegaconf import DictConfig
 
 from src.inference.ensemble_model import ModelEnsemble
+from src.log_ML.bentoml_log.bentoml_bentos import bentoml_save_bento
 from src.log_ML.bentoml_log.bentoml_log_models import bentoml_save_mlflow_model_to_model_store
 from src.log_ML.mlflow_log.mlflow_log import define_mlflow_model_uri
 from src.log_ML.mlflow_log.mlflow_log_model import mlflow_metamodel_logging
@@ -122,10 +123,10 @@ def register_model_from_run(run: mlflow.entities.Run,
                             cfg: DictConfig,
                             stage: str = 'Staging',
                             project_name: str = 'segmentation-minivess',
-                            services: tuple = ('mlflow_log', 'bentoml_log')):
+                            services: tuple = ('mlflow', 'bentoml')):
 
-
-    if 'mlflow_log' in services:
+    reg, modsel_uri, bento_model, pyfunc_model, bento = None, None, None, None, None
+    if 'mlflow' in services:
         logger.info('Registering improved model to MLflow Model Registry')
         try:
             reg, model_uri = mlflow_register_model_from_run(run=run,
@@ -134,14 +135,22 @@ def register_model_from_run(run: mlflow.entities.Run,
 
             try:
                 # BentoML atm depends on the existing MLflow Model Registry model
-                if 'bentoml_log' in services:
+                if 'bentoml' in services:
                     logger.info('Registering improved model to BentoML Model Store')
                     bento_svc_cfg = cfg_key(cfg, 'hydra_cfg', 'config', 'SERVICES', 'BENTOML')
+
+                    # Log to model store
                     bento_model, pyfunc_model = (
                         bentoml_save_mlflow_model_to_model_store(run=run,
                                                                  ensemble_name=run.data.tags['ensemble_name'],
                                                                  model_uri=model_uri,
                                                                  bento_svc_cfg=bento_svc_cfg))
+
+                    # Build the bento without containerizing it
+                    run_id = cfg_key(bento_model.info.metadata, 'run_id')
+                    bento = bentoml_save_bento(bento_svc_cfg=bento_svc_cfg,
+                                               run_id=run_id)
+
                 else:
                     logger.info('Skip BentomL model store save')
             except Exception as e:
@@ -155,3 +164,10 @@ def register_model_from_run(run: mlflow.entities.Run,
     else:
         logger.info('Model had improved, but MLflow Model Registry model registration is skipped')
 
+    return {'reg': reg,
+            'model_uri': model_uri,
+            'bento_model': bento_model,
+            'pyfunc_model': pyfunc_model,
+            'bento': bento,
+            'bento_svc_cfg': bento_svc_cfg
+            }
